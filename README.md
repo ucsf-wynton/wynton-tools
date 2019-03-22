@@ -1,5 +1,7 @@
 # UCSF Wynton HPC Tools
 
+[![Build Status](https://travis-ci.org/UCSF-HPC/wynton-tools.svg?branch=master)](https://travis-ci.org/UCSF-HPC/wynton-tools)
+
 ```
 UCSF Wynton HPC Command Line Tools
 

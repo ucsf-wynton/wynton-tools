@@ -95,7 +95,6 @@ if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
     mdebug "verbose: $verbose"
-    mdebug "force: $force"
 fi
 
 if [[ $action == "version" ]]; then
@@ -126,7 +125,7 @@ function slots_per_project_header() {
 function slots_per_project() {
     slots_raw=$1
     slots_total=$(slots_total "${slots_raw}")
-    slots_per_project=$(echo "${slots_raw}" | awk -v total=${slots_total} '{ printf "%.06f %5d %5d %s\n", $2/total, $2, total, $1 }' | sort -r)
+    slots_per_project=$(echo "${slots_raw}" | awk -v total="${slots_total}" '{ printf "%.06f %5d %5d %s\n", $2/total, $2, total, $1 }' | sort -r)
     slots_per_project_header
     echo "${slots_per_project}"
 }
