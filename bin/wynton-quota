@@ -1,12 +1,8 @@
 #! /usr/bin/env bash
-### Wynton HPC Shares
+### Wynton HPC Disk Quota
 ###
 ### Usage:
-###  wynton-shares <command> [options]
-###
-### Commands:
-###  list             List all shareholders and their shares
-###  total            Total number of slots
+###  wynton-quota [options]
 ###
 ### Options:
 ###  --version        Display version
@@ -61,26 +57,22 @@ function help() {
 # MAIN
 # -------------------------------------------------------------------------
 ## Actions
-action=help
+action=quota
 
 ## Options
 debug=false
 verbose=false
-project=
+user=${USER}
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
     if test "$1" == "--help"; then
         action=help
+    elif test "$1" == "--user"; then
+	shift
+        user=$1
     elif test "$1" == "--version"; then
         action=version
-    elif test "$1" == "list"; then
-        action=$1
-    elif test "$1" == "total"; then
-        action=$1
-    elif test "$1" == "--project"; then
-	shift
-        project=$1
     elif test "$1" == "--debug"; then
         debug=true
     elif test "$1" == "--verbose"; then
@@ -91,10 +83,23 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+if [[ $user == $USER ]]; then
+    home=$HOME
+else
+    home=$(getent passwd $user | cut -d: -f6)
+fi
+
+uid=$(id --user)
+gid=$(id --group)
+
 if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
     mdebug "verbose: $verbose"
+    mdebug "user: $user"
+    mdebug "uid: $uid"
+    mdebug "group: $group"
+    mdebug "home: $home"
 fi
 
 if [[ $action == "version" ]]; then
@@ -105,39 +110,23 @@ elif [[ $action == "help" ]]; then
     exit 0
 fi
 
-
-queue_name="member.q"
-
-
-function slots_raw() {
-    SGE_SINGLE_LINE=true qconf -srqs member_queue_limits | grep -F "queues ${queue_name} to slots=" | sed -E "s/(.*projects |queues ${queue_name} to slots=)//g"
-}
-
-function slots_total() {
-    slots_raw=$1
-    echo "${slots_raw}" | awk '{ total+=$2 } END { print total }'
-}
-
-function slots_per_project_header() {
-    echo "shares   slots total project"
-}
+if [[ $action == "quota" ]]; then
+    echo "DISK QUOTA"
+    echo
+    echo "User: $user (uid=$uid, gid=$gid)"
+    echo "HOME: $home"
     
-function slots_per_project() {
-    slots_raw=$1
-    slots_total=$(slots_total "${slots_raw}")
-    slots_per_project=$(echo "${slots_raw}" | awk -v total="${slots_total}" '{ printf "%.06f %5d %5d %s\n", $2/total, $2, total, $1 }' | sort -r)
-    slots_per_project_header
-    echo "${slots_per_project}"
-}
-
-if [[ $action == "list" ]]; then
-    res=$(slots_per_project "$(slots_raw)")
-    if [[ -n "${project}" ]]; then
-        slots_per_project_header
-	echo "${res}" | grep -E "${project}"
-    else
-	echo "${res}"
+    ## LEGACY: Does the user have home on /netapp?
+    if [[ $home == */netapp/* ]]; then
+        echo
+	echo "On NetApp (legacy):"
+	quota --human-readable --no-wrap --user "$user"
     fi
-elif [[ $action == "total" ]]; then
-    slots_total "$(slots_raw)"
+
+    echo
+    echo "On /wynton/home (mirrored and compressed BeeGFS):"
+    beegfs-ctl --getquota --storagepoolid=11 --uid $user
+    echo
+    echo "NOTE: Because /wynton/home/ storage is mirrored, the disk usage ('used') and the available quota ('hard') are reported at twice of what you would expect for a non-mirrored storage. That is, 'hard' quota of 1000 GiB should be interpreted as 500 GiB worth of storage space. Moreover, the BeeGFS storage is also compressed, meaning a 1.0 GiB file is likely to consume less that 1.0 GiB of storage space - how much a file is compressed varies greatly with file format."
+
 fi
