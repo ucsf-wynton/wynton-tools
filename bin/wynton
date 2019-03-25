@@ -41,7 +41,7 @@ function list_tools {
 
 function whatis {
     local pathname
-    pathname="$(which "wynton-$1")"
+    pathname="$(command -v "wynton-$1")"
     local res
     res=$(grep -E "^### whatis: " "$pathname" | sed 's/^### whatis: //')
     if [[ -z "${res}" ]]; then
