@@ -14,4 +14,4 @@ README.md: bin/wynton
 .PHONY: test
 
 check:
-	shellcheck bin/*
+	shellcheck bin/*[^~]
