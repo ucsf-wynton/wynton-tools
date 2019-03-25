@@ -83,10 +83,10 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-if [[ $user == $USER ]]; then
+if [[ $user == "$USER" ]]; then
     home=$HOME
 else
-    home=$(getent passwd $user | cut -d: -f6)
+    home=$(getent passwd "$user" | cut -d: -f6)
 fi
 
 uid=$(id --user)
@@ -98,7 +98,7 @@ if $debug; then
     mdebug "verbose: $verbose"
     mdebug "user: $user"
     mdebug "uid: $uid"
-    mdebug "group: $group"
+    mdebug "gid: $gid"
     mdebug "home: $home"
 fi
 
@@ -125,13 +125,13 @@ if [[ $action == "quota" ]]; then
 
     echo
     echo "On /wynton/home (mirrored and compressed BeeGFS):"
-    beegfs-ctl --getquota --storagepoolid=11 --uid $user
+    beegfs-ctl --getquota --storagepoolid=11 --uid "$user"
     echo
     echo "NOTE: Because /wynton/home/ storage is mirrored, the disk usage ('used') and the available quota ('hard') are reported at twice of what you would expect for a non-mirrored storage. That is, 'hard' quota of 1000 GiB should be interpreted as 500 GiB worth of storage space. Moreover, the BeeGFS storage is also compressed, meaning a 1.0 GiB file is likely to consume less that 1.0 GiB of storage space - how much a file is compressed varies greatly with file format."
 
     echo
     echo "On /wynton/scratch (non-mirrored and compressed BeeGFS):"
-    beegfs-ctl --getquota --storagepoolid=10 --uid $user
+    beegfs-ctl --getquota --storagepoolid=10 --uid "$user"
     echo
     echo "NOTE: Files on /wynton/scratch are automatically deleted after 14 days."
 fi
