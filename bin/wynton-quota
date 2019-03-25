@@ -129,4 +129,9 @@ if [[ $action == "quota" ]]; then
     echo
     echo "NOTE: Because /wynton/home/ storage is mirrored, the disk usage ('used') and the available quota ('hard') are reported at twice of what you would expect for a non-mirrored storage. That is, 'hard' quota of 1000 GiB should be interpreted as 500 GiB worth of storage space. Moreover, the BeeGFS storage is also compressed, meaning a 1.0 GiB file is likely to consume less that 1.0 GiB of storage space - how much a file is compressed varies greatly with file format."
 
+    echo
+    echo "On /wynton/scratch (non-mirrored and compressed BeeGFS):"
+    beegfs-ctl --getquota --storagepoolid=10 --uid $user
+    echo
+    echo "NOTE: Files on /wynton/scratch are automatically deleted after 14 days."
 fi
