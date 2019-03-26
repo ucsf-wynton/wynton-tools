@@ -67,6 +67,7 @@ action=help
 debug=false
 verbose=false
 project=
+queue="member.q"
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -81,6 +82,9 @@ while [[ $# -gt 0 ]]; do
     elif test "$1" == "--project"; then
 	shift
         project=$1
+#    elif test "$1" == "--queue"; then
+#	shift
+#        queue=$1
     elif test "$1" == "--debug"; then
         debug=true
     elif test "$1" == "--verbose"; then
@@ -106,11 +110,8 @@ elif [[ $action == "help" ]]; then
 fi
 
 
-queue_name="member.q"
-
-
 function slots_raw() {
-    SGE_SINGLE_LINE=true qconf -srqs member_queue_limits | grep -F "queues ${queue_name} to slots=" | sed -E "s/(.*projects |queues ${queue_name} to slots=)//g"
+    SGE_SINGLE_LINE=true qconf -srqs member_queue_limits | grep -F "queues ${queue} to slots=" | sed -E "s/(.*projects |queues ${queue} to slots=)//g"
 }
 
 function slots_total() {
