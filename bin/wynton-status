@@ -1,8 +1,11 @@
 #! /usr/bin/env bash
-### Wynton HPC Disk Quota
+### Wynton HPC Status
 ###
 ### Usage:
-###  wynton-quota [options]
+###  wynton-status <command> [options]
+###
+### Commands:
+###  load             Average cluster load
 ###
 ### Options:
 ###  --version        Display version
@@ -42,7 +45,7 @@ function help() {
     local res=
     res=$(grep "^###" "$0" | grep -vE '^(####|### whatis: )' | cut -b 5-)
     if [[ ${UCSF_WYNTON_TOOLS} == true ]]; then
-        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-quota/\1ucsf quota/')
+        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-status/\1ucsf status/')
     fi
     printf "%s\\n" "${res[@]}"
 }
@@ -57,20 +60,17 @@ function help() {
 # MAIN
 # -------------------------------------------------------------------------
 ## Actions
-action=quota
+action=load
 
 ## Options
 debug=false
 verbose=false
-user=${USER}
+
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
     if test "$1" == "--help"; then
         action=help
-    elif test "$1" == "--user"; then
-	shift
-        user=$1
     elif test "$1" == "--version"; then
         action=version
     elif test "$1" == "--debug"; then
@@ -83,23 +83,10 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-if [[ $user == "$USER" ]]; then
-    home=$HOME
-else
-    home=$(getent passwd "$user" | cut -d: -f6)
-fi
-
-uid=$(id --user)
-gid=$(id --group)
-
 if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
     mdebug "verbose: $verbose"
-    mdebug "user: $user"
-    mdebug "uid: $uid"
-    mdebug "gid: $gid"
-    mdebug "home: $home"
 fi
 
 if [[ $action == "version" ]]; then
@@ -110,28 +97,6 @@ elif [[ $action == "help" ]]; then
     exit 0
 fi
 
-if [[ $action == "quota" ]]; then
-    echo "DISK QUOTA"
-    echo
-    echo "User: $user (uid=$uid, gid=$gid)"
-    echo "HOME: $home"
-    
-    ## LEGACY: Does the user have home on /netapp?
-    if [[ $home == */netapp/* ]]; then
-        echo
-	echo "On NetApp (legacy):"
-	quota --human-readable --no-wrap --user "$user"
-    fi
-
-    echo
-    echo "On /wynton/home (mirrored and compressed BeeGFS):"
-    beegfs-ctl --getquota --storagepoolid=11 --uid "$user"
-    echo
-    echo "NOTE: Because /wynton/home/ storage is mirrored, the disk usage ('used') and the available quota ('hard') are reported at twice of what you would expect for a non-mirrored storage. That is, 'hard' quota of 1000 GiB should be interpreted as 500 GiB worth of storage space. Moreover, the BeeGFS storage is also compressed, meaning a 1.0 GiB file is likely to consume less that 1.0 GiB of storage space - how much a file is compressed varies greatly with file format."
-
-    echo
-    echo "On /wynton/scratch (non-mirrored and compressed BeeGFS):"
-    beegfs-ctl --getquota --storagepoolid=10 --uid "$user"
-    echo
-    echo "NOTE: Files on /wynton/scratch are automatically deleted after 14 days."
+if [[ $action == "load" ]]; then
+    qhost | awk '{ cores+=$5; load+=$7; } END { printf "Average load: %.2f%%\nTotal load: %.2f\nNumber of cores: %d\n", 100*load/cores, load, cores }'
 fi
