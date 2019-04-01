@@ -1,12 +1,27 @@
 wynton-tools
 ============
 
+Version 0.0.4 (2019-04-01)
+
+ * Add 'wynton queues list'
+
+
+Version 0.0.3 (2019-03-28)
+
+ * Add 'wynton status load'
+
+
+Version 0.0.2 (2019-03-25)
+
+ * Add 'wynton quota'
+
+
 Version 0.0.1 (2019-03-21)
 
 NEW FEATURES:
 
- * Add 'ucsf' master tool.
+ * Add 'wynton' master tool.
  
- * Add 'ucsf shares' to list member.q shares.
+ * Add 'wynton shares' to list member.q shares.
  
  * Created.
