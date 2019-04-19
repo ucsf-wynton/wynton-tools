@@ -120,7 +120,7 @@ if [[ $action == "quota" ]]; then
     if [[ $home == */netapp/* ]]; then
         echo
 	echo "On NetApp (legacy):"
-	quota --human-readable --no-wrap --user "$user"
+	quota --human-readable --no-wrap -f /netapp/home --user "$user"
     fi
 
     echo
