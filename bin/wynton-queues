@@ -64,7 +64,6 @@ action=help
 ## Options
 debug=false
 verbose=false
-project=
 
 
 # Parse command-line options
