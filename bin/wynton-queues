@@ -44,7 +44,7 @@ function help() {
     local res=
     res=$(grep "^###" "$0" | grep -vE '^(####|### whatis: )' | cut -b 5-)
     if [[ ${UCSF_WYNTON_TOOLS} == true ]]; then
-        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-([a-z]+)/\1ucsf \2/')
+        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-([a-z]+)/\1wynton \2/')
     fi
     printf "%s\\n" "${res[@]}"
 }
