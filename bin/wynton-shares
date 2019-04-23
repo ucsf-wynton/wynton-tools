@@ -211,9 +211,9 @@ if [[ $action == "list" ]]; then
 elif [[ $action == "total" ]]; then
     if $funits; then
       echo "funits queue_slots project"
-      echo "$(funits_slots_total)"
+      funits_slots_total
     else
       echo "queue_slots project"
-      printf "%11d total\n" $(slots_total "$(slots_raw)")
+      printf "%11d total\n" "$(slots_total "$(slots_raw)")"
     fi
 fi
