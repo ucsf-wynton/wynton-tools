@@ -172,11 +172,17 @@ function funits_slots_all_projects() {
     res=$(slots_all_projects "$(slots_raw)")
     echo "funits $(slots_project_header)"
     projects=$(echo "${res}" | awk 'NR > 1 { print $4 }')
-    for p in ${projects[*]}; do
-        project=${p%%,*}
-        funits=$(funits_one_project "${project}")
-        printf "%6d " "${funits}"
-        echo "${res}" | grep -E "[ ]${p}"
+    for project in ${projects[*]}; do
+      IFS="," read -r -a subprojects <<< "$project"
+      subfunits=()
+      funits=0
+      for subproject in ${subprojects[*]}; do
+        t=$(funits_one_project "${subproject}")
+        subfunits+=(t)
+        funits=$((funits + t))
+      done
+      printf "%6d " "${funits}"
+      echo "${res}" | grep -E "[ ]${project}"
     done
 }
 
