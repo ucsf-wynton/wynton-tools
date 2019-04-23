@@ -86,6 +86,8 @@ while [[ $# -gt 0 ]]; do
         action=$1
     elif test "$1" == "total"; then
         action=$1
+    elif test "$1" == "tsv"; then
+        action=$1
     elif test "$1" == "--project"; then
         shift
         project=$1
@@ -216,4 +218,11 @@ elif [[ $action == "total" ]]; then
       echo "queue_slots project"
       printf "%11d total\n" "$(slots_total "$(slots_raw)")"
     fi
+elif [[ $action == "tsv" ]]; then
+    data=$(wynton shares list --funits | awk 'BEGIN {OFS="\t";} { print $1, $2, $3, $4, $5}')
+    echo "# Created by: ${USER}"
+    echo "# Created on: $(date --rfc-3339=seconds)"
+    echo "${data}" | awk 'NR > 1 { funits+=$1; slots+=$2 } END { printf "# Total funits: %d\n# Total queue_slots: %d\n# Number of projects: %d\n", funits, slots, NR-1 }'
+    
+    echo "${data}"
 fi
