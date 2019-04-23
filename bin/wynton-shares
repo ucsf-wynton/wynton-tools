@@ -127,6 +127,11 @@ function slots_total() {
     echo "${slots_raw}" | awk '{ total+=$2 } END { print total }'
 }
 
+function funits_slots_total() {
+    raw=$(funits_slots_all_projects)
+    echo "${raw}" | awk '{ funits+=$1; slots+=$2 } END { printf "%6d %11d total\n", funits, slots }'
+}
+
 function slots_all_projects() {
     local slots_raw
     local slots_total
@@ -204,6 +209,6 @@ if [[ $action == "list" ]]; then
         fi    
     fi
 elif [[ $action == "total" ]]; then
-    printf "queue_slots project\n"
-    printf "%11d %s\n" $(slots_total "$(slots_raw)") "total"
+    echo "funits queue_slots project"
+    echo "$(funits_slots_total)"
 fi
