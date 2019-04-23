@@ -204,5 +204,6 @@ if [[ $action == "list" ]]; then
         fi    
     fi
 elif [[ $action == "total" ]]; then
-    slots_total "$(slots_raw)"
+    printf "queue_slots project\n"
+    printf "%11d %s\n" $(slots_total "$(slots_raw)") "total"
 fi
