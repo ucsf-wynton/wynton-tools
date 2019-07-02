@@ -1,6 +1,12 @@
 wynton-tools
 ============
 
+Version 0.0.6 (2019-07-01)
+
+ * Now 'wynton status' reports on the versions of the
+   operating system and the BeeGFS file system.
+   
+
 Version 0.0.5 (2019-04-20)
 
  * Add support for 'wynton queues list --funits'

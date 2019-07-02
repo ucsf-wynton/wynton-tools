@@ -11,7 +11,7 @@
 ###  --version        Display version
 ###
 ###
-### Version: 0.0.1
+### Version: 0.0.6
 ### Copyright: Henrik Bengtsson (2019)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -101,4 +101,6 @@ if [[ $action == "load" ]]; then
     qhost | awk '{ cores+=$5; load+=$7; } END { printf "Average load: %.2f%%\nTotal load: %.2f\nNumber of cores: %d\n", 100*load/cores, load, cores }'
     printf "Number of users: "; qconf -suserl | wc -l
     printf "Number of projects (contributing members): "; qconf -sprjl | wc -l
+    printf "Operating system: "; cat /etc/centos-release
+    printf "File system: BeeGFS "; beegfs-ctl | grep -E "^Version: " | sed 's/.* //g'
 fi

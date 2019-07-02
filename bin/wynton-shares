@@ -9,14 +9,14 @@
 ###  total            Total number of queue slots
 ###
 ### Options:
-###  --funits         Include functional units (FU) in output (slow)
+###  --fshares        Include functional shares in output (slow)
 ###  --version        Display version
 ###
 ### Examples:
-###  wynton shares list --funits --project salilab
-###  wynton shares list --funits
+###  wynton shares list --fshares --project salilab
+###  wynton shares list --fshares
 ###
-### Version: 0.0.1
+### Version: 0.0.6
 ### Copyright: Henrik Bengtsson (2019)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -70,7 +70,7 @@ action=help
 ## Options
 debug=false
 verbose=false
-funits=false
+fshares=false
 project=
 queue="member.q"
 
@@ -80,8 +80,8 @@ while [[ $# -gt 0 ]]; do
         action=help
     elif test "$1" == "--version"; then
         action=version
-    elif test "$1" == "--funits"; then
-        funits=true
+    elif test "$1" == "--fshares"; then
+        fshares=true
     elif test "$1" == "list"; then
         action=$1
     elif test "$1" == "total"; then
@@ -129,9 +129,9 @@ function slots_total() {
     echo "${slots_raw}" | awk '{ total+=$2 } END { print total }'
 }
 
-function funits_slots_total() {
-    raw=$(funits_slots_all_projects)
-    echo "${raw}" | awk '{ funits+=$1; slots+=$2 } END { printf "%6d %11d total\n", funits, slots }'
+function fshares_slots_total() {
+    raw=$(fshares_slots_all_projects)
+    echo "${raw}" | awk '{ fshares+=$1; slots+=$2 } END { printf "%6d %11d total\n", fshares, slots }'
 }
 
 function slots_all_projects() {
@@ -155,41 +155,41 @@ function slots_one_project() {
     echo "${res}" | grep -E "[ ]${project}"
 }
 
-function funits_slots_one_project() {
+function fshares_slots_one_project() {
     local res
     local project
-    local funits
+    local fshares
     project=$1
     res=$(slots_one_project "${project}")
-    echo "funits queue_slots project"
-    funits=$(funits_one_project "${project}")
-    printf "%6d " "${funits}"
+    echo "fshares queue_slots project"
+    fshares=$(fshares_one_project "${project}")
+    printf "%6d " "${fshares}"
     echo "${res}" | grep -E "[ ]${project}"
 }
 
-function funits_slots_all_projects() {
+function fshares_slots_all_projects() {
     local res
     local projects
     local project
-    local funits
+    local fshares
     res=$(slots_all_projects "$(slots_raw)")
-    echo "funits queue_slots project"
+    echo "fshares queue_slots project"
     projects=$(echo "${res}" | awk 'NR > 1 { print $2 }')
     for project in ${projects[*]}; do
       IFS="," read -r -a subprojects <<< "$project"
-      subfunits=()
-      funits=0
+      subfshares=()
+      fshares=0
       for subproject in ${subprojects[*]}; do
-        t=$(funits_one_project "${subproject}")
-        subfunits+=(t)
-        funits=$((funits + t))
+        t=$(fshares_one_project "${subproject}")
+        subfshares+=(t)
+        fshares=$((fshares + t))
       done
-      printf "%6d " "${funits}"
+      printf "%6d " "${fshares}"
       echo "${res}" | grep -E "[ ]${project}"
     done
 }
 
-function funits_one_project() {
+function fshares_one_project() {
     qconf -sprj "$1" | grep "fshare" | sed -E 's/fshare[ ]+//'
 }
 
@@ -197,32 +197,32 @@ function funits_one_project() {
 if [[ $action == "list" ]]; then
     if [[ -n "${project}" ]]; then
         ## List a single project
-        if $funits; then
-            funits_slots_one_project "${project}"
+        if $fshares; then
+            fshares_slots_one_project "${project}"
         else
             slots_one_project "${project}"
         fi
     else
         ## List all projects
-        if $funits; then
-            funits_slots_all_projects "$(slots_raw)"
+        if $fshares; then
+            fshares_slots_all_projects "$(slots_raw)"
         else
             slots_all_projects "$(slots_raw)"
         fi    
     fi
 elif [[ $action == "total" ]]; then
-    if $funits; then
-      echo "funits queue_slots project"
-      funits_slots_total
+    if $fshares; then
+      echo "fshares queue_slots project"
+      fshares_slots_total
     else
       echo "queue_slots project"
       printf "%11d total\n" "$(slots_total "$(slots_raw)")"
     fi
 elif [[ $action == "tsv" ]]; then
-    data=$(wynton shares list --funits | awk 'BEGIN {OFS="\t";} { print $1, $2, $3, $4, $5}')
+    data=$(wynton shares list --fshares | awk 'BEGIN {OFS="\t";} { print $1, $2, $3}')
     echo "# Created by: ${USER}"
     echo "# Created on: $(date --rfc-3339=seconds)"
-    echo "${data}" | awk 'NR > 1 { funits+=$1; slots+=$2 } END { printf "# Total funits: %d\n# Total queue_slots: %d\n# Number of projects: %d\n", funits, slots, NR-1 }'
+    echo "${data}" | awk 'NR > 1 { fshares+=$1; slots+=$2 } END { printf "# Total fshares: %d\n# Total queue_slots: %d\n# Number of projects: %d\n", fshares, slots, NR-1 }'
     
     echo "${data}"
 fi
