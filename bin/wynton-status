@@ -103,6 +103,7 @@ if [[ $action == "load" ]]; then
     echo "## System Information"
     printf "Operating system: "; cat /etc/centos-release
     printf "File system: BeeGFS "; beegfs-ctl | grep -E "^Version: " | sed 's/.* //g'
+    printf "Job scheduler: "; 2>&1 qstat --help | head -1
     echo
     echo "## Users and Groups"
     printf "Number of users: "; qconf -suserl | wc -l
