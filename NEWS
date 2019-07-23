@@ -6,6 +6,8 @@ Version 0.0.6-9000 (2019-07-23)
 NEW FEATURES:
 
  * Now 'wynton quota' reports also on group storage.
+ 
+ * Now 'wynton quota' gives an informative error if user does not found.
 
 BUG FIXES:
 

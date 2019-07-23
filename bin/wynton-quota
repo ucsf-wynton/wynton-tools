@@ -5,8 +5,13 @@
 ###  wynton-quota [options]
 ###
 ### Options:
+###  --user USER      Query another user (default: $USER)
+###  --help           Display this help
 ###  --version        Display version
 ###
+### Examples:
+###  wynton quota
+###  wynton quota --user alice
 ###
 ### Version: 0.0.6
 ### Copyright: Henrik Bengtsson (2019)
@@ -82,6 +87,10 @@ while [[ $# -gt 0 ]]; do
     fi
     shift
 done
+
+## Assert that user exists
+id --user "$user" &> /dev/null || merror "No such user: $user"
+
 
 if [[ $user == "$USER" ]]; then
     home=$HOME
