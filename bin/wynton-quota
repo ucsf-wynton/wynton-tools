@@ -89,8 +89,8 @@ else
     home=$(getent passwd "$user" | cut -d: -f6)
 fi
 
-uid=$(id --user)
-gid=$(id --group)
+uid=$(id --user "$user")
+gid=$(id --group "$user")
 
 if $debug; then
     mdebug "call: $call"
