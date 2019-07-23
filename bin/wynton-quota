@@ -91,12 +91,14 @@ fi
 
 uid=$(id --user "$user")
 gid=$(id --group "$user")
+group=$(id --group --name "$user")
 
 if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
     mdebug "verbose: $verbose"
     mdebug "user: $user"
+    mdebug "group: $group"
     mdebug "uid: $uid"
     mdebug "gid: $gid"
     mdebug "home: $home"
@@ -111,15 +113,18 @@ elif [[ $action == "help" ]]; then
 fi
 
 if [[ $action == "quota" ]]; then
-    echo "DISK QUOTA"
+    echo "# Disk Usage and Quota"
     echo
-    echo "User: $user (uid=$uid, gid=$gid)"
-    echo "HOME: $home"
+    echo "* User : $user (uid=$uid)"
+    echo "* Group: $group (gid=$gid)"
+    echo "* HOME : $home"
+    echo
+    echo "## User Disk Quota"
     
     ## LEGACY: Does the user have home on /netapp?
     if [[ $home == */netapp/* ]]; then
         echo
-	echo "On NetApp (legacy):"
+	echo "On NetApp (QB3 legacy):"
 	quota --human-readable --no-wrap -f /netapp/home --user "$user"
     fi
 
@@ -127,11 +132,19 @@ if [[ $action == "quota" ]]; then
     echo "On /wynton/home (mirrored and compressed BeeGFS):"
     beegfs-ctl --getquota --storagepoolid=11 --uid "$user"
     echo
-    echo "NOTE: Because /wynton/home/ storage is mirrored, the disk usage ('used') and the available quota ('hard') are reported at twice of what you would expect for a non-mirrored storage. That is, 'hard' quota of 1000 GiB should be interpreted as 500 GiB worth of storage space. Moreover, the BeeGFS storage is also compressed, meaning a 1.0 GiB file is likely to consume less that 1.0 GiB of storage space - how much a file is compressed varies greatly with file format."
+    echo "NOTE: Because /wynton/home storage is mirrored, the disk usage ('used') and the available quota ('hard') are reported at twice of what you would expect for a non-mirrored storage. That is, 'hard' quota of 1000 GiB should be interpreted as 500 GiB worth of storage space. Moreover, the BeeGFS storage is also compressed, meaning a 1.0 GiB file is likely to consume less that 1.0 GiB of storage space - how much a file is compressed varies greatly with file format."
 
     echo
     echo "On /wynton/scratch (non-mirrored and compressed BeeGFS):"
     beegfs-ctl --getquota --storagepoolid=10 --uid "$user"
     echo
     echo "NOTE: Files on /wynton/scratch are automatically deleted after 14 days."
+    echo
+    
+    echo "## Group Disk Quota"
+    echo
+    echo "On /wynton/group (non-mirrored and compressed BeeGFS):"
+    beegfs-ctl --getquota --storagepoolid=12 --gid "$gid"
+    echo
 fi
+
