@@ -9,12 +9,15 @@ Usage:
  wynton <tool> ...
 
 Installed tools:
- shares    Wynton HPC Shares
+ queues    Wynton HPC Queues
+ quota     Wynton HPC Disk Quota and Usage
+ shares    Wynton HPC Shares on the Job Scheduler
+ status    Wynton HPC Status
 
 Example:
  wynton --help
 
-Version: 0.0.1
+Version: 0.0.6
 Copyright: Henrik Bengtsson (2019)
 License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 Source: https://github.com/UCSF-HPC/wynton-tools

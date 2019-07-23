@@ -101,7 +101,8 @@ fi
 
 
 if [[ $action == "list" ]]; then
-    echo "Wynton queues:"
+    echo "# Wynton HPC Job Scheduler Queues"
+    echo
     res=$(qstat -f | grep -F "@" | sed -E 's/@.*//g' | sort -u)
     echo "${res}"
 fi
