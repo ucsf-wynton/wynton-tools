@@ -1,6 +1,13 @@
 wynton-tools
 ============
 
+Version 0.0.8 (2019-09-11)
+
+NEW FEATURES:
+
+ * Now 'wynton shares tsv' is sorted by first column.
+ 
+
 Version 0.0.7 (2019-07-23)
 
 NEW FEATURES:
