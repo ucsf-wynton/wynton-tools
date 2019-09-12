@@ -21,7 +21,7 @@
 ###  wynton shares total --fshares
 ###  wynton shares csv
 ###
-### Version: 0.0.7
+### Version: 0.0.7-9000
 ### Copyright: Henrik Bengtsson (2019)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -225,9 +225,11 @@ elif [[ $action == "total" ]]; then
     fi
 elif [[ $action == "tsv" ]]; then
     data=$(wynton shares list --fshares | awk 'BEGIN {OFS="\t";} { print $1, $2, $3}')
+    columns=$(echo "$data" | head -n 1)
+    shares=$(echo "$data" | sed '1d' | sort -n -r -k 1)
     echo "# Created by: ${USER}"
     echo "# Created on: $(date --rfc-3339=seconds)"
-    echo "${data}" | awk 'NR > 1 { fshares+=$1; slots+=$2 } END { printf "# Total fshares: %d\n# Total queue_slots: %d\n# Number of projects: %d\n", fshares, slots, NR-1 }'
-    
-    echo "${data}"
+    echo "${shares}" | awk 'NR > 0 { fshares+=$1; slots+=$2 } END { printf "# Total fshares: %d\n# Total queue_slots: %d\n# Number of projects: %d\n", fshares, slots, NR }'
+    echo "${columns}"
+    echo "${shares}"
 fi
