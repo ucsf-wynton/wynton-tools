@@ -11,7 +11,7 @@
 ###  --version        Display version
 ###
 ###
-### Version: 0.0.6
+### Version: 0.0.7
 ### Copyright: Henrik Bengtsson (2019)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -101,7 +101,8 @@ fi
 
 
 if [[ $action == "list" ]]; then
-    echo "Wynton queues:"
+    echo "# Wynton HPC Job Scheduler Queues"
+    echo
     res=$(qstat -f | grep -F "@" | sed -E 's/@.*//g' | sort -u)
     echo "${res}"
 fi

@@ -1,22 +1,27 @@
 #! /usr/bin/env bash
-### Wynton HPC Shares
+### Wynton HPC Shares on the Job Scheduler
 ###
 ### Usage:
 ###  wynton-shares <command> [options]
 ###
 ### Commands:
 ###  list             List all shareholders and their shares
+###  tsv              As 'list --fshares' as a tab-separated values
 ###  total            Total number of queue slots
 ###
 ### Options:
+###  --project PROJ   Subset to a particular project ("group")
 ###  --fshares        Include functional shares in output (slow)
+###  --help           Display this help
 ###  --version        Display version
 ###
 ### Examples:
 ###  wynton shares list --fshares --project salilab
 ###  wynton shares list --fshares
+###  wynton shares total --fshares
+###  wynton shares csv
 ###
-### Version: 0.0.6
+### Version: 0.0.7
 ### Copyright: Henrik Bengtsson (2019)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"

@@ -1,28 +1,53 @@
 wynton-tools
 ============
 
+Version 0.0.7 (2019-07-23)
+
+NEW FEATURES:
+
+ * Now 'wynton status' reports also on the job scheduler version.
+ 
+ * Now 'wynton quota' reports also on group storage.
+ 
+ * Now 'wynton quota' gives an informative error if user does not found.
+
+BUG FIXES:
+
+ * 'wynton quota --user <custom>' would output invalid uid and gid.
+
+
 Version 0.0.6 (2019-07-01)
 
- * Now 'wynton status' reports on the versions of the
-   operating system and the BeeGFS file system.
+NEW FEATURES:
+
+ * Now 'wynton status' reports on the versions of the operating system and the
+   BeeGFS file system.
    
 
 Version 0.0.5 (2019-04-20)
+
+NEW FEATURES:
 
  * Add support for 'wynton queues list --funits'
 
 
 Version 0.0.4 (2019-04-01)
 
+NEW FEATURES:
+
  * Add 'wynton queues list'
 
 
 Version 0.0.3 (2019-03-28)
 
+NEW FEATURES:
+
  * Add 'wynton status load'
 
 
 Version 0.0.2 (2019-03-25)
+
+NEW FEATURES:
 
  * Add 'wynton quota'
 
