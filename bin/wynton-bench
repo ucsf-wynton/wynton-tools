@@ -7,8 +7,9 @@
 ### Options:
 ###  --help             Display this help
 ###  --version          Display version
-###  --format <fmt>     Output format: spark (default), int, dbl
 ###  --hostname <host>  Host from where data was collected (default: dev3)
+###  --format <fmt>     Output format: spark (default), int, dbl
+###  --width <cols>     Width of timeline reported
 ###
 ###  <drive>            The drive to report on: /scratch, /wynton/group
 ###                     /wynton/home, or /wynton/scratch
@@ -17,7 +18,7 @@
 ###  wynton-bench /wynton/group
 ###  wynton-bench /wynton/home
 ###  wynton-bench /wynton/scratch
-###  wynton-bench /scratch
+###  wynton-bench --width 60 /scratch
 ###
 ### Version: 0.0.2
 ### Copyright: Henrik Bengtsson (2020)
@@ -80,6 +81,7 @@ format=spark
 hostname=${HOSTNAME:-dev3}
 drive=
 reverse=false
+width=
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -96,6 +98,9 @@ while [[ $# -gt 0 ]]; do
     elif test "$1" == "--format"; then
 	shift
         format=$1
+    elif test "$1" == "--width"; then
+	shift
+        width=$1
     elif test "$1" == "--hostname"; then
 	shift
         hostname=$1
@@ -115,6 +120,7 @@ if $debug; then
     mdebug "action: $action"
     mdebug "drive: $drive"
     mdebug "format: $format"
+    mdebug "width: $width"
 fi
 
 if [[ -z $drive ]]; then
@@ -148,7 +154,7 @@ case "$drive" in
 esac
 
 if [[ $action == "timeline" ]]; then
-    width=$(tput cols)
+    width=${width:-$(tput cols)}
     n=$((width-1))
     
     ## Load signals
