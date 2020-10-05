@@ -185,7 +185,7 @@ if [[ $action == "timeline" ]]; then
     if [[ "${date[-1]}" != "$today" ]]; then
         period="$date $period"
     fi    
-    label=${LABEL:-" [${drive}] "}
+    label=${LABEL:-" [${hostname}:${drive}] "}
     range=$(printf " ~%.1fs [%.1fs,%.1fs]" "${range[3]}" "${range[0]}" "${range[1]}")
     pad=$((${#data}-1 - ${#period} - ${#label} - ${#range}))
     padL=$((pad / 2))
