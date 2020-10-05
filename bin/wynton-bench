@@ -1,0 +1,202 @@
+#! /usr/bin/env bash
+### Disk IO Benchmark Summary
+###
+### Usage:
+###  wynton-bench [options]
+###
+### Options:
+###  --help             Display this help
+###  --version          Display version
+###  --drive <drive>    The drive to report on
+###  --format <fmt>     Output format: spark (default), int, dbl
+###  --hostname <host>  Host from where data was collected (default: dev3)
+###
+### Examples:
+###  wynton bench --drive /scratch
+###  wynton bench --drive /wynton/scratch
+###  wynton bench --drive /wynton/home
+###  wynton bench --drive /wynton/group
+###
+### Requirements:
+### * spark: https://github.com/holman/spark
+###
+### Version: 0.0.2
+### Copyright: Henrik Bengtsson (2020)
+### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
+
+
+# -------------------------------------------------------------------------
+# CORE
+# -------------------------------------------------------------------------
+function mecho() { echo "$@" 1>&2; }
+
+function mdebug() {
+    if $debug; then
+        mecho "[DEBUG] $*";
+    fi
+}
+function merror() {
+    mecho "ERROR: $*";
+    exit 1
+}
+function vecho() {
+    if $verbose; then
+        echo "$@";
+    fi
+}
+
+function version() {
+    grep -E "^###[ ]*Version:[ ]*" "$0" | sed 's/###[ ]*Version:[ ]*//g'
+}
+
+function help() {
+    local res=
+    res=$(grep "^###" "$0" | grep -vE '^(####|### whatis: )' | cut -b 5-)
+    if [[ ${UCSF_WYNTON_TOOLS} == true ]]; then
+        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-([a-z]+)/\1wynton \2/')
+    fi
+    printf "%s\\n" "${res[@]}"
+}
+
+chdir() {
+    cd "$1" || merror "Failed to change directory: $1"
+}
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+SPARK_HOME=${SPARK_HOME:-~hb}
+BENCH_DATA_ROOT=${BENCH_DATA_ROOT:-~hb/wynton-bench-logs}
+[[ -d "$BENCH_DATA_ROOT" ]] || merror "No such folder: ${BENCH_DATA_ROOT}"
+
+## Actions
+action=timeline
+
+## Options
+debug=false
+verbose=false
+format=spark
+hostname=${HOSTNAME:-dev3}
+drive=
+reverse=false
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+    elif test "$1" == "--verbose"; then
+        verbose=true
+    elif test "$1" == "--reverse"; then
+        reverse=true
+    elif test "$1" == "--drive"; then
+	shift
+        drive=$1
+    elif test "$1" == "--format"; then
+	shift
+        format=$1
+    elif test "$1" == "--hostname"; then
+	shift
+        hostname=$1
+    else
+        if [[ -z $drive ]]; then
+            drive=$1
+        else
+            extras="$extras $1"
+        fi
+    fi
+    shift
+done
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "verbose: $verbose"
+    mdebug "action: $action"
+    mdebug "drive: $drive"
+    mdebug "format: $format"
+fi
+
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help 
+    exit 0
+fi
+
+
+BENCH_DATA_PATH=${BENCH_DATA_ROOT}/${hostname}
+[[ -d "$BENCH_DATA_PATH" ]] || merror "No such folder: $BENCH_DATA_PATH"
+
+
+case "$drive" in
+    /scratch)
+         TEST_DRIVE=scratch_hb ;;
+    /wynton/scratch)
+         TEST_DRIVE=wynton_scratch_hb ;;
+    /wynton/home)
+         TEST_DRIVE=wynton_home_cbi_hb ;;
+    /wynton/group)
+         TEST_DRIVE=wynton_group_cbi_hb ;;
+    *)
+        merror "Unknown drive: ${drive}" ;;
+esac
+
+if [[ $action == "timeline" ]]; then
+    width=$(tput cols)
+    n=$((width-1))
+    
+    ## Load signals
+    bench_logs=$(tail -n 2100 "$BENCH_DATA_PATH/bench-files-tarball__${TEST_DRIVE}.log")
+    total_time_entries=$(echo "${bench_logs}" | grep -F "total_time" | sed -E 's/(.compbio.ucsf.edu|echo total_time=| seconds|-07:00)//g')
+    times=$(echo "${total_time_entries}" | cut -d $'\t' -f 1 | sed -E 's/-[0-9]{2}:[0-9]{2}$//g')
+    date=($(echo "${times}" | cut -d ' ' -f 1))
+    today=$(date --iso-8601)
+    hhmm=($(echo "${times}" | cut -d ' ' -f 2 | sed -E 's/:[0-9]{2}$//g'))
+    past=${hhmm[0]}
+    now=${hhmm[-1]}
+    signals=($(echo "${total_time_entries}" | cut -d $'\t' -f 21))
+    #echo "signals=${signals[@]}"
+    signals=(${signals[@]:0:$n})
+    $reverse && signals=($(printf '%s\n' "${signals[@]}" | tac | tr '\n' ' '))
+    
+    
+    range=($(echo "${signals[@]}" | awk '{ count[NR] = $1; asort(count); min=1e12; max=-1e12; sum=0; for (v=1; v<=NF; v++) { min=(min<$v?min:$v); max=(max>$v?max:$v); sum+=$v }; if (NR % 2) { median = count[(NR + 1) / 2]; } else { median = (count[(NR / 2)] + count[(NR / 2) + 1]) / 2.0; } } END { print min, max, sum/NF, median; }'
+    ))
+    if [[ "$format" == "int" ]]; then
+      data=$(printf "%0.f " "${signals[@]}")
+    elif [[ "$format" == "dbl" ]]; then
+      data=$(echo "${signals[@]}")
+    elif [[ "$format" == "spark" ]]; then
+      data=$(${SPARK_HOME}/bin/spark "100 ${signals[@]}")
+    fi
+    
+    if $reverse; then
+        period="$now-$past "
+    else    
+        period="$past-$now "
+    fi
+    if [[ "${date[-1]}" != "$today" ]]; then
+        period="$date $period"
+    fi    
+    label=${LABEL:-" [${drive}] "}
+    range=$(printf " ~%.1fs [%.1fs,%.1fs]" "${range[3]}" "${range[0]}" "${range[1]}")
+    pad=$((${#data}-1 - ${#period} - ${#label} - ${#range}))
+    padL=$((pad / 2))
+    padR=$((pad - padL))
+    
+    printf "%s\n" "$data"
+    if $reverse; then
+        printf "%s%*s%s%*s%s\n" "$period" "$padL" "" "$label" "$padR" "" "$range"
+    else    
+        printf "%s %*s%s%*s%s\n" "$period" "$padL" "" "$label" "$padR" "" "$range"
+    fi
+else
+    merror "Unknown action: $action"
+fi    
