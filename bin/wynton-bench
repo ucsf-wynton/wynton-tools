@@ -2,23 +2,22 @@
 ### Disk IO Benchmark Summary
 ###
 ### Usage:
-###  wynton-bench [options]
+###  wynton-bench [options] <drive>
 ###
 ### Options:
 ###  --help             Display this help
 ###  --version          Display version
-###  --drive <drive>    The drive to report on
 ###  --format <fmt>     Output format: spark (default), int, dbl
 ###  --hostname <host>  Host from where data was collected (default: dev3)
 ###
-### Examples:
-###  wynton bench --drive /scratch
-###  wynton bench --drive /wynton/scratch
-###  wynton bench --drive /wynton/home
-###  wynton bench --drive /wynton/group
+###  <drive>            The drive to report on: /scratch, /wynton/group
+###                     /wynton/home, or /wynton/scratch
 ###
-### Requirements:
-### * spark: https://github.com/holman/spark
+### Examples:
+###  wynton-bench /wynton/group
+###  wynton-bench /wynton/home
+###  wynton-bench /wynton/scratch
+###  wynton-bench /scratch
 ###
 ### Version: 0.0.2
 ### Copyright: Henrik Bengtsson (2020)
@@ -94,9 +93,6 @@ while [[ $# -gt 0 ]]; do
         verbose=true
     elif test "$1" == "--reverse"; then
         reverse=true
-    elif test "$1" == "--drive"; then
-	shift
-        drive=$1
     elif test "$1" == "--format"; then
 	shift
         format=$1
@@ -121,6 +117,9 @@ if $debug; then
     mdebug "format: $format"
 fi
 
+if [[ -z $drive ]]; then
+    action=help
+fi    
 
 if [[ $action == "version" ]]; then
     version
