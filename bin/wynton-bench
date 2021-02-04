@@ -2,26 +2,28 @@
 ### Disk IO Benchmark Summary
 ###
 ### Usage:
-###  wynton-bench [options] <drive>
+###  wynton-bench [options]
 ###
 ### Options:
-###  --help             Display this help
-###  --version          Display version
-###  --hostname <host>  Host from where data was collected (default: dev3)
-###  --format <fmt>     Output format: spark (default), int, dbl
-###  --width <cols>     Width of timeline reported
-###
-###  <drive>            The drive to report on: /scratch, /wynton/group
-###                     /wynton/home, or /wynton/scratch
+###  --help              Display this help
+###  --version           Display version
+###  --drive <drive>     The drive to report on
+###  --format <fmt>      Output format: spark (default), int, dbl
+###  --data-root <path>  Path to root data folder (default: ~hb/wynton-bench-logs)
+###  --hostname <host>   Host from where data was collected (default: dev3)
+###  --user <user>       User that collected data (default: hb)
 ###
 ### Examples:
-###  wynton-bench /wynton/group
-###  wynton-bench /wynton/home
-###  wynton-bench /wynton/scratch
-###  wynton-bench --width 60 /scratch
+###  wynton bench --drive /scratch
+###  wynton bench --drive /wynton/scratch
+###  wynton bench --drive /wynton/home
+###  wynton bench --drive /wynton/group
 ###
-### Version: 0.0.2
-### Copyright: Henrik Bengtsson (2020)
+### Requirements:
+### * spark: https://github.com/holman/spark
+###
+### Version: 0.0.3
+### Copyright: Henrik Bengtsson (2020-2021)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
@@ -35,6 +37,9 @@ function mdebug() {
     if $debug; then
         mecho "[DEBUG] $*";
     fi
+}
+function mwarn() {
+    mecho "WARNING: $*";
 }
 function merror() {
     mecho "ERROR: $*";
@@ -63,13 +68,19 @@ chdir() {
     cd "$1" || merror "Failed to change directory: $1"
 }
 
+assert_file() {
+    [[ -f "$1" ]] || merror "No such file: $1"
+}
+
+assert_folder() {
+    [[ -d "$1" ]] || merror "No such folder: $1"
+}
+
 
 # -------------------------------------------------------------------------
 # MAIN
 # -------------------------------------------------------------------------
 SPARK_HOME=${SPARK_HOME:-~hb}
-BENCH_DATA_ROOT=${BENCH_DATA_ROOT:-~hb/wynton-bench-logs}
-[[ -d "$BENCH_DATA_ROOT" ]] || merror "No such folder: ${BENCH_DATA_ROOT}"
 
 ## Actions
 action=timeline
@@ -79,9 +90,10 @@ debug=false
 verbose=false
 format=spark
 hostname=${HOSTNAME:-dev3}
+user=${USER:-hb}
+data_root=${BENCH_DATA_ROOT:-~hb/wynton-bench-logs}
 drive=
 reverse=false
-width=
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -95,15 +107,21 @@ while [[ $# -gt 0 ]]; do
         verbose=true
     elif test "$1" == "--reverse"; then
         reverse=true
+    elif test "$1" == "--drive"; then
+	shift
+        drive=$1
     elif test "$1" == "--format"; then
 	shift
         format=$1
-    elif test "$1" == "--width"; then
+    elif test "$1" == "--data-root"; then
 	shift
-        width=$1
+        data_root=$1
     elif test "$1" == "--hostname"; then
 	shift
         hostname=$1
+    elif test "$1" == "--user"; then
+	shift
+        user=$1
     else
         if [[ -z $drive ]]; then
             drive=$1
@@ -120,12 +138,11 @@ if $debug; then
     mdebug "action: $action"
     mdebug "drive: $drive"
     mdebug "format: $format"
-    mdebug "width: $width"
+    mdebug "data_root: $data_root"
+    mdebug "hostname: $hostname"
+    mdebug "user: $user"
 fi
 
-if [[ -z $drive ]]; then
-    action=help
-fi    
 
 if [[ $action == "version" ]]; then
     version
@@ -136,29 +153,43 @@ elif [[ $action == "help" ]]; then
 fi
 
 
-BENCH_DATA_PATH=${BENCH_DATA_ROOT}/${hostname}
-[[ -d "$BENCH_DATA_PATH" ]] || merror "No such folder: $BENCH_DATA_PATH"
-
+assert_folder "$data_root"
+data_path=${data_root}/${hostname}
+assert_folder "$data_path"
 
 case "$drive" in
+    /tmp)
+         TEST_DRIVE=tmp_${user} ;;
     /scratch)
-         TEST_DRIVE=scratch_hb ;;
+         TEST_DRIVE=scratch_${user} ;;
     /wynton/scratch)
-         TEST_DRIVE=wynton_scratch_hb ;;
+         TEST_DRIVE=wynton_scratch_${user} ;;
     /wynton/home)
-         TEST_DRIVE=wynton_home_cbi_hb ;;
+         TEST_DRIVE=wynton_home_cbi_${user} ;;
     /wynton/group)
-         TEST_DRIVE=wynton_group_cbi_hb ;;
+         TEST_DRIVE=wynton_group_cbi_${user} ;;
     *)
-        merror "Unknown drive: ${drive}" ;;
+        TEST_DRIVE="${drive/\//}";
+        TEST_DRIVE="${TEST_DRIVE//\//_}";
+        mwarn "Unknown drive '${drive}' - will try with TEST_DRIVE='$TEST_DRIVE'" ;;
 esac
 
 if [[ $action == "timeline" ]]; then
-    width=${width:-$(tput cols)}
+    width=$(tput cols)
     n=$((width-1))
     
+    bench_logfile="$data_path/bench-files-tarball__${TEST_DRIVE}.tsv"
+    
+    ## Backward compatibility
+    ## https://github.com/ucsf-wynton/wynton-bench/issues/11
+    if [[ ! -f "$bench_logfile" ]]; then
+        bench_logfile="$data_path/bench-files-tarball__${TEST_DRIVE}.log"
+    fi
+    
+    assert_file "$bench_logfile"
+    
     ## Load signals
-    bench_logs=$(tail -n 2100 "$BENCH_DATA_PATH/bench-files-tarball__${TEST_DRIVE}.log")
+    bench_logs=$(tail -n 2100 "$bench_logfile")
     total_time_entries=$(echo "${bench_logs}" | grep -F "total_time" | sed -E 's/(.compbio.ucsf.edu|echo total_time=| seconds|-07:00)//g')
     times=$(echo "${total_time_entries}" | cut -d $'\t' -f 1 | sed -E 's/-[0-9]{2}:[0-9]{2}$//g')
     date=($(echo "${times}" | cut -d ' ' -f 1))
@@ -190,7 +221,7 @@ if [[ $action == "timeline" ]]; then
     if [[ "${date[-1]}" != "$today" ]]; then
         period="$date $period"
     fi    
-    label=${LABEL:-" [${hostname}:${drive}] "}
+    label=${LABEL:-" [${drive}] "}
     range=$(printf " ~%.1fs [%.1fs,%.1fs]" "${range[3]}" "${range[0]}" "${range[1]}")
     pad=$((${#data}-1 - ${#period} - ${#label} - ${#range}))
     padL=$((pad / 2))
