@@ -1,0 +1,141 @@
+#! /usr/bin/env bash
+### Wynton HPC GPU Shares on the Job Scheduler
+###
+### Usage:
+###  wynton-gpushares <command> [options]
+###
+### Commands:
+###  tsv              (project,count,hosts) tab-separated values
+###
+### Options:
+###  --help           Display this help
+###  --version        Display version
+###
+### Examples:
+###  wynton gpushares csv
+###
+### Version: 0.0.1
+### Copyright: Henrik Bengtsson (2021)
+### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
+
+
+# -------------------------------------------------------------------------
+# CORE
+# -------------------------------------------------------------------------
+function mecho() { echo "$@" 1>&2; }
+
+function mdebug() {
+    if $debug; then
+        mecho "[DEBUG] $*";
+    fi
+}
+function merror() {
+    mecho "ERROR: $*";
+    exit 1
+}
+function vecho() {
+    if $verbose; then
+        echo "$@";
+    fi
+}
+
+function version() {
+    grep -E "^###[ ]*Version:[ ]*" "$0" | sed 's/###[ ]*Version:[ ]*//g'
+}
+
+function help() {
+    local res
+    res=$(grep "^###" "$0" | grep -vE '^(####|### whatis: )' | cut -b 5-)
+    if [[ ${UCSF_WYNTON_TOOLS} == true ]]; then
+        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-([a-z]+)/\1wynton \2/')
+    fi
+    printf "%s\\n" "${res[@]}"
+}
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action=help
+
+## Options
+debug=false
+verbose=false
+queue="gpu.q"
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "tsv"; then
+        action=$1
+    elif test "$1" == "--debug"; then
+        debug=true
+    elif test "$1" == "--verbose"; then
+        verbose=true
+    else
+        extras="$extras $1"
+    fi
+    shift
+done
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "verbose: $verbose"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help 
+    exit 0
+fi
+
+
+function gpu_raw_limits() {
+    config=$(SGE_SINGLE_LINE=true qconf -srqs shared_gpu_limits | grep -E "\blimit\b")
+    limits=$(echo "$config" | sed -E 's/^[[:space:]]+limit[[:space:]]+//g')
+    data=$(echo "$limits" | sed -E 's/(projects|queues|hosts|to)[[:space:]]+/ /g')
+    data=$(echo "$data" | sed -E 's/([{]|[}])//g' | sed 's/!//g' | sed -E 's/^[[:space:]]+//')
+    data=$(echo "$data" | sed -E 's/[[:space:]]+/~/g')
+    echo "${data}"
+}
+
+function gpu_hosts() {
+    local name=$1
+    ## Nothing to do?
+    if echo "$name" | grep -q -E "^@"; then
+        hosts=$(SGE_SINGLE_LINE=true qconf -shgrp "$name" | grep -E "^hostlist[[:space:]]+" | sed -E 's/^hostlist[[:space:]]+//g')
+    else
+        hosts="$name"
+    fi
+    echo "$hosts"
+}
+
+
+if [[ $action == "tsv" ]]; then
+    printf "project\tnbr_of_hosts\thosts\n"
+    echo "# Created by: ${USER}"
+    echo "# Created on: $(date --rfc-3339=seconds)"
+    raw=($(gpu_raw_limits))
+    for entry in ${raw[@]}; do
+        line=$(echo "$entry" | sed 's/~/\t/g')
+        hosts=$(echo "$entry" | cut -d '~' -f 3)
+        hosts=($(gpu_hosts "$hosts"))
+        nhosts=${#hosts[@]}
+        hosts=$(echo "${hosts[*]}" | sed 's/ /,/g')
+        project=$(echo "$line" | cut -f 1)
+        printf "%s\t%s\t%s\n" "$project" "$nhosts" "$hosts"
+    done
+fi

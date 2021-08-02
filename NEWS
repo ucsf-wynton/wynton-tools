@@ -1,6 +1,13 @@
 wynton-tools
 ============
 
+Version 0.0.10 (2021-08-02)
+
+NEW FEATURES:
+
+ * Add 'wynton gpushares' for reporting on GPU shares.
+
+
 Version 0.0.9 (2020-10-04)
 
 NEW FEATURES:

@@ -21,8 +21,8 @@
 ###  wynton shares total --fshares
 ###  wynton shares csv
 ###
-### Version: 0.0.8
-### Copyright: Henrik Bengtsson (2019)
+### Version: 0.0.9
+### Copyright: Henrik Bengtsson (2019-2021)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
