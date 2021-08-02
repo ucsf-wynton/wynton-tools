@@ -125,9 +125,9 @@ function gpu_hosts() {
 
 
 if [[ $action == "tsv" ]]; then
-    printf "project\tnbr_of_hosts\thosts\n"
     echo "# Created by: ${USER}"
     echo "# Created on: $(date --rfc-3339=seconds)"
+    printf "project\tnbr_of_hosts\thosts\n"
     raw=($(gpu_raw_limits))
     for entry in ${raw[@]}; do
         line=$(echo "$entry" | sed 's/~/\t/g')
