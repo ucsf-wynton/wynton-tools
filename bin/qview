@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+### USAGE:
+### qview <job_id>
+###
+### EXAMPLES:
+### qview 1234
+###
+### AUTHOR:
+### Henrik Bengtsson, 2020
+OUT_VIEWER=${OUT_VIEWER:-cat}
+ERR_VIEWER=${ERR_VIEWER:-$OUT_VIEWER}
+JOBID=$1
+
+# Find log file(s)
+info=$(qstat -j "$JOBID")
+job_number=$(echo "$info" | sed -n '/job_number/p' | sed -E 's/[^:]*:[ ]+//')
+job_name=$(echo "$info" | sed -n '/job_name/p' | sed -E 's/[^:]*:[ ]+//')
+merge=$(echo "$info" | sed -n '/merge/p' | sed -E 's/[^:]*:[ ]+//')
+sge_o_workdir=$(echo "$info" | sed -n '/sge_o_workdir/p' | sed -E 's/[^:]*:[ ]+//')
+if [ "$merge" == "y" ]; then
+  log_out_file="$sge_o_workdir/$job_name.o$job_number"
+  log_err_file=
+else
+  log_out_file="$sge_o_workdir/$job_name.o$job_number"
+  log_err_file="$sge_o_workdir/$job_name.e$job_number"
+fi
+
+if [ -f "$log_out_file" ]; then
+  $OUT_VIEWER "$log_out_file"
+fi
+if [ -f "$log_err_file" ]; then
+  $ERR_VIEWER "$log_err_file"
+fi

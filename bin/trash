@@ -1,0 +1,22 @@
+#! /usr/bin/env bash
+
+trash() { 
+    local d;
+    d=/wynton/scratch/$USER/_TRASH/$(date --iso-8601);
+    mkdir -p "$d";
+    [[ -d "$d" ]] || { 
+        echo "ERROR: Failed to create trash root folder: '$d'" 1>&2;
+        return 1
+    };
+    if [[ $# -gt 0 ]]; then
+        d=$(mktemp --directory "$d/XXXXXX");
+        [[ -d "$d" ]] || { 
+            echo "ERROR: Failed to create trash folder: '$d'" 1>&2;
+            return 1
+        };
+        echo "Trash folder: $d";
+        /bin/mv "$@" "$d/";
+    fi
+}
+
+trash "$@"

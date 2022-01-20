@@ -1,6 +1,20 @@
 wynton-tools
 ============
 
+Version 0.0.11 (2022-01-19)
+
+NEW FEATURES:
+
+ * Add 'trash' for quickly moving a file or a folder to
+   a central trash folder on the global scratch, where it
+   will eventually be cleaned out by the garbage collector
+   that wipes anything older than two weeks.
+
+ * Add 'qview' for getting a summary of an active job. Add
+   'fzf_qview' for using 'qview' with multiple jobs via
+   fuzzy search.
+ 
+ 
 Version 0.0.10 (2021-08-02)
 
 NEW FEATURES:
