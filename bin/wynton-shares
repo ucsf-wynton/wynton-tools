@@ -21,8 +21,8 @@
 ###  wynton shares total --fshares
 ###  wynton shares csv
 ###
-### Version: 0.0.9
-### Copyright: Henrik Bengtsson (2019-2021)
+### Version: 0.0.10
+### Copyright: Henrik Bengtsson (2019-2022)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
@@ -125,7 +125,7 @@ fi
 
 
 function slots_raw() {
-    SGE_SINGLE_LINE=true qconf -srqs member_queue_limits | grep -F "queues ${queue} to slots=" | sed -E "s/(.*projects |queues ${queue} to slots=)//g"
+    SGE_SINGLE_LINE=true qconf -srqs member_queue_limits | grep -F "queues ${queue} to slots=" | sort | uniq | sed -E "s/(.*projects |queues ${queue} to slots=)//g"
 }
 
 function slots_total() {

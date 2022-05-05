@@ -1,6 +1,15 @@
 wynton-tools
 ============
 
+Version 0.0.12 (2022-05-05)
+
+BUG FIXES:
+
+ * 'wynton-shares --fshares' would produce invalid output
+   if 'qconf' produces replicated entries. Now the parser
+   looks at only unique entries.
+
+
 Version 0.0.11 (2022-01-19)
 
 NEW FEATURES:
