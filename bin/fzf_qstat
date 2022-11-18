@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+### USAGE:
+### fzf_qstat
+###
+### EXAMPLES:
+### fzf_qstat -u "*"
+###
+### AUTHOR:
+### Henrik Bengtsson, 2020-2022
+jobs=$(qstat "$@" | tail -n +3)
+echo "${jobs[@]}" | fzf --preview="qstat -j {1}" --preview-window=up:60%
+

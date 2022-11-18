@@ -6,7 +6,7 @@
 ### fzf_qview
 ###
 ### AUTHOR:
-### Henrik Bengtsson, 2020
-jobs=$(qstat -s hrs | awk 'NR > 2 { printf "%d %s-%s [%g] '%s' @ %s\n",$1,$6,$7,$2,$3,$8 }')
+### Henrik Bengtsson, 2020-2022
+jobs=$(qstat -s hrs "$@" | awk 'NR > 2 { printf "%d %s-%s [%g] '%s' @ %s\n",$1,$6,$7,$2,$3,$8 }')
 echo "${jobs[@]}" | fzf --preview="qview {1}" --preview-window=up:80%
 
