@@ -78,6 +78,8 @@ while [[ $# -gt 0 ]]; do
         action=version
     elif test "$1" == "tsv"; then
         action=$1
+    elif test "$1" == "raw"; then
+        action=$1
     elif test "$1" == "--debug"; then
         debug=true
     elif test "$1" == "--verbose"; then
@@ -109,6 +111,7 @@ function gpu_raw_limits() {
     data=$(echo "$limits" | sed -E 's/(projects|queues|hosts|to)[[:space:]]+/ /g')
     data=$(echo "$data" | sed -E 's/([{]|[}])//g' | sed 's/!//g' | sed -E 's/^[[:space:]]+//')
     data=$(echo "$data" | sed -E 's/[[:space:]]+/~/g')
+    data=$(echo "$data" | grep -E "~${queue}~")
     echo "${data}"
 }
 
@@ -124,7 +127,9 @@ function gpu_hosts() {
 }
 
 
-if [[ $action == "tsv" ]]; then
+if [[ $action == "raw" ]]; then
+    gpu_raw_limits
+elif [[ $action == "tsv" ]]; then
     echo "# Created by: ${USER}"
     echo "# Created on: $(date --rfc-3339=seconds)"
     printf "project\tnbr_of_hosts\thosts\n"

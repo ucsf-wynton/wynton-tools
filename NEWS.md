@@ -4,6 +4,11 @@
 
  * Add `fzf_qview`.
 
+## Bug Fixes
+
+ * `wynton-gpushares` would not filter on the (internal) `queue`
+   variable.
+   
 
 # Version 0.0.12 (2022-05-05)
 
