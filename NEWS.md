@@ -1,3 +1,12 @@
+# Version (development version)
+
+## New Features
+
+ * `wynton-gpushares` now outputs a 'queue' column too.
+ 
+ * `wynton-gpushares` gained argument `--queue=<pattern>`.
+
+
 # Version 0.0.13 (2022-12-06)
 
 ## New Features

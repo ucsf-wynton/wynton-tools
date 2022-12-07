@@ -5,17 +5,18 @@
 ###  wynton-gpushares <command> [options]
 ###
 ### Commands:
-###  tsv              (project,count,hosts) tab-separated values
+###  tsv                (project,queue,count,hosts) tab-separated values
 ###
 ### Options:
-###  --help           Display this help
-###  --version        Display version
+###  --help             Display this help
+###  --version          Display version
+###  --queue=<pattern>  Regular expression to filter on GPU queues
 ###
 ### Examples:
-###  wynton gpushares csv
+###  wynton gpushares tsv
 ###
-### Version: 0.0.1
-### Copyright: Henrik Bengtsson (2021)
+### Version: 0.0.14
+### Copyright: Henrik Bengtsson (2021-2022)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
@@ -68,7 +69,7 @@ action=help
 ## Options
 debug=false
 verbose=false
-queue="gpu.q"
+queue="(.*[.]q)"
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -84,6 +85,20 @@ while [[ $# -gt 0 ]]; do
         debug=true
     elif test "$1" == "--verbose"; then
         verbose=true
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        mdebug "Key-value option '$1' parsed to key='${key}', value='${value}'"
+        if [[ -z ${value} ]]; then
+            merror "Option '--${key}' must not be empty"
+        fi
+        if [[ "${key}" == "queue" ]]; then
+            queue=${value}
+        else
+            merror "Unknown option: $1"
+        fi
     else
         extras="$extras $1"
     fi
@@ -132,7 +147,7 @@ if [[ $action == "raw" ]]; then
 elif [[ $action == "tsv" ]]; then
     echo "# Created by: ${USER}"
     echo "# Created on: $(date --rfc-3339=seconds)"
-    printf "project\tnbr_of_hosts\thosts\n"
+    printf "project\tqueue\tnbr_of_hosts\thosts\n"
     raw=($(gpu_raw_limits))
     for entry in ${raw[@]}; do
         line=$(echo "$entry" | sed 's/~/\t/g')
@@ -140,7 +155,8 @@ elif [[ $action == "tsv" ]]; then
         hosts=($(gpu_hosts "$hosts"))
         nhosts=${#hosts[@]}
         hosts=$(echo "${hosts[*]}" | sed 's/ /,/g')
+        queue=$(echo "$line" | cut -f 2)
         project=$(echo "$line" | cut -f 1)
-        printf "%s\t%s\t%s\n" "$project" "$nhosts" "$hosts"
+        printf "%s\t%s\t%s\t%s\n" "$project" "$queue" "$nhosts" "$hosts"
     done
 fi
