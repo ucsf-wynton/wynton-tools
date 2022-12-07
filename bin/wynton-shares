@@ -180,7 +180,7 @@ function fshares_slots_all_projects() {
     res=$(slots_all_projects "$(slots_raw)")
     echo "fshares queue_slots project"
     projects=$(echo "${res}" | awk 'NR > 1 { print $2 }')
-    for project in "${projects[@]}"; do
+    for project in ${projects}; do
       IFS="," read -r -a subprojects <<< "$project"
       subfshares=()
       fshares=0
