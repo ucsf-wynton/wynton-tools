@@ -132,6 +132,8 @@ function gpu_raw_limits() {
 
 function gpu_hosts() {
     local name=$1
+    local hosts
+    
     ## Nothing to do?
     if echo "$name" | grep -q -E "^@"; then
         hosts=$(SGE_SINGLE_LINE=true qconf -shgrp "$name" | grep -E "^hostlist[[:space:]]+" | sed -E 's/^hostlist[[:space:]]+//g')
@@ -152,11 +154,11 @@ elif [[ $action == "tsv" ]]; then
     for entry in ${raw[@]}; do
         line=$(echo "$entry" | sed 's/~/\t/g')
         hosts=$(echo "$entry" | cut -d '~' -f 3)
-        hosts=($(gpu_hosts "$hosts"))
+        hosts_set=($(gpu_hosts "$hosts"))
         nhosts=${#hosts[@]}
-        hosts=$(echo "${hosts[*]}" | sed 's/ /,/g')
+        hosts=$(echo "${hosts_set[*]}" | sed 's/ /, /g')
         queue=$(echo "$line" | cut -f 2)
-        project=$(echo "$line" | cut -f 1)
+        project=$(echo "$line" | cut -f 1 | sed 's/,/, /g')
         printf "%s\t%s\t%s\t%s\n" "$project" "$queue" "$nhosts" "$hosts"
     done
 fi
