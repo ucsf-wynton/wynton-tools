@@ -11,8 +11,8 @@
 ### Examples:
 ###  wynton job $JOBID
 ###
-### Version: 0.0.1
-### Copyright: Henrik Bengtsson (2020)
+### Version: 0.1.0
+### Copyright: Henrik Bengtsson (2020-2022)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
