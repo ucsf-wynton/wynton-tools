@@ -1,4 +1,4 @@
-# Version (development version)
+# Version 0.0.13 (2022-12-06)
 
 ## New Features
 
