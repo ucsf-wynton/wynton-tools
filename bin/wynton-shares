@@ -19,9 +19,9 @@
 ###  wynton shares list --fshares --project salilab
 ###  wynton shares list --fshares
 ###  wynton shares total --fshares
-###  wynton shares csv
+###  wynton shares tsv
 ###
-### Version: 0.0.10
+### Version: 0.1.0
 ### Copyright: Henrik Bengtsson (2019-2022)
 ### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -180,11 +180,11 @@ function fshares_slots_all_projects() {
     res=$(slots_all_projects "$(slots_raw)")
     echo "fshares queue_slots project"
     projects=$(echo "${res}" | awk 'NR > 1 { print $2 }')
-    for project in ${projects[*]}; do
+    for project in "${projects[@]}"; do
       IFS="," read -r -a subprojects <<< "$project"
       subfshares=()
       fshares=0
-      for subproject in ${subprojects[*]}; do
+      for subproject in "${subprojects[@]}"; do
         t=$(fshares_one_project "${subproject}")
         subfshares+=(t)
         fshares=$((fshares + t))
