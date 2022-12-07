@@ -150,13 +150,15 @@ elif [[ $action == "tsv" ]]; then
     echo "# Created by: ${USER}"
     echo "# Created on: $(date --rfc-3339=seconds)"
     printf "project\tqueue\tnbr_of_hosts\thosts\n"
-    raw=($(gpu_raw_limits))
-    for entry in ${raw[@]}; do
-        line=$(echo "$entry" | sed 's/~/\t/g')
+    mapfile -t raw < <(gpu_raw_limits)
+    tab=$'\t'
+    for entry in "${raw[@]}"; do
+        line="${entry//\~/$tab}"
         hosts=$(echo "$entry" | cut -d '~' -f 3)
-        hosts_set=($(gpu_hosts "$hosts"))
-        nhosts=${#hosts[@]}
-        hosts=$(echo "${hosts_set[*]}" | sed 's/ /, /g')
+        read -r -a hosts_set < <(gpu_hosts "$hosts")
+        nhosts=${#hosts_set[@]}
+        hosts=${hosts_set[*]}
+        hosts=${hosts// /, }
         queue=$(echo "$line" | cut -f 2)
         project=$(echo "$line" | cut -f 1 | sed 's/,/, /g')
         printf "%s\t%s\t%s\t%s\n" "$project" "$queue" "$nhosts" "$hosts"
