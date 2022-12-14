@@ -1,3 +1,12 @@
+# Version 0.2.0 (2022-12-14)
+
+## New Features
+
+ * Add `x86-64-level` to get the x86-64 microarchitecture level that
+   the CPU on the current machine support, i.e. x86-64-v1, x86-64-v2,
+   x86-64-v3, or x86-64-v4.
+ 
+
 # Version 0.1.0 (2022-12-06)
 
 ## New Features
