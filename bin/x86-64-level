@@ -37,7 +37,7 @@
 #' [1] https://www.wikipedia.org/wiki/X86-64#Microarchitecture_levels
 #' [2] https://unix.stackexchange.com/a/631320
 #'
-#' Version: 0.0.9-9000
+#' Version: 0.1.0
 #' Source: https://github.com/ucsf-wynton/wynton-tools
 
 #---------------------------------------------------------------------
