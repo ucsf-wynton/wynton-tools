@@ -1,4 +1,6 @@
-SHELL:=/bin/bash
+SHELL=/bin/bash
+
+all: shellcheck
 
 README.md: bin/wynton
 #	@bfr=`cat $<`; 
@@ -13,5 +15,5 @@ README.md: bin/wynton
 
 .PHONY: test
 
-check:
-	shellcheck bin/*[^~]
+shellcheck:
+	shellcheck -x bin/*[^~]
