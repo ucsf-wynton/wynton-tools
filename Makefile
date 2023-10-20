@@ -16,4 +16,8 @@ README.md: bin/wynton
 .PHONY: test
 
 shellcheck:
-	shellcheck -x bin/*[^~]
+	(cd bin; \
+	   shellcheck --shell=bash --external-sources -- incl/*.sh; \
+	   shellcheck --external-sources *[^~]; \
+	)
+
