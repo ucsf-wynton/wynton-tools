@@ -157,7 +157,7 @@ if [[ $action == "job" ]]; then
         ## Keep key: value lines
         vars=$(grep -E "^[^:]+:.*" <<< "$bfr")
         ## Fix keys
-        vars=$(sed ':loop; s/^\([^:]*\) \+\([^:]*:\)/\1_\2/; t loop' <<< "$vars" | sed -E 's/__+/_/g' | sed 's/-/_/g')
+        vars=$(sed ':loop; s/^\([^:]*\) \+\([^:]*:\)/\1_\2/; t loop' <<< "$vars" | sed ':loop; s/^\([^:]*\)-\+\([^:]*:\)/\1_\2/; t loop' | sed -E 's/__+/_/g')
         ## Turn into _THIS_JOB_keys="value"
         vars=$(sed -E 's/^([^:]+):[[:space:]]*(.*)/_THIS_JOB_\1="\2"/' <<< "$vars")
 	echo "------------------------"
@@ -300,19 +300,20 @@ if [[ $action == "job" ]]; then
 	h=$(( h - 24 * d ))
 	m=$(( m - 60 * h ))
 	s=$(( s - 60 * m ))
-        echo "$status - ${key}=${value2} => ${d}d-$(printf "%02dh%02dm%02ds" "${h}" "${m}" "${s}")"
+        echo "       - ${key}=${value2} => ${d}d-$(printf "%02dh%02dm%02ds" "${h}" "${m}" "${s}")"
 	key="mem_free"
-        value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
-	bytes=${value2}
-	bytes=${bytes//G/*1024M}
-	bytes=${bytes//M/*1024K}
-	bytes=${bytes//K/*1024}
-	bytes=$(bc <<< "${bytes}")
-	kB=$(bc <<< "${bytes} / 1000")
-	MB=$(bc <<< "${kB} / 1000")
-	GB=$(bc <<< "${MB} / 1000")
-        echo "$status - ${key}=${value2} => $(printf "%'d" "${bytes}") bytes = ~$(printf "%'d" "${kB}") kB = ~$(printf "%'d" "${MB}") MB = ~$(printf "%'d" "${GB}") GB"
-	
+        if grep -q -F "${key}" <<< "${value}"; then
+          value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
+  	  bytes=${value2}
+	  bytes=${bytes//G/*1024M}
+	  bytes=${bytes//M/*1024K}
+	  bytes=${bytes//K/*1024}
+	  bytes=$(bc <<< "${bytes}")
+	  kB=$(bc <<< "${bytes} / 1000")
+	  MB=$(bc <<< "${kB} / 1000")
+	  GB=$(bc <<< "${MB} / 1000")
+          echo "       - ${key}=${value2} => $(printf "%'d" "${bytes}") bytes = ~$(printf "%'d" "${kB}") kB = ~$(printf "%'d" "${MB}") MB = ~$(printf "%'d" "${GB}") GB"
+        fi
 	
         value=${_THIS_JOB_cwd}
         status="[ $ok ]"
