@@ -291,6 +291,7 @@ if [[ $action == "job" ]]; then
         status="[ $ok ]"
         info=""
         echo "$status Requested resources: ${value}"
+	
 	key="h_rt"
         value2=$(sed -E "s/.*\b${key}=([[:digit:]]+)\b.*/\1/" <<< "${value}")
 	s=${value2}
@@ -301,6 +302,7 @@ if [[ $action == "job" ]]; then
 	m=$(( m - 60 * h ))
 	s=$(( s - 60 * m ))
         echo "       - ${key}=${value2} => ${d}d-$(printf "%02dh%02dm%02ds" "${h}" "${m}" "${s}")"
+
 	key="mem_free"
         if grep -q -F "${key}" <<< "${value}"; then
           value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
@@ -318,13 +320,19 @@ if [[ $action == "job" ]]; then
         value=${_THIS_JOB_cwd}
         status="[ $ok ]"
         info=""
-        if ! ${is_owner}; then
+	if [[ -z "${value}" ]]; then
+            status="[$warn]"
+            info=" ${yellow}WARNING: 'qstat -j <job id>' does not have a 'cwd' variable${reset}"
+        elif ! ${is_owner}; then
             status="[$warn]"
         elif [[ ! -w "${value}" ]]; then
             info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$warn]"
-        fi           
-        echo "${status} Working directory: $(dir_info "${value}" "${is_owner}")${info}"
+        fi
+	if [[ -d "${value}" ]]; then
+	    info="$(dir_info "${value}" "${is_owner}")${info}"
+	fi
+        echo "${status} Working directory: ${info}"
 
         value=${_THIS_JOB_sge_o_workdir}
         status="[ $ok ]"
