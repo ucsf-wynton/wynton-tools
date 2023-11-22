@@ -134,25 +134,7 @@ while [[ $# -gt 0 ]]; do
         if [[ -z $value ]]; then
             merror "Option '--$key' must not be empty"
         fi
-        if [[ "${key}" == "exit" ]]; then
-            filter_patterns+=("${key}=${value}")
-        elif [[ "${key}" == "failed" ]]; then
-            filter_patterns+=("${key}=${value}")
-        elif [[ "${key}" == "group" ]]; then
-            filter_patterns+=("${key}=${value}")
-        elif [[ "${key}" == "host" ]]; then
-            filter_patterns+=("${key}=${value}")
-        elif [[ "${key}" == "name" ]]; then
-            filter_patterns+=("${key}=${value}")
-        elif [[ "${key}" == "priority" ]]; then
-            filter_patterns+=("${key}=${value}")
-        elif [[ "${key}" == "project" ]]; then
-            filter_patterns+=("${key}=${value}")
-        elif [[ "${key}" == "queue" ]]; then
-            filter_patterns+=("${key}=${value}")
-        elif [[ "${key}" == "task" ]]; then
-            filter_patterns+=("${key}=${value}")
-        elif [[ "${key}" == "user" ]]; then
+        if [[ ${key} =~ ^(exit|failed|group|host|name|priority|project|queue|task|user)$ ]]; then
             filter_patterns+=("${key}=${value}")
         else
             echo >&2 "ERROR: Unknown option: $1"
@@ -171,25 +153,7 @@ while [[ $# -gt 0 ]]; do
 	    assert_integer "${value}"
 	    [[ ${tail} -gt 0 ]] || error "--${key}=${value} must be greater than zero"
             tail=${value}
-	elif [[ "${key}" == "exit" ]]; then
-            filter_patterns+=("${key}=^${value}\$")
-        elif [[ "${key}" == "failed" ]]; then
-            filter_patterns+=("${key}=^${value}\$")
-        elif [[ "${key}" == "group" ]]; then
-            filter_patterns+=("${key}=^${value}\$")
-        elif [[ "${key}" == "host" ]]; then
-            filter_patterns+=("${key}=^${value}\$")
-        elif [[ "${key}" == "name" ]]; then
-            filter_patterns+=("${key}=^${value}\$")
-        elif [[ "${key}" == "priority" ]]; then
-            filter_patterns+=("${key}=^${value}\$")
-        elif [[ "${key}" == "project" ]]; then
-            filter_patterns+=("${key}=^${value}\$")
-        elif [[ "${key}" == "queue" ]]; then
-            filter_patterns+=("${key}=^${value}\$")
-        elif [[ "${key}" == "task" ]]; then
-            filter_patterns+=("${key}=^${value}\$")
-        elif [[ "${key}" == "user" ]]; then
+        elif [[ ${key} =~ ^(exit|failed|group|host|name|priority|project|queue|task|user)$ ]]; then
             filter_patterns+=("${key}=^${value}\$")
         else
             echo >&2 "ERROR: Unknown option: $1"
