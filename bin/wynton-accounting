@@ -142,6 +142,8 @@ while [[ $# -gt 0 ]]; do
             filter_patterns+=("${key}=${value}")
         elif [[ "${key}" == "host" ]]; then
             filter_patterns+=("${key}=${value}")
+        elif [[ "${key}" == "name" ]]; then
+            filter_patterns+=("${key}=${value}")
         elif [[ "${key}" == "priority" ]]; then
             filter_patterns+=("${key}=${value}")
         elif [[ "${key}" == "project" ]]; then
@@ -176,6 +178,8 @@ while [[ $# -gt 0 ]]; do
         elif [[ "${key}" == "group" ]]; then
             filter_patterns+=("${key}=^${value}\$")
         elif [[ "${key}" == "host" ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        elif [[ "${key}" == "name" ]]; then
             filter_patterns+=("${key}=^${value}\$")
         elif [[ "${key}" == "priority" ]]; then
             filter_patterns+=("${key}=^${value}\$")
@@ -244,6 +248,8 @@ if [[ $action == "subset" ]]; then
 	    column=3
 	elif [[ ${key} == "user" ]]; then
 	    column=4
+	elif [[ ${key} == "name" ]]; then
+	    column=5
 	elif [[ ${key} == "priority" ]]; then
 	    column=8
 	elif [[ ${key} == "failed" ]]; then
