@@ -1,0 +1,268 @@
+#! /usr/bin/env bash
+### Wynton HPC Job Accounting Details
+###
+### Usage:
+###  wynton-accounting [options] <filters>
+###
+### Options:
+###  --help           Display this help
+###  --version        Display version
+###
+### Examples:
+###  wynton accounting --failed=19
+###  wynton accounting --tail=100000 --failed=~"^(19|25)"
+###  wynton accounting --tail=100000 --user="$USER"
+###
+### Version: 0.0.0-9001
+### Copyright: Henrik Bengtsson (2023)
+### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+
+call="$0 $*"
+
+
+# -------------------------------------------------------------------------
+# CORE
+# -------------------------------------------------------------------------
+function mecho() { echo "$@" 1>&2; }
+
+function mdebug() {
+    if $debug; then
+        mecho "[DEBUG] $*";
+    fi
+}
+function merror() {
+    mecho "ERROR: $*";
+    exit 1
+}
+function vecho() {
+    if $verbose; then
+        echo "$@";
+    fi
+}
+
+function ok() {
+    echo "[ OK ]"
+}
+
+function fail() {
+    echo "[FAIL]"
+}
+
+function dir_info() {
+    local dir=${1:?}
+    local is_owner=${2:true}
+    local info
+    info="'${dir}'"
+
+    if [[ ! -d "${dir}" ]]; then
+        if ${is_owner}; then
+            info="${dir} ${red}ERROR: not a directory${reset}"
+        else
+            info="${dir} ${yellow}Cannot access directory because you ($USER) may lack access permissions${reset}"
+        fi
+        echo "${info}"
+        return 1
+    fi
+
+    ## File-permission, username, and group
+    info="${info} [$(stat -c "%A, owner=%U, group=%G" "${dir}")]"
+
+    echo "${info}"
+}
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+
+## Enable terminal colors, if supported
+term_colors enable
+
+ok="${green}OK${reset}"
+warn="${yellow}WARN${reset}"
+fail="${red}FAIL${reset}"
+
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action=subset
+
+## Options
+debug=false
+verbose=false
+tail=10000
+filter_patterns=()
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+    elif test "$1" == "--verbose"; then
+        verbose=true
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=~.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=~}
+        mdebug "key: '$key'"
+        mdebug "value: '$value'"
+        if [[ -z $value ]]; then
+            merror "Option '--$key' must not be empty"
+        fi
+        if [[ "${key}" == "exit" ]]; then
+            filter_patterns+=("${key}=${value}")
+        elif [[ "${key}" == "failed" ]]; then
+            filter_patterns+=("${key}=${value}")
+        elif [[ "${key}" == "group" ]]; then
+            filter_patterns+=("${key}=${value}")
+        elif [[ "${key}" == "host" ]]; then
+            filter_patterns+=("${key}=${value}")
+        elif [[ "${key}" == "priority" ]]; then
+            filter_patterns+=("${key}=${value}")
+        elif [[ "${key}" == "project" ]]; then
+            filter_patterns+=("${key}=${value}")
+        elif [[ "${key}" == "queue" ]]; then
+            filter_patterns+=("${key}=${value}")
+        elif [[ "${key}" == "task" ]]; then
+            filter_patterns+=("${key}=${value}")
+        elif [[ "${key}" == "user" ]]; then
+            filter_patterns+=("${key}=${value}")
+        else
+            echo >&2 "ERROR: Unknown option: $1"
+            exit 2
+        fi
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        mdebug "key: '$key'"
+        mdebug "value: '$value'"
+        if [[ -z $value ]]; then
+            merror "Option '--$key' must not be empty"
+        fi
+        if [[ "${key}" == "tail" ]]; then
+	    assert_integer "${value}"
+	    [[ ${tail} -gt 0 ]] || error "--${key}=${value} must be greater than zero"
+            tail=${value}
+	elif [[ "${key}" == "exit" ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        elif [[ "${key}" == "failed" ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        elif [[ "${key}" == "group" ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        elif [[ "${key}" == "host" ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        elif [[ "${key}" == "priority" ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        elif [[ "${key}" == "project" ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        elif [[ "${key}" == "queue" ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        elif [[ "${key}" == "task" ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        elif [[ "${key}" == "user" ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        else
+            echo >&2 "ERROR: Unknown option: $1"
+            exit 2
+	fi
+    else
+        if [[ -z $jobid ]]; then
+            jobid=$1
+        else
+            extras="$extras $1"
+        fi
+    fi
+    shift
+done
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "verbose: $verbose"
+    mdebug "tail: $tail"
+    mdebug "filter_patterns: [n=${#filter_patterns[@]}] ${filter_patterns[*]}"
+fi
+
+## Assert that the job ID is numeric, if specified
+[[ -z $jobid ]] || [[ $jobid =~ ^[0-9]+$ ]] || merror "Non-numeric job ID: $jobid"
+
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help "full"
+    exit 0
+fi
+
+if [[ $action == "subset" ]]; then
+    file=${SGE_ROOT}/${SGE_CELL}/common/accounting
+    assert_file_exists "${file}"
+
+    tf=$(mktemp)
+    tail -n "${tail}" "${file}" > "${tf}"
+
+    tf2=$(mktemp)
+    for kk in $(seq "${#filter_patterns[@]}"); do
+	filter=${filter_patterns[kk - 1]}
+        mdebug "$kk/${#filter_patterns[@]}. ${filter}"
+	key=${filter//=*}
+        mdebug "key=${key}"
+	pattern=${filter//*=}
+        mdebug "pattern=${pattern}"
+	if [[ ${key} == "queue" ]]; then
+	    column=1
+	elif [[ ${key} == "host" ]]; then
+	    column=2
+	elif [[ ${key} == "group" ]]; then
+	    column=3
+	elif [[ ${key} == "user" ]]; then
+	    column=4
+	elif [[ ${key} == "priority" ]]; then
+	    column=8
+	elif [[ ${key} == "failed" ]]; then
+	    column=12
+	elif [[ ${key} == "exit" ]]; then
+	    column=13
+	elif [[ ${key} == "project" ]]; then
+	    column=32
+	elif [[ ${key} == "task" ]]; then
+	    column=36
+	else
+	    error "Unknown field: ${key}"
+	fi
+	filter="\$${column} ~ /${pattern}/"
+        awk --field-separator=":" "${filter}" "${tf}" > "${tf2}"
+        mv "${tf2}" "${tf}"
+    done
+    
+    cat "${tf}"
+    rm -f "${tf}"
+fi
+
