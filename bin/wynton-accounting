@@ -153,18 +153,14 @@ while [[ $# -gt 0 ]]; do
 	    assert_integer "${value}"
 	    [[ ${tail} -gt 0 ]] || error "--${key}=${value} must be greater than zero"
             tail=${value}
-        elif [[ ${key} =~ ^(exit|failed|group|host|name|priority|project|queue|task|user)$ ]]; then
+        elif [[ ${key} =~ ^(exit|failed|group|host|job|name|priority|project|queue|task|user)$ ]]; then
             filter_patterns+=("${key}=^${value}\$")
         else
             echo >&2 "ERROR: Unknown option: $1"
             exit 2
 	fi
     else
-        if [[ -z $jobid ]]; then
-            jobid=$1
-        else
-            extras="$extras $1"
-        fi
+        extras="$extras $1"
     fi
     shift
 done
@@ -176,9 +172,6 @@ if $debug; then
     mdebug "tail: $tail"
     mdebug "filter_patterns: [n=${#filter_patterns[@]}] ${filter_patterns[*]}"
 fi
-
-## Assert that the job ID is numeric, if specified
-[[ -z $jobid ]] || [[ $jobid =~ ^[0-9]+$ ]] || merror "Non-numeric job ID: $jobid"
 
 
 if [[ $action == "version" ]]; then
@@ -214,6 +207,8 @@ if [[ $action == "subset" ]]; then
 	    column=4
 	elif [[ ${key} == "name" ]]; then
 	    column=5
+	elif [[ ${key} == "job" ]]; then
+	    column=6
 	elif [[ ${key} == "priority" ]]; then
 	    column=8
 	elif [[ ${key} == "failed" ]]; then
