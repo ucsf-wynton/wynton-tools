@@ -1,0 +1,110 @@
+#! /usr/bin/env bash
+### Wynton HPC Status
+###
+### Usage:
+###  wynton-node [options] <hostname>
+###
+### Options:
+###  --version        Display version
+###
+###
+### Version: 0.0.0-9000
+### Copyright: Henrik Bengtsson (2024)
+### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
+
+
+# -------------------------------------------------------------------------
+# CORE
+# -------------------------------------------------------------------------
+function mecho() { echo "$@" 1>&2; }
+
+function mdebug() {
+    if $debug; then
+        mecho "[DEBUG] $*";
+    fi
+}
+function merror() {
+    mecho "ERROR: $*";
+    exit 1
+}
+function vecho() {
+    if $verbose; then
+        echo "$@";
+    fi
+}
+
+function version() {
+    grep -E "^###[ ]*Version:[ ]*" "$0" | sed 's/###[ ]*Version:[ ]*//g'
+}
+
+function help() {
+    local res=
+    res=$(grep "^###" "$0" | grep -vE '^(####|### whatis: )' | cut -b 5-)
+    if [[ ${UCSF_WYNTON_TOOLS} == true ]]; then
+        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-([a-z]+)/\1wynton \2/')
+    fi
+    printf "%s\\n" "${res[@]}"
+}
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action=view
+
+## Options
+debug=false
+verbose=false
+
+hostname=
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+    elif test "$1" == "--verbose"; then
+        verbose=true
+    else
+	if [[ -n "${hostname}" ]]; then
+	    merror "The hostname has already been specified: ${hostname}"
+	fi
+	hostname=$1
+    fi
+    shift
+done
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "verbose: $verbose"
+    mdebug "hostname: $hostname"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help 
+    exit 0
+fi
+
+if [[ $action == "view" ]]; then
+    echo "# Wynton HPC Compute Node Overview"
+    echo
+    echo "Hostname: ${hostname}"
+    echo
+    echo "## SGE Configuration"
+    echo
+    qconf -se "${hostname}" | sed ':a;N;$!ba;s/\\\n/ /g' | sed -E 's/[[:blank:]]+/ /g' | sed -E 's/, /,/g' | sed 's/ /:/' | sed -E 's/([[:alnum:]_-]*)=([^,]+)(,|)/\n  \1=\2/g'
+fi
