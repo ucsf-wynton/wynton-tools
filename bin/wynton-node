@@ -106,5 +106,5 @@ if [[ $action == "view" ]]; then
     echo
     echo "## SGE Configuration"
     echo
-    qconf -se "${hostname}" | sed ':a;N;$!ba;s/\\\n/ /g' | sed -E 's/[[:blank:]]+/ /g' | sed -E 's/, /,/g' | sed 's/ /:/' | sed -E 's/([[:alnum:]_-]*)=([^,]+)(,|)/\n  \1=\2/g'
+    qconf -se "${hostname}" | sed ':a;N;$!ba;s/\\\n/ /g' | sed -E 's/[[:blank:]]+/ /g' | sed -E 's/, /,/g' | sed 's/ /:/' | sed -E 's/([[:alnum:]_.-]*)=([^,]+)(,|)/\n  \1=\2/g'
 fi
