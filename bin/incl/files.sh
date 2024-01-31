@@ -44,6 +44,34 @@ function wait_for_file {
 }
 
 
+function file_info() {
+    local file=${1:?}
+    local is_owner=${2:true}
+    local info
+    info="'${file}'"
+
+    if [[ ! -f "${file}" ]]; then
+        if ${is_owner}; then
+            info="${info} <no such file>"
+        else
+            info="${info} ${yellow}Cannot access file, because you ($USER) may lack access permissions${reset}"
+        fi
+        echo "${info}"
+        return 1
+    fi
+
+    if [[ -L "${file}" ]]; then
+        file=$(readlink -f "$file")
+	info="${info} -> '${file}'"
+    fi
+
+    ## File-permission, username, and group
+    info="${info} [$(stat -c "%s bytes, %A, owner=%U, group=%G" "${file}"); $(file --brief "${file}")]"
+
+    echo "${info}"
+}
+
+
 function dir_info() {
     local dir=${1:?}
     local is_owner=${2:true}
@@ -52,12 +80,17 @@ function dir_info() {
 
     if [[ ! -d "${dir}" ]]; then
         if ${is_owner}; then
-            info="${dir} ${red}ERROR: not a directory${reset}"
+            info="${info} <no such directory>"
         else
-            info="${dir} ${yellow}Cannot access directory because you ($USER) may lack access permissions${reset}"
+            info="${info} ${yellow}Cannot access directory, because you ($USER) may lack access permissions${reset}"
         fi
         echo "${info}"
         return 1
+    fi
+
+    if [[ -L "${dir}" ]]; then
+        dir=$(readlink -f "$dir")
+	info="${info} -> '${dir}'"
     fi
 
     ## File-permission, username, and group

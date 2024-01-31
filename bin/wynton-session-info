@@ -1,0 +1,167 @@
+#! /usr/bin/env bash
+#' Wynton HPC Session Information
+#'
+#' Usage:
+#'  wynton-session-info [options]
+#'
+#' Options:
+#'  --help           Display this help
+#'  --version        Display version
+#'
+#' Examples:
+#'  wynton check
+#'
+#' Version: 0.0.1
+#' Copyright: Henrik Bengtsson (2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action=check
+
+## Options
+debug=false
+verbose=false
+user=${USER}
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+    elif test "$1" == "--verbose"; then
+        verbose=true
+    else
+        extras="$extras $1"
+    fi
+    shift
+done
+
+## Assert that user exists
+id --user "$user" &> /dev/null || error "No such user: $user"
+
+
+if [[ $user == "$USER" ]]; then
+    home=$HOME
+else
+    home=$(getent passwd "$user" | cut -d: -f6)
+fi
+
+uid=$(id --user "$user")
+gid=$(id --group "$user")
+group=$(id --group --name "$user")
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "verbose: $verbose"
+    mdebug "user: $user"
+    mdebug "group: $group"
+    mdebug "uid: $uid"
+    mdebug "gid: $gid"
+    mdebug "home: $home"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help 
+    exit 0
+fi
+
+if [[ $action == "check" ]]; then
+    echo "# User-Account Checks"
+    echo
+    echo "* User : '$user' (uid=$uid)"
+    echo "* Group: '$group' (gid=$gid)"
+    echo "* HOME : $(dir_info "$home")"
+    echo
+    
+    echo "## Shell"
+    echo "* SHELL=${SHELL:-<not set>}"
+    for file in "$home/.bashrc" "$home/.bash_profile" "$home/.bash_logout"; do
+        echo "* $(file_info "$file")"
+    done
+    echo
+    
+    echo "## SSH"
+    dir=$home/.ssh
+    echo "* $(dir_info "$dir")"
+    for file in "$home/.ssh/authorized_keys" "$home/known_hosts"; do
+	echo "* $(file_info "$file")"
+    done	 
+    echo
+    
+    echo "## Netrc"
+    file=$home/.netrc
+    echo "* $(file_info "$file")"
+    echo
+    
+    echo "## Conda"
+    echo "* CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-<not set>}"
+    echo "* CONDA_EXE=${CONDA_EXE:-<not set>}"
+    file=$home/.condarc
+    echo "* $(file_info "$file")"
+    for dir in "$home/.conda" "$home/miniconda3"; do
+        echo "* $(dir_info "$dir")"
+    done
+    echo
+    
+    echo "## R"
+    file=$home/.Rprofile
+    echo "* $(file_info "$file")"
+    file=$home/.Renviron
+    echo "* $(file_info "$file")"
+    echo
+    
+    if command -v module &> /dev/null; then
+        echo "## Module environments"
+        echo "* MODULEPATH=${MODULEPATH:-<not set>}"
+        module list 2> /dev/null || { echo "Currently Loaded Modules: <none>"; }
+	echo
+    fi
+
+    echo "## X11 Forwarding"
+    echo "* DISPLAY=${DISPLAY:-<not set>}"
+    echo
+    
+    echo "## Environment variables"
+    echo "* HOSTNAME=${HOSTNAME:-<not set>}"
+    echo "* LANG=${LANG:-<not set>}"
+    echo "* PATH=${PATH:-<not set>}"
+    echo "* LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-<not set>}"
+    echo
+fi
+
