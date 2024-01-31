@@ -47,6 +47,7 @@ function wait_for_file {
 function file_info() {
     local file=${1:?}
     local is_owner=${2:true}
+    local file_info
     local info
     info="'${file}'"
 
@@ -66,7 +67,12 @@ function file_info() {
     fi
 
     ## File-permission, username, and group
-    info="${info} [$(stat -c "%s bytes, %A, owner=%U, group=%G" "${file}"); $(file --brief "${file}")]"
+    file_info=$(file --brief "${file}")
+    if grep -q "ASCII" <<< "${file_info}"; then
+        file_info="$(wc --lines < "${file}") lines; ${file_info}"
+    fi
+    file_info=$(sed -E "s/(with CRLF line terminators)/${yellow}\1${reset}/" <<< "${file_info}")
+    info="${info} [$(stat -c "%s bytes, %A, owner=%U, group=%G" "${file}"); ${file_info}]"
 
     echo "${info}"
 }
