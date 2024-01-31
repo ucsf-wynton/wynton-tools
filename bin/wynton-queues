@@ -1,53 +1,39 @@
 #! /usr/bin/env bash
-### Wynton HPC Queues
-###
-### Usage:
-###  wynton-queues <command> [options]
-###
-### Commands:
-###  list             List all queues
-###
-### Options:
-###  --version        Display version
-###
-###
-### Version: 0.0.8
-### Copyright: Henrik Bengtsson (2019)
-### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' Wynton HPC Queues
+#'
+#' Usage:
+#'  wynton-queues <command> [options]
+#'
+#' Commands:
+#'  list             List all queues
+#'
+#' Options:
+#'  --version        Display version
+#'
+#'
+#' Version: 0.0.8
+#' Copyright: Henrik Bengtsson (2019)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
-# -------------------------------------------------------------------------
-# CORE
-# -------------------------------------------------------------------------
-function mecho() { echo "$@" 1>&2; }
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
 
-function mdebug() {
-    if $debug; then
-        mecho "[DEBUG] $*";
-    fi
-}
-function merror() {
-    mecho "ERROR: $*";
-    exit 1
-}
-function vecho() {
-    if $verbose; then
-        echo "$@";
-    fi
-}
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
 
-function version() {
-    grep -E "^###[ ]*Version:[ ]*" "$0" | sed 's/###[ ]*Version:[ ]*//g'
-}
-
-function help() {
-    local res=
-    res=$(grep "^###" "$0" | grep -vE '^(####|### whatis: )' | cut -b 5-)
-    if [[ ${UCSF_WYNTON_TOOLS} == true ]]; then
-        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-([a-z]+)/\1wynton \2/')
-    fi
-    printf "%s\\n" "${res[@]}"
-}
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
 
 
 # -------------------------------------------------------------------------

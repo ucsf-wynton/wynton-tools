@@ -1,19 +1,39 @@
 #! /usr/bin/env bash
-### UCSF Wynton HPC Command Line Tools
-### 
-### Usage:
-###  wynton <tool> ...
-### 
-### Installed tools:
-### {{table_of_tools}}
-###
-### Example:
-###  wynton --help
-###
-### Version: 0.2.0
-### Copyright: Henrik Bengtsson (2019-2022)
-### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
-### Source: https://github.com/UCSF-HPC/wynton-tools
+#' UCSF Wynton HPC Command Line Tools
+#' 
+#' Usage:
+#'  wynton <tool> ...
+#' 
+#' Installed tools:
+#' {{table_of_tools}}
+#'
+#' Example:
+#'  wynton --help
+#'
+#' Version: 0.2.0
+#' Copyright: Henrik Bengtsson (2019-2022)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' Source: https://github.com/UCSF-HPC/wynton-tools
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
 
 UCSF_WYNTON_DIR=$(dirname "$(readlink -e "$0")")
 export UCSF_WYNTON_DIR

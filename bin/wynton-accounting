@@ -1,21 +1,22 @@
 #! /usr/bin/env bash
-### Wynton HPC Job Accounting Details
-###
-### Usage:
-###  wynton-accounting [options] <filters>
-###
-### Options:
-###  --help           Display this help
-###  --version        Display version
-###
-### Examples:
-###  wynton accounting --failed=19
-###  wynton accounting --tail=100000 --failed=~"^(19|25)"
-###  wynton accounting --tail=100000 --user="$USER"
-###
-### Version: 0.0.0-9001
-### Copyright: Henrik Bengtsson (2023)
-### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' Wynton HPC Job Accounting Details
+#'
+#' Usage:
+#'  wynton-accounting [options] <filters>
+#'
+#' Options:
+#'  --help           Display this help
+#'  --version        Display version
+#'
+#' Examples:
+#'  wynton accounting --failed=19
+#'  wynton accounting --tail=100000 --failed=~"^(19|25)"
+#'  wynton accounting --tail=100000 --user="$USER"
+#'
+#' Version: 0.0.0-9001
+#' Copyright: Henrik Bengtsson (2023-2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
 
 this="${BASH_SOURCE%/}"
 [[ -L "${this}" ]] && this=$(readlink "${this}")
@@ -36,29 +37,10 @@ source "${incl}/output.sh"
 # shellcheck source=incl/system.sh
 source "${incl}/system.sh"
 
-call="$0 $*"
-
 
 # -------------------------------------------------------------------------
 # CORE
 # -------------------------------------------------------------------------
-function mecho() { echo "$@" 1>&2; }
-
-function mdebug() {
-    if $debug; then
-        mecho "[DEBUG] $*";
-    fi
-}
-function merror() {
-    mecho "ERROR: $*";
-    exit 1
-}
-function vecho() {
-    if $verbose; then
-        echo "$@";
-    fi
-}
-
 function ok() {
     echo "[ OK ]"
 }
@@ -67,27 +49,6 @@ function fail() {
     echo "[FAIL]"
 }
 
-function dir_info() {
-    local dir=${1:?}
-    local is_owner=${2:true}
-    local info
-    info="'${dir}'"
-
-    if [[ ! -d "${dir}" ]]; then
-        if ${is_owner}; then
-            info="${dir} ${red}ERROR: not a directory${reset}"
-        else
-            info="${dir} ${yellow}Cannot access directory because you ($USER) may lack access permissions${reset}"
-        fi
-        echo "${info}"
-        return 1
-    fi
-
-    ## File-permission, username, and group
-    info="${info} [$(stat -c "%A, owner=%U, group=%G" "${dir}")]"
-
-    echo "${info}"
-}
 
 # -------------------------------------------------------------------------
 # SPECIFIC
@@ -132,7 +93,7 @@ while [[ $# -gt 0 ]]; do
         mdebug "key: '$key'"
         mdebug "value: '$value'"
         if [[ -z $value ]]; then
-            merror "Option '--$key' must not be empty"
+            error "Option '--$key' must not be empty"
         fi
         if [[ ${key} =~ ^(exit|failed|group|host|name|priority|project|queue|task|user)$ ]]; then
             filter_patterns+=("${key}=${value}")
@@ -147,7 +108,7 @@ while [[ $# -gt 0 ]]; do
         mdebug "key: '$key'"
         mdebug "value: '$value'"
         if [[ -z $value ]]; then
-            merror "Option '--$key' must not be empty"
+            error "Option '--$key' must not be empty"
         fi
         if [[ "${key}" == "tail" ]]; then
 	    assert_integer "${value}"

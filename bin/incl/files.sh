@@ -42,3 +42,26 @@ function wait_for_file {
     done
     [[ -f "${file}" ]] || error "Waited for file ${file}, but gave up after ${maxseconds} seconds"
 }
+
+
+function dir_info() {
+    local dir=${1:?}
+    local is_owner=${2:true}
+    local info
+    info="'${dir}'"
+
+    if [[ ! -d "${dir}" ]]; then
+        if ${is_owner}; then
+            info="${dir} ${red}ERROR: not a directory${reset}"
+        else
+            info="${dir} ${yellow}Cannot access directory because you ($USER) may lack access permissions${reset}"
+        fi
+        echo "${info}"
+        return 1
+    fi
+
+    ## File-permission, username, and group
+    info="${info} [$(stat -c "%A, owner=%U, group=%G" "${dir}")]"
+
+    echo "${info}"
+}

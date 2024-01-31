@@ -1,79 +1,57 @@
 #! /usr/bin/env bash
-### Disk IO Benchmark Summary
-###
-### Usage:
-###  wynton-bench [options]
-###
-### Options:
-###  --help              Display this help
-###  --version           Display version
-###  --drive <drive>     The drive to report on
-###  --format <fmt>      Output format: spark (default), int, dbl
-###  --data-root <path>  Path to root data folder (default: ~hb/wynton-bench-logs)
-###  --hostname <host>   Host from where data was collected (default: dev3)
-###  --user <user>       User that collected data (default: hb)
-###
-### Examples:
-###  wynton bench --drive /scratch
-###  wynton bench --drive /wynton/scratch
-###  wynton bench --drive /wynton/home
-###  wynton bench --drive /wynton/group
-###
-### Requirements:
-### * spark: https://github.com/holman/spark
-###
-### Version: 0.0.4
-### Copyright: Henrik Bengtsson (2020-2023)
-### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' Disk IO Benchmark Summary
+#'
+#' Usage:
+#'  wynton-bench [options]
+#'
+#' Options:
+#'  --help              Display this help
+#'  --version           Display version
+#'  --drive <drive>     The drive to report on
+#'  --format <fmt>      Output format: spark (default), int, dbl
+#'  --data-root <path>  Path to root data folder (default: ~hb/wynton-bench-logs)
+#'  --hostname <host>   Host from where data was collected (default: dev3)
+#'  --user <user>       User that collected data (default: hb)
+#'
+#' Examples:
+#'  wynton bench --drive /scratch
+#'  wynton bench --drive /wynton/scratch
+#'  wynton bench --drive /wynton/home
+#'  wynton bench --drive /wynton/group
+#'
+#' Requirements:
+#' * spark: https://github.com/holman/spark
+#'
+#' Version: 0.0.4
+#' Copyright: Henrik Bengtsson (2020-2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
 
 
 # -------------------------------------------------------------------------
 # CORE
 # -------------------------------------------------------------------------
-function mecho() { echo "$@" 1>&2; }
-
-function mdebug() {
-    if $debug; then
-        mecho "[DEBUG] $*";
-    fi
-}
-function mwarn() {
-    mecho "WARNING: $*";
-}
-function merror() {
-    mecho "ERROR: $*";
-    exit 1
-}
-function vecho() {
-    if $verbose; then
-        echo "$@";
-    fi
-}
-
-function version() {
-    grep -E "^###[ ]*Version:[ ]*" "$0" | sed 's/###[ ]*Version:[ ]*//g'
-}
-
-function help() {
-    local res=
-    res=$(grep "^###" "$0" | grep -vE '^(####|### whatis: )' | cut -b 5-)
-    if [[ ${UCSF_WYNTON_TOOLS} == true ]]; then
-        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-([a-z]+)/\1wynton \2/')
-    fi
-    printf "%s\\n" "${res[@]}"
-}
-
 chdir() {
-    cd "$1" || merror "Failed to change directory: $1"
-}
-
-assert_file() {
-    [[ -f "$1" ]] || merror "No such file: $1"
-}
-
-assert_folder() {
-    [[ -d "$1" ]] || merror "No such folder: $1"
+    cd "$1" || error "Failed to change directory: $1"
 }
 
 
@@ -153,9 +131,9 @@ elif [[ $action == "help" ]]; then
 fi
 
 
-assert_folder "$data_root"
+assert_dir_exists "$data_root"
 data_path=${data_root}/${hostname}
-assert_folder "$data_path"
+assert_dir_exists "$data_path"
 
 case "$drive" in
     /tmp)
@@ -186,7 +164,7 @@ if [[ $action == "timeline" ]]; then
         bench_logfile="$data_path/bench-files-tarball__${TEST_DRIVE}.log"
     fi
     
-    assert_file "$bench_logfile"
+    assert_file_exists "$bench_logfile"
     
     ## Load signals
     bench_logs=$(tail -n 2100 "$bench_logfile")
@@ -233,5 +211,5 @@ if [[ $action == "timeline" ]]; then
         printf "%s %*s%s%*s%s\n" "$period" "$padL" "" "$label" "$padR" "" "$range"
     fi
 else
-    merror "Unknown action: $action"
+    error "Unknown action: $action"
 fi    
