@@ -221,7 +221,15 @@ if [[ $action == "check" ]]; then
         echo "* $(dir_info "$dir")"
     done
     echo
-    
+
+    echo "## Perl"
+    if [[ -n ${PERL5LIB} ]]; then
+	echo "* PERL5LIB=${PERL5LIB} [$(dir_info "${PERL5LIB:-<not set>}")]"
+    else	
+	echo "* PERL5LIB=<not set>"
+    fi
+    echo
+
     echo "## R"
     for file in "$home/.Rprofile" "$home/.Renviron"; do
         echo "* $(file_info "$file")"
