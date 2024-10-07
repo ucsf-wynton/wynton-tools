@@ -13,6 +13,10 @@ source "${pwd}"/asserts.sh
 # -------------------------------------------------------------------------
 # Time utils
 # -------------------------------------------------------------------------
+date_iso() {
+    date --iso-8601=seconds -d "${1:?}" | sed -E 's/-[[:digit:]]{1,2}(:[[:digit:]]{1,2})$//'
+}    
+
 ## Convert into days, hours, minutes, and seconds
 seconds_to_dhms() {
     local -i s=${1:?}
@@ -26,6 +30,18 @@ seconds_to_dhms() {
     m=$(( s / 60 ))
     s=$(( s % 60 ))
     printf "${fmt}" "${d}" "${h}" "${m}" "${s}"
+}
+
+
+
+# -------------------------------------------------------------------------
+# Configure
+# -------------------------------------------------------------------------
+sge_downtime_start() {
+    local cal=${1:-"maint_downtime"}
+    local raw
+    raw=$(qconf -scal "${cal}" | grep -E "^year[[:blank:]]+" | sed -E 's/^year[[:blank:]]+//' | sed 's/[-].*//' | sed -E 's/\b([[:digit:]]+)[.]([[:digit:]]+)[.]([[:digit:]]+)\b/\3-\2-\1/g' | sed -E 's/\b([[:digit:]]):/0\1:/g' | sed 's/=/T/')
+    date -d "${raw}"
 }
 
 

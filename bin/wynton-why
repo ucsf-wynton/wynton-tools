@@ -13,7 +13,7 @@
 #'  wynton why
 #'  wynton why --user alice
 #'
-#' Version: 0.0.1
+#' Version: 0.0.1-9001
 #' Copyright: Henrik Bengtsson (2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -36,6 +36,8 @@ source "${incl}/files.sh"
 source "${incl}/output.sh"
 # shellcheck source=incl/system.sh
 source "${incl}/system.sh"
+# shellcheck source=incl/sge.sh
+source "${incl}/sge.sh"
 
 
 # -------------------------------------------------------------------------
@@ -86,8 +88,7 @@ fi
 uid=$(id --user "$user")
 gid=$(id --group "$user")
 group=$(id --group --name "$user")
-downtime_str=$(qconf -scal maint_downtime | grep -E "^year[[:blank:]]+" | sed -E 's/^year[[:blank:]]+//' | sed 's/[-].*//' | sed -E 's/\b([[:digit:]]+)[.]([[:digit:]]+)[.]([[:digit:]]+)\b/\3-\2-\1/g' | sed -E 's/\b([[:digit:]]):/0\1:/g' | sed 's/=/T/')
-downtime=$(date -d "${downtime_str}")
+downtime=$(sge_downtime_start)
 
 if $debug; then
     mdebug "call: $call"
@@ -98,7 +99,7 @@ if $debug; then
     mdebug "uid: $uid"
     mdebug "gid: $gid"
     mdebug "home: $home"
-    mdebug "downtime: $(date --iso-8601=seconds -d "${downtime}") (from '${downtime_str}')"
+    mdebug "downtime: $(date --iso-8601=seconds -d "${downtime}")"
 fi
 
 if [[ $action == "version" ]]; then
@@ -118,7 +119,7 @@ if [[ $action == "why" ]]; then
     echo "Working directory: ${PWD}"
     echo "Hostname: ${HOSTNAME}"
 
-    downtime_iso=$(date -d "${downtime}" --iso-8601=seconds)
+    downtime_iso=$(date_iso "${downtime}")
     when=$(date +%s -d "${downtime}")
     now=$(date +%s)
     diff=$((when - now))
@@ -139,7 +140,7 @@ if [[ $action == "why" ]]; then
             if [[ -n "${h_rt}" ]] && [[ ${h_rt} -gt ${diff} ]]; then
 		name=$(printf "%s\n" "${bfr[@]}" | grep -E "^job_name:[[:blank:]]+" | sed -E 's/^job_name:[[:blank:]]+//')
 		when_str=$(printf "%s\n" "${bfr[@]}" | grep -E "^submission_time:[[:blank:]]+" | sed -E 's/^submission_time:[[:blank:]]+//')
-		when=$(date -d "${when_str}" --iso-8601=seconds)
+		when=$(date_iso "${when_str}")
                 info+=("Job ${job} [${when}; -l h_rt=${h_rt}; name='${name}']")
             fi
         done
