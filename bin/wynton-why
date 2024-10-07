@@ -122,9 +122,9 @@ if [[ $action == "why" ]]; then
     downtime_iso=$(date_iso "${downtime}")
     when=$(date +%s -d "${downtime}")
     now=$(date +%s)
-    diff=$((when - now))
-    if [[ ${diff} -gt 0 ]]; then
-       echo "Detected scheduled downtime: ${downtime_iso} (in ~$((diff / 3600)) hours)"
+    delta=$((when - now))
+    if [[ ${delta} -gt 0 ]]; then
+       echo "Detected scheduled downtime: ${downtime_iso} [$(seconds_to_dhms "${delta}")]"
     fi
     
     echo
