@@ -36,6 +36,8 @@ source "${incl}/files.sh"
 source "${incl}/output.sh"
 # shellcheck source=incl/system.sh
 source "${incl}/system.sh"
+# shellcheck source=incl/sge.sh
+source "${incl}/sge.sh"
 
 
 # -------------------------------------------------------------------------
@@ -49,15 +51,6 @@ function fail() {
     echo "[FAIL]"
 }
 
-annotate_qstat() {
-    local E q w
-    
-    E="${red}E${reset}"
-    q="${yellow}q${reset}"
-    w="${yellow}w${reset}"
-    z="${magenta}z${reset}"
-    sed -e "s/Eqw/${E}qw/" -e "s/qw/${q}${w}/" -e "s/\bz\b/${z}/"
-}
 
 reformat_date() {
     sed -E "s,([[:digit:]]{2})/([[:digit:]]{2})/([[:digit:]]{4}),\3-\1-\2,g"
@@ -87,7 +80,6 @@ verbose=false
 jobid=
 user=${USER}
 tail_size=1000000
-sge_accounting=/opt/sge/wynton/common/accounting
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -177,7 +169,7 @@ if [[ $action == "list" ]]; then
 fi
 
 if [[ $action == "list-finished" ]]; then
-    bfr=$(tail -n "$tail_size" "${sge_accounting}" | grep ":${user}:")
+    bfr=$(accounting_list_finished "${user}" "${tail_size}")
     res=$?
     if [[ $res -eq 0 ]]; then
 	echo "$bfr"
@@ -326,7 +318,8 @@ if [[ $action == "job" ]]; then
 	    days=$(( hours / 24 ))
             hours2=$(( hours - 24 * days ))
             mins2=$(( mins - 60 * hours ))
-            info="${days}d${hours2}h${mins2}m ago"
+            seconds_to_dhms "$((epoch_now - epoch ))"
+            info="$(seconds_to_dhms "$(( epoch_now - epoch ))") ago"
             if [[ $hours -gt 24 ]]; then
                 info="${red}${info}${reset}"
                 status="[$warn]"
@@ -352,14 +345,7 @@ if [[ $action == "job" ]]; then
         value2=$(sed -E "s/.*\b${key}=([[:digit:]]+)\b.*/\1/" <<< "${value}")
 	s=${value2}
 
-	## Convert into days, hours, minutes, and seconds
-	d=$(( s / (24 * 60 * 60) ))
-	s=$(( s % (24 * 60 * 60) ))
-	h=$(( s / (60 * 60) ))
-	s=$(( s % (60 * 60) ))
-        m=$(( s / 60 ))
-	s=$(( s % 60 ))
-        echo "       - ${key}=${value2} => ${d}d-$(printf "%02dh%02dm%02ds" "${h}" "${m}" "${s}")"
+        echo "       - ${key}=${value2} => $(seconds_to_dhms "${value2}")"
 
 	key="mem_free"
         if grep -q -F "${key}" <<< "${value}"; then
