@@ -99,7 +99,7 @@ if $debug; then
     mdebug "uid: $uid"
     mdebug "gid: $gid"
     mdebug "home: $home"
-    mdebug "downtime: $(date --iso-8601=seconds -d "${downtime}")"
+    mdebug "downtime: $(date_iso "${downtime}")"
 fi
 
 if [[ $action == "version" ]]; then
