@@ -13,7 +13,7 @@
 #'  wynton job --list-finished
 #'  wynton job 4214696
 #'
-#' Version: 0.1.1-9000
+#' Version: 0.1.1-9001
 #' Copyright: Henrik Bengtsson (2020-2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -351,12 +351,14 @@ if [[ $action == "job" ]]; then
 	key="h_rt"
         value2=$(sed -E "s/.*\b${key}=([[:digit:]]+)\b.*/\1/" <<< "${value}")
 	s=${value2}
-	m=$(( s / 60 ))
-	h=$(( m / 60 ))
-	d=$(( h / 24 ))
-	h=$(( h - 24 * d ))
-	m=$(( m - 60 * h ))
-	s=$(( s - 60 * m ))
+
+	## Convert into days, hours, minutes, and seconds
+	d=$(( s / (24 * 60 * 60) ))
+	s=$(( s % (24 * 60 * 60) ))
+	h=$(( s / (60 * 60) ))
+	s=$(( s % (60 * 60) ))
+        m=$(( s / 60 ))
+	s=$(( s % 60 ))
         echo "       - ${key}=${value2} => ${d}d-$(printf "%02dh%02dm%02ds" "${h}" "${m}" "${s}")"
 
 	key="mem_free"
