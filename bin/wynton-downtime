@@ -1,0 +1,124 @@
+#! /usr/bin/env bash
+#' Wynton Downtime Schedule
+#'
+#' Usage:
+#'  wynton-downtime [options]
+#'
+#' Options:
+#'  --help           Display this help
+#'  --version        Display version
+#'
+#' Examples:
+#'  wynton downtime
+#'
+#' Version: 0.0.1-9001
+#' Copyright: Henrik Bengtsson (2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+# shellcheck source=incl/sge.sh
+source "${incl}/sge.sh"
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action="when"
+
+## Options
+full=false
+debug=false
+verbose=false
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--full"; then
+        full=true
+    elif test "$1" == "--debug"; then
+        debug=true
+    elif test "$1" == "--verbose"; then
+        verbose=true
+    elif test "$1" == "--delta"; then
+        action="delta"
+    else
+        extras="$extras $1"
+    fi
+    shift
+done
+
+downtime=$(sge_downtime_start)
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "verbose: $verbose"
+    mdebug "full: $full"
+    mdebug "downtime: $(date_iso "${downtime}")"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help ""
+    exit 0
+fi
+
+downtime_iso=$(date_iso "${downtime}")
+when=$(date +%s -d "${downtime}")
+now=$(date +%s)
+delta=$((when - now))
+
+if [[ $action == "when" ]]; then
+    if [[ ${delta} -gt 0 ]]; then
+	if $full; then
+            echo "Upcoming downtime: ${downtime_iso} [in $(seconds_to_dhms "${delta}")]"
+	else
+            echo "${downtime_iso}"
+	fi
+    elif [[ ${delta} -le 0 ]]; then
+	if $full; then
+            echo "Past downtime: ${downtime_iso} [$(seconds_to_dhms "-${delta}") ago]"
+	fi
+    fi
+elif [[ $action == "delta" ]]; then
+    if [[ ${delta} -gt 0 ]]; then
+	if $full; then
+            echo "in $(seconds_to_dhms "${delta}")"
+	else
+            seconds_to_dhms "${delta}"
+	fi
+    elif [[ ${delta} -le 0 ]]; then
+	if $full; then
+            echo "$(seconds_to_dhms "-${delta}") ago"
+	fi
+    fi
+fi
