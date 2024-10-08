@@ -7,7 +7,7 @@ function version {
 
 function help {
     local what res
-    what=$1
+    what=${1:-""}
     res=$(grep "^#'" "$0" | grep -vE "^(###|#' whatis: )" | cut -b 4-)
 
     if [[ ${UCSF_WYNTON_TOOLS} == true ]]; then

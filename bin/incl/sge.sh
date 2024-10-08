@@ -9,6 +9,9 @@ pwd=${BASH_SOURCE%/*}
 # shellcheck source=incl/asserts.sh
 source "${pwd}"/asserts.sh
 
+# shellcheck source=incl/output.sh
+source "${pwd}"/output.sh
+
 
 # -------------------------------------------------------------------------
 # Time utils
@@ -29,6 +32,7 @@ seconds_to_dhms() {
     s=$(( s % (60 * 60) ))
     m=$(( s / 60 ))
     s=$(( s % 60 ))
+    # shellcheck disable=2059
     printf "${fmt}" "${d}" "${h}" "${m}" "${s}"
 }
 
@@ -38,8 +42,8 @@ seconds_to_dhms() {
 # Configure
 # -------------------------------------------------------------------------
 sge_downtime_start() {
-    local cal=${1:-"maint_downtime"}
     local raw
+    local cal="maint_downtime"
     raw=$(qconf -scal "${cal}" | grep -E "^year[[:blank:]]+" | sed -E 's/^year[[:blank:]]+//' | sed 's/[-].*//' | sed -E 's/\b([[:digit:]]+)[.]([[:digit:]]+)[.]([[:digit:]]+)\b/\3-\2-\1/g' | sed -E 's/\b([[:digit:]]):/0\1:/g' | sed 's/=/T/')
     date -d "${raw}"
 }

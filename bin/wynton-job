@@ -183,7 +183,7 @@ if [[ $action == "job" ]]; then
     
     ## An active job?
     bfr=$(qstat -j "$jobid" 2> /dev/null)
-    if [[ $? == 0 ]]; then
+    if [[ -n ${bfr} ]]; then
         ## Keep key: value lines
         vars=$(grep -E "^[^:]+:.*" <<< "$bfr")
         ## Fix keys
@@ -200,6 +200,7 @@ if [[ $action == "job" ]]; then
 	fi
 
         ## Get additional info on the job
+        # shellcheck disable=2154
         bfr2=$(qstat -s az -u "${_THIS_JOB_owner}" | grep -E "^[[:space:]]*\b${_THIS_JOB_job_number}\b[[:space:]]")
 	
         ## Summarize
@@ -208,9 +209,11 @@ if [[ $action == "job" ]]; then
         ruler "-"
         echo
 
+        # shellcheck disable=2154
         value=${_THIS_JOB_job_number}
         echo "[ $ok ] Job ID: ${value}"
 
+        # shellcheck disable=2154
         value=${_THIS_JOB_job_name}
         echo "[ $ok ] Job name: ${value}"
 
@@ -291,6 +294,7 @@ if [[ $action == "job" ]]; then
             echo "$status Job status: N/A"
 	fi
 
+        # shellcheck disable=2154
         value=${_THIS_JOB_owner}
         is_owner=true
         status="[ $ok ]"
@@ -300,42 +304,35 @@ if [[ $action == "job" ]]; then
             status="[$warn]"
             info=" ${yellow}WARNING: You ($USER) are not the owner of this job${reset}"
         fi
+        # shellcheck disable=2154
         echo "$status Job owner: ${value} (${_THIS_JOB_uid}) of group ${_THIS_JOB_group} (${_THIS_JOB_gid}) ${info}"
 
+        # shellcheck disable=2154
         value=${_THIS_JOB_submission_time}
         status="[ $ok ]"
         info=""
         epoch=$(date -d "${value}" '+%s' 2> /dev/null)
-	if [[ $? != 0 ]]; then
-            timestamp="${value}"
-            status="[$warn]"
-            info=" ${yellow}WARNING: Failed to parse timestamp${reset}"
-        else
-            timestamp=$(date -d "@${epoch}" '+%A %Y-%m-%dT%H:%M:%S%z' 2> /dev/null)
+        timestamp=$(date -d "@${epoch}" '+%A %Y-%m-%dT%H:%M:%S%z' 2> /dev/null)
 	    epoch_now=$(date "+%s")
-	    mins=$(( (epoch_now - epoch) / 60 ))
-	    hours=$(( (epoch_now - epoch) / 3600 ))
-	    days=$(( hours / 24 ))
-            hours2=$(( hours - 24 * days ))
-            mins2=$(( mins - 60 * hours ))
-            seconds_to_dhms "$((epoch_now - epoch ))"
-            info="$(seconds_to_dhms "$(( epoch_now - epoch ))") ago"
-            if [[ $hours -gt 24 ]]; then
-                info="${red}${info}${reset}"
-                status="[$warn]"
-            elif [[ $hours -gt 6 ]]; then
-                info="${yellow}${info}${reset}"
-                status="[$warn]"
-            fi
-            info=" [${info}]"
+	    delta=$(( epoch_now - epoch ))
+        info="$(seconds_to_dhms "${delta}") ago"
+        if [[ $delta -gt $(( 24 * 60 * 60 )) ]]; then
+            info="${red}${info}${reset}"
+            status="[$warn]"
+        elif [[ $delta -gt $(( 6 * 60 * 60 )) ]]; then
+            info="${yellow}${info}${reset}"
+            status="[$warn]"
         fi
+        info=" [${info}]"
         echo "$status Submitted on: ${timestamp}${info}"
 
+        # shellcheck disable=2154
         value=${_THIS_JOB_hard_queue_list}
         status="[ $ok ]"
         info=""
         echo "$status Job queue: ${value}"
 
+        # shellcheck disable=2154
         value=${_THIS_JOB_hard_resource_list}
         status="[ $ok ]"
         info=""
@@ -361,6 +358,7 @@ if [[ $action == "job" ]]; then
           echo "       - ${key}=${value2} => $(printf "%'d" "${bytes}") bytes = ~$(printf "%'d" "${kB}") kB = ~$(printf "%'d" "${MB}") MB = ~$(printf "%'d" "${GB}") GB"
         fi
 	
+        # shellcheck disable=2154
         value=${_THIS_JOB_cwd}
         status="[ $ok ]"
         info=""
@@ -370,6 +368,7 @@ if [[ $action == "job" ]]; then
         elif ! ${is_owner}; then
             status="[$warn]"
         elif [[ ! -w "${value}" ]]; then
+            # shellcheck disable=2154
             info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$warn]"
         fi
@@ -378,12 +377,14 @@ if [[ $action == "job" ]]; then
 	fi
         echo "${status} Working directory: ${info}"
 
+        # shellcheck disable=2154
         value=${_THIS_JOB_sge_o_workdir}
         status="[ $ok ]"
         info=""
         if ! ${is_owner}; then
             status="[$warn]"
         elif [[ ! -w "${value}" ]]; then
+            # shellcheck disable=2154
             info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$fail]"
         fi           
@@ -391,6 +392,7 @@ if [[ $action == "job" ]]; then
 
         ## Was there a launch error?
         if [[ -n $_THIS_JOB_error_reason_1 ]]; then
+            # shellcheck disable=2154
             echo "[$fail] ${red}ERROR: ${_THIS_JOB_error_reason_1}${reset}"
             exit
         fi

@@ -43,7 +43,7 @@ warn_crlf() {
     local file=${1:?}
     
     if [[ -f "${file}" ]]; then
-	if grep -q "CRLF" <<< "$(file ${file})"; then
+	if grep -q "CRLF" <<< "$(file "${file}")"; then
             warn "File uses CRLF line endings. Run 'dos2unix ${file}' to fix this"
 	fi
     fi
@@ -54,7 +54,7 @@ warn_non_private() {
     local what
     
     if [[ -e "${file}" ]]; then
-	if grep -v -q "^.00$" <<< $(stat -c "%a" "${file}"); then
+	if grep -v -q "^.00$" <<< "$(stat -c "%a" "${file}")"; then
 	    what="File"
 	    if [[ -d "${file}" ]]; then
                 what="Directory"
@@ -175,7 +175,7 @@ if [[ $action == "version" ]]; then
     version
     exit 0
 elif [[ $action == "help" ]]; then
-    help 
+    help ""
     exit 0
 fi
 

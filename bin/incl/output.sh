@@ -107,6 +107,22 @@ function _exit {
 
 ## Use colored stdout if the terminal supports it
 ## and as long as a stdout are not redirected
+black=""
+red=""
+green=""
+yellow=""
+blue=""
+magenta=""
+cyan=""
+white=""
+bold=""
+dim=""
+smso=""
+rmso=""
+smul=""
+rmul=""
+reset=""
+
 function term_colors {
     local action
     local what

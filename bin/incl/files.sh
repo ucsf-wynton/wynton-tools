@@ -3,6 +3,10 @@ pwd=${BASH_SOURCE%/*}
 # shellcheck source=incl/asserts.sh
 source "${pwd}"/asserts.sh
 
+# shellcheck source=incl/output.sh
+source "${pwd}"/output.sh
+
+
 function change_dir {
     local opwd
     opwd=${PWD}

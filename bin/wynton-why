@@ -106,7 +106,7 @@ if [[ $action == "version" ]]; then
     version
     exit 0
 elif [[ $action == "help" ]]; then
-    help 
+    help ""
     exit 0
 fi
 
@@ -132,12 +132,12 @@ if [[ $action == "why" ]]; then
     mapfile -t jobs < <(qstat -u "${user}" | grep -E "\bqw\b" | cut -d ' ' -f 1)
     echo "Queued jobs: [n=${#jobs[@]}] ${jobs[*]}"
 
-    if [[ ${#jobs[@]} -gt 0 ]] && [[ ${diff} -gt 0 ]] && [[ ${diff} -lt $((14 * 24 * 60 * 60)) ]]; then
+    if [[ ${#jobs[@]} -gt 0 ]] && [[ ${delta} -gt 0 ]] && [[ ${delta} -lt $((14 * 24 * 60 * 60)) ]]; then
         info=()
         for job in "${jobs[@]}"; do
             mapfile -t bfr < <(qstat -j "${job}")
             h_rt=$(printf "%s\n" "${bfr[@]}" | grep -E ".*\bh_rt=([[:digit:]]+).*" | sed -E 's/.*\bh_rt=([[:digit:]]+).*/\1/')
-            if [[ -n "${h_rt}" ]] && [[ ${h_rt} -gt ${diff} ]]; then
+            if [[ -n "${h_rt}" ]] && [[ ${h_rt} -gt ${delta} ]]; then
 		name=$(printf "%s\n" "${bfr[@]}" | grep -E "^job_name:[[:blank:]]+" | sed -E 's/^job_name:[[:blank:]]+//')
 		when_str=$(printf "%s\n" "${bfr[@]}" | grep -E "^submission_time:[[:blank:]]+" | sed -E 's/^submission_time:[[:blank:]]+//')
 		when=$(date_iso "${when_str}")

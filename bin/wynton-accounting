@@ -57,9 +57,9 @@ function fail() {
 ## Enable terminal colors, if supported
 term_colors enable
 
-ok="${green}OK${reset}"
-warn="${yellow}WARN${reset}"
-fail="${red}FAIL${reset}"
+#ok="${green}OK${reset}"
+#warn="${yellow}WARN${reset}"
+#fail="${red}FAIL${reset}"
 
 
 

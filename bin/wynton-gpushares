@@ -100,7 +100,7 @@ if [[ $action == "version" ]]; then
     version
     exit 0
 elif [[ $action == "help" ]]; then
-    help 
+    help ""
     exit 0
 fi
 

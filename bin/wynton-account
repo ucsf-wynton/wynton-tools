@@ -1,14 +1,19 @@
 #! /usr/bin/env bash
-#' Wynton HPC Status
+#' Wynton Account Validation
 #'
 #' Usage:
-#'  wynton-node [options] <hostname>
+#'  wynton-account [options]
 #'
 #' Options:
+#'  --user USER      Query another user (default: $USER)
+#'  --help           Display this help
 #'  --version        Display version
 #'
+#' Examples:
+#'  wynton account
+#'  wynton account --user alice
 #'
-#' Version: 0.0.0-9000
+#' Version: 0.0.1
 #' Copyright: Henrik Bengtsson (2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -42,18 +47,20 @@ source "${incl}/system.sh"
 # MAIN
 # -------------------------------------------------------------------------
 ## Actions
-action=view
+action=validate
 
 ## Options
 debug=false
 verbose=false
-
-hostname=
+user=${USER}
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
     if test "$1" == "--help"; then
         action=help
+    elif test "$1" == "--user"; then
+	shift
+        user=$1
     elif test "$1" == "--version"; then
         action=version
     elif test "$1" == "--debug"; then
@@ -61,19 +68,34 @@ while [[ $# -gt 0 ]]; do
     elif test "$1" == "--verbose"; then
         verbose=true
     else
-	if [[ -n "${hostname}" ]]; then
-	    error "The hostname has already been specified: ${hostname}"
-	fi
-	hostname=$1
+        extras="$extras $1"
     fi
     shift
 done
+
+## Assert that user exists
+id --user "$user" &> /dev/null || error "No such user: $user"
+
+
+if [[ $user == "$USER" ]]; then
+    home=$HOME
+else
+    home=$(getent passwd "$user" | cut -d: -f6)
+fi
+
+uid=$(id --user "$user")
+gid=$(id --group "$user")
+group=$(id --group --name "$user")
 
 if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
     mdebug "verbose: $verbose"
-    mdebug "hostname: $hostname"
+    mdebug "user: $user"
+    mdebug "group: $group"
+    mdebug "uid: $uid"
+    mdebug "gid: $gid"
+    mdebug "home: $home"
 fi
 
 if [[ $action == "version" ]]; then
@@ -84,12 +106,22 @@ elif [[ $action == "help" ]]; then
     exit 0
 fi
 
-if [[ $action == "view" ]]; then
-    echo "# Wynton HPC Compute Node Overview"
+if [[ $action == "validate" ]]; then
+    echo "# Account Validation"
     echo
-    echo "Hostname: ${hostname}"
-    echo
-    echo "## SGE Configuration"
-    echo
-    qconf -se "${hostname}" | sed ':a;N;$!ba;s/\\\n/ /g' | sed -E 's/[[:blank:]]+/ /g' | sed -E 's/, /,/g' | sed 's/ /:/' | sed -E 's/([[:alnum:]_.-]*)=([^,]+)(,|)/\n  \1=\2/g'
+    echo "* User : $user (uid=$uid)"
+    echo "* Group: $group (gid=$gid)"
+    echo "* HOME: $home"
+    
+    if [[ -d "${home}" ]]; then
+	echo "[ OK ] HOME folder exist"
+    else
+	echo "[FAIL] HOME folder does not exist"
+    fi			    
+    if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
+	echo "[ OK ] HOME folder owned by user"
+    else
+	echo "[FAIL] HOME folder not owned by user"
+    fi			    
 fi
+

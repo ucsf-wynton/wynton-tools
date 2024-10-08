@@ -14,6 +14,8 @@
 #' Copyright: Henrik Bengtsson (2019-2022)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 #' Source: https://github.com/UCSF-HPC/wynton-tools
+
+# shellcheck disable=2034
 call="$0 $*"
 
 this="${BASH_SOURCE%/}"
@@ -90,10 +92,10 @@ help() {
 
 main() {
     if [ $# -lt 1 ]; then
-        help
+        help ""
         exit 1
     elif [ "$1" == "--help" ]; then
-        help
+        help ""
         exit 1
     elif [ "$1" == "--version" ]; then
         version
