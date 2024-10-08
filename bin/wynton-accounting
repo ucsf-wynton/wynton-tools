@@ -1,0 +1,194 @@
+#! /usr/bin/env bash
+#' Wynton HPC Job Accounting Details
+#'
+#' Usage:
+#'  wynton-accounting [options] <filters>
+#'
+#' Options:
+#'  --help           Display this help
+#'  --version        Display version
+#'
+#' Examples:
+#'  wynton accounting --failed=19
+#'  wynton accounting --tail=100000 --failed=~"^(19|25)"
+#'  wynton accounting --tail=100000 --user="$USER"
+#'
+#' Version: 0.0.0-9001
+#' Copyright: Henrik Bengtsson (2023-2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+
+
+# -------------------------------------------------------------------------
+# CORE
+# -------------------------------------------------------------------------
+function ok() {
+    echo "[ OK ]"
+}
+
+function fail() {
+    echo "[FAIL]"
+}
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+
+## Enable terminal colors, if supported
+term_colors enable
+
+#ok="${green}OK${reset}"
+#warn="${yellow}WARN${reset}"
+#fail="${red}FAIL${reset}"
+
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action=subset
+
+## Options
+debug=false
+verbose=false
+tail=10000
+filter_patterns=()
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+    elif test "$1" == "--verbose"; then
+        verbose=true
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=~.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=~}
+        mdebug "key: '$key'"
+        mdebug "value: '$value'"
+        if [[ -z $value ]]; then
+            error "Option '--$key' must not be empty"
+        fi
+        if [[ ${key} =~ ^(exit|failed|group|host|name|priority|project|queue|task|user)$ ]]; then
+            filter_patterns+=("${key}=${value}")
+        else
+            echo >&2 "ERROR: Unknown option: $1"
+            exit 2
+        fi
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        mdebug "key: '$key'"
+        mdebug "value: '$value'"
+        if [[ -z $value ]]; then
+            error "Option '--$key' must not be empty"
+        fi
+        if [[ "${key}" == "tail" ]]; then
+	    assert_integer "${value}"
+	    [[ ${tail} -gt 0 ]] || error "--${key}=${value} must be greater than zero"
+            tail=${value}
+        elif [[ ${key} =~ ^(exit|failed|group|host|job|name|priority|project|queue|task|user)$ ]]; then
+            filter_patterns+=("${key}=^${value}\$")
+        else
+            echo >&2 "ERROR: Unknown option: $1"
+            exit 2
+	fi
+    else
+        extras="$extras $1"
+    fi
+    shift
+done
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "verbose: $verbose"
+    mdebug "tail: $tail"
+    mdebug "filter_patterns: [n=${#filter_patterns[@]}] ${filter_patterns[*]}"
+fi
+
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help "full"
+    exit 0
+fi
+
+if [[ $action == "subset" ]]; then
+    file=${SGE_ROOT}/${SGE_CELL}/common/accounting
+    assert_file_exists "${file}"
+
+    tf=$(mktemp)
+    tail -n "${tail}" "${file}" > "${tf}"
+
+    tf2=$(mktemp)
+    for kk in $(seq "${#filter_patterns[@]}"); do
+	filter=${filter_patterns[kk - 1]}
+        mdebug "$kk/${#filter_patterns[@]}. ${filter}"
+	key=${filter//=*}
+        mdebug "key=${key}"
+	pattern=${filter//*=}
+        mdebug "pattern=${pattern}"
+	if [[ ${key} == "queue" ]]; then
+	    column=1
+	elif [[ ${key} == "host" ]]; then
+	    column=2
+	elif [[ ${key} == "group" ]]; then
+	    column=3
+	elif [[ ${key} == "user" ]]; then
+	    column=4
+	elif [[ ${key} == "name" ]]; then
+	    column=5
+	elif [[ ${key} == "job" ]]; then
+	    column=6
+	elif [[ ${key} == "priority" ]]; then
+	    column=8
+	elif [[ ${key} == "failed" ]]; then
+	    column=12
+	elif [[ ${key} == "exit" ]]; then
+	    column=13
+	elif [[ ${key} == "project" ]]; then
+	    column=32
+	elif [[ ${key} == "task" ]]; then
+	    column=36
+	else
+	    error "Unknown field: ${key}"
+	fi
+	filter="\$${column} ~ /${pattern}/"
+        awk --field-separator=":" "${filter}" "${tf}" > "${tf2}"
+        mv "${tf2}" "${tf}"
+    done
+    
+    cat "${tf}"
+    rm -f "${tf}"
+fi
+

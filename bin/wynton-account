@@ -1,18 +1,20 @@
 #! /usr/bin/env bash
-#' Wynton HPC Status
+#' Wynton Account Validation
 #'
 #' Usage:
-#'  wynton-status <command> [options]
-#'
-#' Commands:
-#'  load             Average cluster load
+#'  wynton-account [options]
 #'
 #' Options:
+#'  --user USER      Query another user (default: $USER)
+#'  --help           Display this help
 #'  --version        Display version
 #'
+#' Examples:
+#'  wynton account
+#'  wynton account --user alice
 #'
-#' Version: 0.0.8
-#' Copyright: Henrik Bengtsson (2019)
+#' Version: 0.0.1
+#' Copyright: Henrik Bengtsson (2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
@@ -45,17 +47,20 @@ source "${incl}/system.sh"
 # MAIN
 # -------------------------------------------------------------------------
 ## Actions
-action=load
+action=validate
 
 ## Options
 debug=false
 verbose=false
-
+user=${USER}
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
     if test "$1" == "--help"; then
         action=help
+    elif test "$1" == "--user"; then
+	shift
+        user=$1
     elif test "$1" == "--version"; then
         action=version
     elif test "$1" == "--debug"; then
@@ -68,10 +73,29 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+## Assert that user exists
+id --user "$user" &> /dev/null || error "No such user: $user"
+
+
+if [[ $user == "$USER" ]]; then
+    home=$HOME
+else
+    home=$(getent passwd "$user" | cut -d: -f6)
+fi
+
+uid=$(id --user "$user")
+gid=$(id --group "$user")
+group=$(id --group --name "$user")
+
 if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
     mdebug "verbose: $verbose"
+    mdebug "user: $user"
+    mdebug "group: $group"
+    mdebug "uid: $uid"
+    mdebug "gid: $gid"
+    mdebug "home: $home"
 fi
 
 if [[ $action == "version" ]]; then
@@ -82,18 +106,22 @@ elif [[ $action == "help" ]]; then
     exit 0
 fi
 
-if [[ $action == "load" ]]; then
-    echo "# Wynton HPC Status Overview"
+if [[ $action == "validate" ]]; then
+    echo "# Account Validation"
     echo
-    echo "## System Information"
-    printf "Operating system: "; cat /etc/centos-release
-    printf "File system: BeeGFS "; beegfs-ctl | grep -E "^Version: " | sed 's/.* //g'
-    printf "Job scheduler: "; 2>&1 qstat --help | head -1
-    echo
-    echo "## Users and Groups"
-    printf "Number of users: "; qconf -suserl | wc -l
-    printf "Number of projects (contributing members): "; qconf -sprjl | wc -l
-    echo
-    echo "## Job Scheduler"
-    qhost | awk '{ cores+=$5; load+=$7; } END { printf "Average load: %.2f%%\nTotal load: %.2f\nNumber of cores: %d\n", 100*load/cores, load, cores }'
+    echo "* User : $user (uid=$uid)"
+    echo "* Group: $group (gid=$gid)"
+    echo "* HOME: $home"
+    
+    if [[ -d "${home}" ]]; then
+	echo "[ OK ] HOME folder exist"
+    else
+	echo "[FAIL] HOME folder does not exist"
+    fi			    
+    if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
+	echo "[ OK ] HOME folder owned by user"
+    else
+	echo "[FAIL] HOME folder not owned by user"
+    fi			    
 fi
+

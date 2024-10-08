@@ -1,60 +1,72 @@
 #! /usr/bin/env bash
-### Wynton HPC Job Details
-###
-### Usage:
-###  wynton-job [options] <job_id>
-###
-### Options:
-###  --help           Display this help
-###  --version        Display version
-###
-### Examples:
-###  wynton job $JOBID
-###
-### Version: 0.1.0
-### Copyright: Henrik Bengtsson (2020-2022)
-### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' Wynton HPC Job Details
+#'
+#' Usage:
+#'  wynton-job [options] <job_id>
+#'
+#' Options:
+#'  --help           Display this help
+#'  --version        Display version
+#'
+#' Examples:
+#'  wynton job --list
+#'  wynton job --list-finished
+#'  wynton job 4214696
+#'
+#' Version: 0.1.1-9001
+#' Copyright: Henrik Bengtsson (2020-2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+# shellcheck source=incl/sge.sh
+source "${incl}/sge.sh"
 
 
 # -------------------------------------------------------------------------
 # CORE
 # -------------------------------------------------------------------------
-function mecho() { echo "$@" 1>&2; }
-
-function mdebug() {
-    if $debug; then
-        mecho "[DEBUG] $*";
-    fi
-}
-function merror() {
-    mecho "ERROR: $*";
-    exit 1
-}
-function vecho() {
-    if $verbose; then
-        echo "$@";
-    fi
+function ok() {
+    echo "[ OK ]"
 }
 
-function version() {
-    grep -E "^###[ ]*Version:[ ]*" "$0" | sed 's/###[ ]*Version:[ ]*//g'
+function fail() {
+    echo "[FAIL]"
 }
 
-function help() {
-    local res=
-    res=$(grep "^###" "$0" | grep -vE '^(####|### whatis: )' | cut -b 5-)
-    if [[ ${UCSF_WYNTON_TOOLS} == true ]]; then
-        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-([a-z]+)/\1wynton \2/')
-    fi
-    printf "%s\\n" "${res[@]}"
-}
 
+reformat_date() {
+    sed -E "s,([[:digit:]]{2})/([[:digit:]]{2})/([[:digit:]]{4}),\3-\1-\2,g"
+}
 
 # -------------------------------------------------------------------------
 # SPECIFIC
 # -------------------------------------------------------------------------
 
+## Enable terminal colors, if supported
+term_colors enable
+
+ok="${green}OK${reset}"
+warn="${yellow}WARN${reset}"
+fail="${red}FAIL${reset}"
+na="${magenta}??${reset}"
 
 # -------------------------------------------------------------------------
 # MAIN
@@ -66,17 +78,40 @@ action=job
 debug=false
 verbose=false
 jobid=
+user=${USER}
+tail_size=1000000
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
-    if test "$1" == "--help"; then
+    if [[ "$1" == "--help" ]]; then
         action=help
-    elif test "$1" == "--version"; then
+    elif [[ "$1" == "--version" ]]; then
         action=version
-    elif test "$1" == "--debug"; then
+    elif [[ "$1" == "--debug" ]]; then
         debug=true
-    elif test "$1" == "--verbose"; then
+    elif [[ "$1" == "--verbose" ]]; then
         verbose=true
+    ## Flags (--flag):
+    elif [[ "$1" == "--list" ]]; then
+	action=list
+    elif [[ "$1" == "--list-finished" ]]; then
+	action=list-finished
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        if [[ -z ${value} ]]; then
+            error "Option '--${key}=<value>' must not be empty"
+        fi
+        if [[ "${key}" == "user" ]]; then
+            user="${value}"
+        elif [[ "${key}" == "tail" ]]; then
+            assert_integer "${value}"
+            tail_size="${value}"
+        else
+            error "Unknown option: $1"
+        fi
     else
         if [[ -z $jobid ]]; then
             jobid=$1
@@ -91,39 +126,284 @@ if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
     mdebug "verbose: $verbose"
+    mdebug "user: $user"
     mdebug "jobid: $jobid"
+    mdebug "sge_accounting: $sge_accounting"
 fi
 
 ## Assert that the job ID is numeric, if specified
-[[ -z $jobid ]] || [[ $jobid =~ ^[0-9]+$ ]] || merror "Non-numeric job ID: $jobid"
+[[ -z $jobid ]] || [[ $jobid =~ ^[0-9]+$ ]] || error "Non-numeric job ID: $jobid"
+[[ -z $sge_accounting ]] || assert_file_exists "$sge_accounting"
+
+## Assert that the job ID is numeric, if specified
+[[ -z $jobid ]] || [[ $jobid =~ ^[0-9]+$ ]] || error "Non-numeric job ID: $jobid"
 
 
 if [[ $action == "version" ]]; then
     version
     exit 0
 elif [[ $action == "help" ]]; then
-    help 
+    help "full"
     exit 0
 fi
 
-if [[ $action == "job" ]]; then
-    [[ -z $jobid ]] && merror "Job ID not specified"
-    
-    echo "# Job Details"
-    echo
-    echo "* Job ID: $jobid"
-    echo
 
-    ## An active job?
-    bfr=$(qstat -j "$jobid" 2> /dev/null)
+if [[ $action == "list" ]]; then
+    mapfile -t lines < <(qstat -s az -u "${user}")
+    printf "%s\n" "${lines[@]}" | annotate_qstat | reformat_date
+    if grep -q -E "\bE?qw\b" <<< "${lines[*]}"; then
+	echo
+        E="${red}E${reset}"
+        q="${yellow}q${reset}"
+        w="${yellow}w${reset}"
+        z="${magenta}z${reset}"
+	echo "Legend: ${E}=Error, ${q}=queued, ${w}=waiting, ${z}=recently finished (\"zombie\")"
+	echo
+	echo "Suggestions:"
+	echo "wynton job <job-ID>   : details on a job"
+	echo "qdel <job-ID>         : delete a job"
+	echo "qdel -f <job-ID>      : try harder to delete a job"
+	echo
+    fi	
+    exit 0
+fi
+
+if [[ $action == "list-finished" ]]; then
+    bfr=$(accounting_list_finished "${user}" "${tail_size}")
     res=$?
     if [[ $res -eq 0 ]]; then
 	echo "$bfr"
 	exit 0
     fi
+    error "Failed to locate past jobs from the last ${tail_size} records in the SGE accounting file"
+fi
+
+if [[ $action == "job" ]]; then
+    [[ -z $jobid ]] && error "Job ID not specified"
+    
+    ## An active job?
+    bfr=$(qstat -j "$jobid" 2> /dev/null)
+    if [[ -n ${bfr} ]]; then
+        ## Keep key: value lines
+        vars=$(grep -E "^[^:]+:.*" <<< "$bfr")
+        ## Fix keys
+        vars=$(sed ':loop; s/^\([^:]*\) \+\([^:]*:\)/\1_\2/; t loop' <<< "$vars" | sed ':loop; s/^\([^:]*\)-\+\([^:]*:\)/\1_\2/; t loop' | sed -E 's/__+/_/g')
+        ## Turn into _THIS_JOB_keys="value"
+        vars=$(sed -E 's/^([^:]+):[[:space:]]*(.*)/_THIS_JOB_\1="\2"/' <<< "$vars")
+
+        ## Parse as environment variables
+        while IFS= read -r line; do
+            eval "export $line"
+        done <<< "$vars"
+	if $debug; then
+            env | grep -F "_THIS_JOB_" | sort
+	fi
+
+        ## Get additional info on the job
+        # shellcheck disable=2154
+        bfr2=$(qstat -s az -u "${_THIS_JOB_owner}" | grep -E "^[[:space:]]*\b${_THIS_JOB_job_number}\b[[:space:]]")
+	
+        ## Summarize
+        ruler "-"
+        echo "Job Details"
+        ruler "-"
+        echo
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_job_number}
+        echo "[ $ok ] Job ID: ${value}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_job_name}
+        echo "[ $ok ] Job name: ${value}"
+
+        ## Current status
+        mapfile -t values < <(awk '{ print $5 }' <<< "$bfr2")
+        level=0
+	values1=()
+        values2=()
+        for kk in "${!values[@]}"; do
+            value=${values[$((kk - 1))]}
+	    
+	    ## Empty
+	    if [[ -z ${value} ]]; then
+		continue
+	    fi
+
+            values1+=("$value")
+
+            value=${value/d/00}
+            value=${value/E/01}
+            value=${value/h/02}
+            value=${value/q/03}
+            value=${value/r/04}
+            value=${value/R/05}
+            value=${value/s/0S}
+            value=${value/S/06}
+            value=${value/t/07}
+            value=${value/T/08}
+            value=${value/w/09}
+            value=${value/z/10}
+
+            value=${value/00/${yellow}deletion${reset} }
+            value=${value/01/${red}error${reset} }
+            value=${value/02/${yellow}hold${reset} }
+            value=${value/03/${yellow}queued${reset} }
+            value=${value/04/${green}running${reset} }
+            value=${value/05/${blue}restarted${reset} }
+            value=${value/06/${yellow}suspended${reset} }
+            value=${value/07/${blue}transfering${reset} }
+            value=${value/08/${yellow}threshold${reset} }
+            value=${value/09/${blue}waiting${reset} }
+            value=${value/10/${magenta}recently finished (\"zombie\")${reset} [${yellow}check again soon${reset}] }
+
+            if [[ $level -lt 2 ]]; then
+                if [[ $value == *error* ]]; then
+                    level=3
+                elif [[ $value == *zombie* ]]; then
+                    level=1
+                fi
+            fi
+
+            if [[ $level -lt 1 ]]; then
+                if [[ $value == *deletion* ]]; then
+                    level=2
+                elif [[ $value == *hold* ]]; then
+                    level=2
+                elif [[ $value == *queued* ]]; then
+                    level=2
+                elif [[ $value == *threshold* ]]; then
+                    level=2
+                fi
+            fi
+            values2+=("$value")
+        done
+
+        status="[ $ok ]"
+        if [[ $level == 1 ]]; then
+            status="[ $na ]"
+        elif [[ $level == 2 ]]; then
+            status="[$warn]"
+        elif [[ $level == 3 ]]; then
+            status="[$fail]"
+        fi
+	if [[ ${#values1[@]} -gt 0 ]]; then
+            echo "$status Job status: [n=${#values1[@]}] ${values1[*]} => ${values2[*]}"
+	else
+            status="[ $na ]"
+            echo "$status Job status: N/A"
+	fi
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_owner}
+        is_owner=true
+        status="[ $ok ]"
+        info=""
+        if [[ $value != "$USER" ]]; then
+            is_owner=false
+            status="[$warn]"
+            info=" ${yellow}WARNING: You ($USER) are not the owner of this job${reset}"
+        fi
+        # shellcheck disable=2154
+        echo "$status Job owner: ${value} (${_THIS_JOB_uid}) of group ${_THIS_JOB_group} (${_THIS_JOB_gid}) ${info}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_submission_time}
+        status="[ $ok ]"
+        info=""
+        epoch=$(date -d "${value}" '+%s' 2> /dev/null)
+        timestamp=$(date -d "@${epoch}" '+%A %Y-%m-%dT%H:%M:%S%z' 2> /dev/null)
+	    epoch_now=$(date "+%s")
+	    delta=$(( epoch_now - epoch ))
+        info="$(seconds_to_dhms "${delta}") ago"
+        if [[ $delta -gt $(( 24 * 60 * 60 )) ]]; then
+            info="${red}${info}${reset}"
+            status="[$warn]"
+        elif [[ $delta -gt $(( 6 * 60 * 60 )) ]]; then
+            info="${yellow}${info}${reset}"
+            status="[$warn]"
+        fi
+        info=" [${info}]"
+        echo "$status Submitted on: ${timestamp}${info}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_hard_queue_list}
+        status="[ $ok ]"
+        info=""
+        echo "$status Job queue: ${value}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_hard_resource_list}
+        status="[ $ok ]"
+        info=""
+        echo "$status Requested resources: ${value}"
+	
+	key="h_rt"
+        value2=$(sed -E "s/.*\b${key}=([[:digit:]]+)\b.*/\1/" <<< "${value}")
+	s=${value2}
+
+        echo "       - ${key}=${value2} => $(seconds_to_dhms "${value2}")"
+
+	key="mem_free"
+        if grep -q -F "${key}" <<< "${value}"; then
+          value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
+  	  bytes=${value2}
+	  bytes=${bytes//G/*1024M}
+	  bytes=${bytes//M/*1024K}
+	  bytes=${bytes//K/*1024}
+	  bytes=$(bc <<< "${bytes}")
+	  kB=$(bc <<< "${bytes} / 1000")
+	  MB=$(bc <<< "${kB} / 1000")
+	  GB=$(bc <<< "${MB} / 1000")
+          echo "       - ${key}=${value2} => $(printf "%'d" "${bytes}") bytes = ~$(printf "%'d" "${kB}") kB = ~$(printf "%'d" "${MB}") MB = ~$(printf "%'d" "${GB}") GB"
+        fi
+	
+        # shellcheck disable=2154
+        value=${_THIS_JOB_cwd}
+        status="[ $ok ]"
+        info=""
+	if [[ -z "${value}" ]]; then
+            status="[$warn]"
+            info=" ${yellow}WARNING: 'qstat -j <job id>' does not have a 'cwd' variable${reset}"
+        elif ! ${is_owner}; then
+            status="[$warn]"
+        elif [[ ! -w "${value}" ]]; then
+            # shellcheck disable=2154
+            info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
+            status="[$warn]"
+        fi
+	if [[ -d "${value}" ]]; then
+	    info="$(dir_info "${value}" "${is_owner}")${info}"
+	fi
+        echo "${status} Working directory: ${info}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_sge_o_workdir}
+        status="[ $ok ]"
+        info=""
+        if ! ${is_owner}; then
+            status="[$warn]"
+        elif [[ ! -w "${value}" ]]; then
+            # shellcheck disable=2154
+            info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
+            status="[$fail]"
+        fi           
+        echo "${status} Log directory: $(dir_info "${value}" "${is_owner}")${info}"
+
+        ## Was there a launch error?
+        if [[ -n $_THIS_JOB_error_reason_1 ]]; then
+            # shellcheck disable=2154
+            echo "[$fail] ${red}ERROR: ${_THIS_JOB_error_reason_1}${reset}"
+            exit
+        fi
+
+#        job_id=$(grep -E "^job_number:" <<< "${bfr}" | sed 's/^[^ ]*[ ]*//')
+#        submit_time=$(grep -E "^submission_time:" <<< "${bfr}" | sed 's/^[^ ]*[ ]*//')
+#	echo "$bfr"
+	exit 0
+    fi
 
     ## If not, then look it up in the archives
-    tail_size=1000000
     bfr=$(tail -n "$tail_size" /opt/sge/wynton/common/accounting | qacct -f - -j "$jobid")
     res=$?
     if [[ $res -eq 0 ]]; then
@@ -131,7 +411,6 @@ if [[ $action == "job" ]]; then
 	exit 0
     fi
 
-    merror "No such job ID: $jobid"
-    exit 1
+    error "No such job ID among the last ${tail_size} records in the SGE accounting file: $jobid"
 fi
 

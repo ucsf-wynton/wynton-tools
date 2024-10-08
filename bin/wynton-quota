@@ -1,56 +1,41 @@
 #! /usr/bin/env bash
-### Wynton HPC Disk Quota and Usage
-###
-### Usage:
-###  wynton-quota [options]
-###
-### Options:
-###  --user USER      Query another user (default: $USER)
-###  --help           Display this help
-###  --version        Display version
-###
-### Examples:
-###  wynton quota
-###  wynton quota --user alice
-###
-### Version: 0.0.8
-### Copyright: Henrik Bengtsson (2019)
-### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' Wynton HPC Disk Quota and Usage
+#'
+#' Usage:
+#'  wynton-quota [options]
+#'
+#' Options:
+#'  --user USER      Query another user (default: $USER)
+#'  --help           Display this help
+#'  --version        Display version
+#'
+#' Examples:
+#'  wynton quota
+#'  wynton quota --user alice
+#'
+#' Version: 0.0.8
+#' Copyright: Henrik Bengtsson (2019)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
 
-# -------------------------------------------------------------------------
-# CORE
-# -------------------------------------------------------------------------
-function mecho() { echo "$@" 1>&2; }
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
 
-function mdebug() {
-    if $debug; then
-        mecho "[DEBUG] $*";
-    fi
-}
-function merror() {
-    mecho "ERROR: $*";
-    exit 1
-}
-function vecho() {
-    if $verbose; then
-        echo "$@";
-    fi
-}
-
-function version() {
-    grep -E "^###[ ]*Version:[ ]*" "$0" | sed 's/###[ ]*Version:[ ]*//g'
-}
-
-function help() {
-    local res=
-    res=$(grep "^###" "$0" | grep -vE '^(####|### whatis: )' | cut -b 5-)
-    if [[ ${UCSF_WYNTON_TOOLS} == true ]]; then
-        res=$(printf "%s\\n" "${res[@]}" | sed -E 's/([^/])wynton-([a-z]+)/\1wynton \2/')
-    fi
-    printf "%s\\n" "${res[@]}"
-}
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
 
 
 # -------------------------------------------------------------------------
@@ -89,7 +74,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 ## Assert that user exists
-id --user "$user" &> /dev/null || merror "No such user: $user"
+id --user "$user" &> /dev/null || error "No such user: $user"
 
 
 if [[ $user == "$USER" ]]; then
@@ -117,7 +102,7 @@ if [[ $action == "version" ]]; then
     version
     exit 0
 elif [[ $action == "help" ]]; then
-    help 
+    help ""
     exit 0
 fi
 

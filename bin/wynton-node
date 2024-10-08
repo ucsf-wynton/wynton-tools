@@ -2,17 +2,14 @@
 #' Wynton HPC Status
 #'
 #' Usage:
-#'  wynton-status <command> [options]
-#'
-#' Commands:
-#'  load             Average cluster load
+#'  wynton-node [options] <hostname>
 #'
 #' Options:
 #'  --version        Display version
 #'
 #'
-#' Version: 0.0.8
-#' Copyright: Henrik Bengtsson (2019)
+#' Version: 0.0.0-9000
+#' Copyright: Henrik Bengtsson (2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
@@ -45,12 +42,13 @@ source "${incl}/system.sh"
 # MAIN
 # -------------------------------------------------------------------------
 ## Actions
-action=load
+action=view
 
 ## Options
 debug=false
 verbose=false
 
+hostname=
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -63,7 +61,10 @@ while [[ $# -gt 0 ]]; do
     elif test "$1" == "--verbose"; then
         verbose=true
     else
-        extras="$extras $1"
+	if [[ -n "${hostname}" ]]; then
+	    error "The hostname has already been specified: ${hostname}"
+	fi
+	hostname=$1
     fi
     shift
 done
@@ -72,6 +73,7 @@ if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
     mdebug "verbose: $verbose"
+    mdebug "hostname: $hostname"
 fi
 
 if [[ $action == "version" ]]; then
@@ -82,18 +84,12 @@ elif [[ $action == "help" ]]; then
     exit 0
 fi
 
-if [[ $action == "load" ]]; then
-    echo "# Wynton HPC Status Overview"
+if [[ $action == "view" ]]; then
+    echo "# Wynton HPC Compute Node Overview"
     echo
-    echo "## System Information"
-    printf "Operating system: "; cat /etc/centos-release
-    printf "File system: BeeGFS "; beegfs-ctl | grep -E "^Version: " | sed 's/.* //g'
-    printf "Job scheduler: "; 2>&1 qstat --help | head -1
+    echo "Hostname: ${hostname}"
     echo
-    echo "## Users and Groups"
-    printf "Number of users: "; qconf -suserl | wc -l
-    printf "Number of projects (contributing members): "; qconf -sprjl | wc -l
+    echo "## SGE Configuration"
     echo
-    echo "## Job Scheduler"
-    qhost | awk '{ cores+=$5; load+=$7; } END { printf "Average load: %.2f%%\nTotal load: %.2f\nNumber of cores: %d\n", 100*load/cores, load, cores }'
+    qconf -se "${hostname}" | sed ':a;N;$!ba;s/\\\n/ /g' | sed -E 's/[[:blank:]]+/ /g' | sed -E 's/, /,/g' | sed 's/ /:/' | sed -E 's/([[:alnum:]_.-]*)=([^,]+)(,|)/\n  \1=\2/g'
 fi

@@ -1,0 +1,267 @@
+#! /usr/bin/env bash
+#' Wynton HPC Session Information
+#'
+#' Usage:
+#'  wynton-session-info [options]
+#'
+#' Options:
+#'  --help           Display this help
+#'  --version        Display version
+#'
+#' Examples:
+#'  wynton check
+#'
+#' Version: 0.0.1
+#' Copyright: Henrik Bengtsson (2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+warn_crlf() {
+    local file=${1:?}
+    
+    if [[ -f "${file}" ]]; then
+	if grep -q "CRLF" <<< "$(file "${file}")"; then
+            warn "File uses CRLF line endings. Run 'dos2unix ${file}' to fix this"
+	fi
+    fi
+}
+
+warn_non_private() {
+    local file=${1:?}
+    local what
+    
+    if [[ -e "${file}" ]]; then
+	if grep -v -q "^.00$" <<< "$(stat -c "%a" "${file}")"; then
+	    what="File"
+	    if [[ -d "${file}" ]]; then
+                what="Directory"
+	    fi
+            warn "${what} '${file}' can be accessed by other users. Fix by calling 'chmod go-rwx \"${file}\"'"
+	fi
+    fi
+}
+
+#' Assert that all folders specified in a "path" environment variable exist
+#'
+#' Usage: assert_envpath <envvar> [exclude]*
+#'
+#' Examples:
+#' assert_envpath LD_LIBRARY_PATH
+#'
+#' # Same, but ignore anything under HOME
+#' assert_envpath LD_LIBRARY_PATH "$HOME"
+warn_envpath_missing() {
+    local name=${1:?}
+    local path=${!name}    
+    local excl
+    local -a missing
+
+    ## Nothing to do?
+    [[ -z ${path} ]] && return 0
+
+    shift
+    excl=$(IFS="|"; echo "$*")
+    
+    IFS=':' read -r -a dirs <<< "$path"
+    for dir in "${dirs[@]}"; do
+    [[ -z ${dir} ]] && continue
+    [[ -n ${excl} ]] && grep -q -E "${excl}" <<< "$dir" && continue
+        [[ -d "${dir}" ]] || { missing+=( "$dir" ); continue; }
+        [[ -r "${dir}" ]] || { missing+=( "$dir [no permission]" ); continue; }
+        [[ -x "${dir}" ]] || { missing+=( "$dir [no recursive permission]" ); continue; }                                                                    
+    done
+    
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        warn "Detected non-existing or inaccessible folder(s) in ${name}: [n=${#missing[@]}] ${missing[*]}"                                     
+        return 1
+    fi
+    
+    return 0
+}
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+term_colors enable
+
+## Actions
+action=check
+
+## Options
+debug=false
+verbose=false
+user=${USER}
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+    elif test "$1" == "--verbose"; then
+        verbose=true
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        if [[ -z ${value} ]]; then
+            error "Option '--${key}=<value>' must not be empty"
+        fi
+        if [[ "${key}" == "user" ]]; then
+            user="${value}"
+        else
+            echo >&2 "ERROR: Unknown option: $1"
+            exit 2
+        fi
+    else
+        extras="$extras $1"
+    fi
+    shift
+done
+
+## Assert that user exists
+id --user "$user" &> /dev/null || error "No such user: $user"
+
+
+if [[ $user == "$USER" ]]; then
+    home=$HOME
+else
+    home=$(getent passwd "$user" | cut -d: -f6)
+fi
+
+uid=$(id --user "$user")
+gid=$(id --group "$user")
+group=$(id --group --name "$user")
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "verbose: $verbose"
+    mdebug "user: $user"
+    mdebug "group: $group"
+    mdebug "uid: $uid"
+    mdebug "gid: $gid"
+    mdebug "home: $home"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help ""
+    exit 0
+fi
+
+if [[ $action == "check" ]]; then
+    echo "# User-Account Checks"
+    echo
+    echo "* User : '$user' (uid=$uid)"
+    echo "* Group: '$group' (gid=$gid)"
+    echo "* HOME : $(dir_info "$home")"
+    echo
+    
+    echo "## Shell"
+    echo "* SHELL=${SHELL:-<not set>}"
+    for file in "$home/.bashrc" "$home/.bash_profile" "$home/.bash_logout"; do
+        echo "* $(file_info "$file")"
+        warn_crlf "${file}"
+    done
+    echo
+    
+    echo "## SSH"
+    dir=$home/.ssh
+    echo "* $(dir_info "$dir")"
+    warn_non_private "${dir}"
+    for file in "$home/.ssh/authorized_keys" "$home/known_hosts"; do
+	echo "* $(file_info "$file")"
+        warn_crlf "${file}"
+    done	 
+    echo
+    
+    echo "## Netrc"
+    file=$home/.netrc
+    echo "* $(file_info "$file")"
+    warn_crlf "${file}"
+    warn_non_private "${dir}"
+    echo
+    
+    echo "## Conda"
+    echo "* CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-<not set>}"
+    echo "* CONDA_EXE=${CONDA_EXE:-<not set>}"
+    file=$home/.condarc
+    echo "* $(file_info "$file")"
+    for dir in "$home/.conda" "$home/miniconda3"; do
+        echo "* $(dir_info "$dir")"
+    done
+    echo
+
+    echo "## Perl"
+    if [[ -n ${PERL5LIB} ]]; then
+	echo "* PERL5LIB=${PERL5LIB} [$(dir_info "${PERL5LIB:-<not set>}")]"
+    else	
+	echo "* PERL5LIB=<not set>"
+    fi
+    echo
+
+    echo "## R"
+    for file in "$home/.Rprofile" "$home/.Renviron"; do
+        echo "* $(file_info "$file")"
+        warn_crlf "${file}"
+    done
+    echo
+    
+    if command -v module &> /dev/null; then
+        echo "## Module environments"
+        echo "* MODULEPATH=${MODULEPATH:-<not set>}"
+        warn_envpath_missing "MODULEPATH"
+        module list 2> /dev/null || { echo "Currently Loaded Modules: <none>"; }
+	echo
+    fi
+
+    echo "## X11 Forwarding"
+    echo "* DISPLAY=${DISPLAY:-<not set>}"
+    echo
+    
+    echo "## Environment variables"
+    echo "* HOSTNAME=${HOSTNAME:-<not set>}"
+    echo "* LANG=${LANG:-<not set>}"
+    echo "* PATH=${PATH:-<not set>}"
+    warn_envpath_missing "PATH"
+    echo "* LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-<not set>}"
+    warn_envpath_missing "LD_LIBRARY_PATH"
+    echo "* INFOPATH=${INFOPATH:-<not set>}"
+    warn_envpath_missing "INFOPATH"
+    echo "* MANPATH=${MANPATH:-<not set>}"
+    warn_envpath_missing "MANPATH"
+    echo "* PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-<not set>}"
+    warn_envpath_missing "PKG_CONFIG_PATH"
+    echo
+fi
+

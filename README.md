@@ -20,7 +20,7 @@ Installed tools:
 Example:
  wynton --help
 
-Version: 0.0.13
+Version: 0.2.0
 Copyright: Henrik Bengtsson (2019-2022)
 License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 Source: https://github.com/UCSF-HPC/wynton-tools

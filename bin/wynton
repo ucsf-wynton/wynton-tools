@@ -1,19 +1,41 @@
 #! /usr/bin/env bash
-### UCSF Wynton HPC Command Line Tools
-### 
-### Usage:
-###  wynton <tool> ...
-### 
-### Installed tools:
-### {{table_of_tools}}
-###
-### Example:
-###  wynton --help
-###
-### Version: 0.2.0
-### Copyright: Henrik Bengtsson (2019-2022)
-### License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
-### Source: https://github.com/UCSF-HPC/wynton-tools
+#' UCSF Wynton HPC Command Line Tools
+#' 
+#' Usage:
+#'  wynton <tool> ...
+#' 
+#' Installed tools:
+#' {{table_of_tools}}
+#'
+#' Example:
+#'  wynton --help
+#'
+#' Version: 0.3.0
+#' Copyright: Henrik Bengtsson (2019-2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' Source: https://github.com/UCSF-HPC/wynton-tools
+
+# shellcheck disable=2034
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
 
 UCSF_WYNTON_DIR=$(dirname "$(readlink -e "$0")")
 export UCSF_WYNTON_DIR
@@ -34,18 +56,19 @@ function list_tools {
     tools=
     for path in $(echo -e "${PATH//:/\\n}" | sort -u); do
 	# shellcheck disable=SC2010,SC2086
-	tools="$tools $(ls $path/wynton-* 2> /dev/null | grep -vE '(^#|~$|#$)' | sed 's|.*/wynton-||')"
+	tools="$tools $(ls $path/wynton-* 2> /dev/null | grep -vE '(^#|~$|#$)' | sed "s|.*/wynton-||")"
     done
     echo -e "${tools// /\\n}" | sort -u | grep -vE "^$"
 }
 
 function whatis {
+    local tool=${1:?}
     local pathname
-    pathname="$(command -v "wynton-$1")"
+    pathname="$(command -v "wynton-${tool}")"
     local res
-    res=$(grep -E "^### whatis: " "$pathname" | sed 's/^### whatis: //')
+    res=$(grep -E "^#' whatis: " "$pathname" | sed "s/^#' whatis: //")
     if [[ -z "${res}" ]]; then
-        res=$(grep -E "^### " "$pathname" | head -1 | sed 's/^### //')
+        res=$(grep -E "^#' " "$pathname" | head -1 | sed "s/^#' //")
     fi
     echo "$res"
 }
@@ -58,22 +81,22 @@ function table_of_tools {
 }
 
 version() {
-    grep -E "^###[ ]*Version:[ ]*" "$0" | sed 's/###[ ]*Version:[ ]*//g'
+    grep -E "^#'[ ]*Version:[ ]*" "$0" | sed "s/#'[ ]*Version:[ ]*//g"
 }
 
 help() {
     local t
     t=$(table_of_tools)
     t=${t//$'\n'/\\n}
-    grep "^###" "$0" | cut -b 5- | sed "s/{{table_of_tools}}/$t/"
+    grep "^#'" "$0" | sed -E "s/^#'[[:blank:]]?//" | sed "s/{{table_of_tools}}/$t/"
 }
 
 main() {
     if [ $# -lt 1 ]; then
-        help
+        help ""
         exit 1
     elif [ "$1" == "--help" ]; then
-        help
+        help ""
         exit 1
     elif [ "$1" == "--version" ]; then
         version
