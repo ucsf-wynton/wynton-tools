@@ -13,7 +13,7 @@
 #'  wynton why
 #'  wynton why --user alice
 #'
-#' Version: 0.0.1-9001
+#' Version: 0.0.1-9002
 #' Copyright: Henrik Bengtsson (2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -136,7 +136,7 @@ if [[ $action == "why" ]]; then
         info=()
         for job in "${jobs[@]}"; do
             mapfile -t bfr < <(qstat -j "${job}")
-            h_rt=$(printf "%s\n" "${bfr[@]}" | grep -E ".*\bh_rt=([[:digit:]]+).*" | sed -E 's/.*\bh_rt=([[:digit:]]+).*/\1/')
+            h_rt=$(printf "%s\n" "${bfr[@]}" | grep -E "^hard resource_list:.*\bh_rt=([[:digit:]]+).*" | sed -E 's/.*\bh_rt=([[:digit:]]+).*/\1/')
             if [[ -n "${h_rt}" ]] && [[ ${h_rt} -gt ${delta} ]]; then
 		name=$(printf "%s\n" "${bfr[@]}" | grep -E "^job_name:[[:blank:]]+" | sed -E 's/^job_name:[[:blank:]]+//')
 		when_str=$(printf "%s\n" "${bfr[@]}" | grep -E "^submission_time:[[:blank:]]+" | sed -E 's/^submission_time:[[:blank:]]+//')
