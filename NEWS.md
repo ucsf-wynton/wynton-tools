@@ -1,6 +1,12 @@
 # Version (development version)
 
- * ...
+## New Features
+
+ * Add `wynton utils` for loading different sets of utility functions.
+ 
+ * Add `wynton utils fuse-tmpdir` for configuring a temporary,
+   size-limited TMPDIR folder, which acknowledges Wynton's local
+   scratch SGE resource requests.
  
 
 # Version 0.2.0 (2022-12-14)
