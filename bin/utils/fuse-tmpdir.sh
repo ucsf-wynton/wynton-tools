@@ -38,6 +38,8 @@
 #' Author: Henrik Bengtsson (2024)
 #' License: MIT
 ############################################################################
+# apply: eval "$(fuse_tmpdir)"
+
 #shellcheck disable=SC2120
 fuse_tmpdir() {
     local debug tmpdir tmpimg

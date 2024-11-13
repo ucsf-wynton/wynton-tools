@@ -1,6 +1,8 @@
 # Version (development version)
 
- * ...
+## New Features
+
+ * Add support for `wynton utils <utility> --apply`.
  
 
 # Version 0.4.0 (2024-11-12)
