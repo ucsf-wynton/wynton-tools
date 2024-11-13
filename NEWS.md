@@ -7,6 +7,11 @@
  * Add `wynton utils fuse-tmpdir` for configuring a temporary,
    size-limited TMPDIR folder, which acknowledges Wynton's local
    scratch SGE resource requests.
+
+## Deprecated and Defunct
+
+ * Removed `x86-64-level`, which now is a standalone tool outside of
+   wynton-tools.
  
 
 # Version 0.2.0 (2022-12-14)
