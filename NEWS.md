@@ -1,3 +1,10 @@
+# Version 0.5.0 (2024-11-13)
+
+## New Features
+
+ * Add support for `wynton utils <utility> --apply`.
+ 
+
 # Version 0.4.0 (2024-11-12)
 
 ## New Features

@@ -7,13 +7,18 @@
 #' Options:
 #'  --help           Display this help
 #'  --version        Display version
+#'  --apply          
 #'
 #' Examples:
-#'  eval $(wynton utils fuse-tmpdir)  ## load utility functions
+#'  eval $(wynton utils fuse-tmpdir --apply)  ## load & apply utility
 #'
-#'  wynton utils fuse-tmpdir          ## view source code and help
+#'  ## Same, but in two explicit steps
+#'  eval $(wynton utils fuse-tmpdir)          ## load utility
+#'  eval $(fuse-tmpdir)                       ## apply utility
 #'
-#' Version: 0.0.1
+#'  wynton utils fuse-tmpdir                  ## view code and help
+#'
+#' Version: 0.0.1-9001
 #' Copyright: Henrik Bengtsson (2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -52,6 +57,7 @@ util=
 ## Options
 debug=false
 verbose=false
+apply=false
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -63,6 +69,8 @@ while [[ $# -gt 0 ]]; do
         debug=true
     elif test "$1" == "--verbose"; then
         verbose=true
+    elif test "$1" == "--apply"; then
+        apply=true
     else
         if [[ -n "${util}" ]]; then
             error "Utility argument already specified: $1"
@@ -76,6 +84,7 @@ if $debug; then
     mdebug "call: $call"
     mdebug "verbose: $verbose"
     mdebug "util: $util"
+    mdebug "apply: $apply"
 fi
 
 if [[ $action == "version" ]]; then
@@ -96,5 +105,22 @@ assert_dir_exists "${path}"
 file=${path}/${util}.sh
 assert_file_exists "${file}"
 
-cat "${file}"
+## Read utility source code
+mapfile code < <(cat "${file}")
 
+cmd=
+if ${apply}; then
+    pattern="^#+[[:blank:]]*apply:[[:blank:]]*"
+    cmd=$(grep -E "${pattern}" <<< "$(printf "%s\n" "${code[@]}")")
+    if [[ -z ${cmd} ]]; then
+        error "The '${util}' utility does not have a '# apply: ...' declaration required for --apply: ${file}"
+    fi
+    cmd=$(sed -E "s/${pattern}//" <<< "${cmd}")
+fi
+
+printf "%s\n" "${code[@]}"
+
+if [[ -n ${cmd} ]]; then
+    echo "# Apply '${util}' utility"
+    echo "${cmd}"
+fi
