@@ -3,6 +3,45 @@
 ## Deprecated and Defunct
 
  * Deprecating option format `--key value` in favor of `--key=value`.
+
+
+# Version 0.5.0 (2024-11-13)
+
+## New Features
+
+ * Add support for `wynton utils <utility> --apply`.
+ 
+
+# Version 0.4.0 (2024-11-12)
+
+## New Features
+
+ * Add `wynton utils` for loading different sets of utility functions.
+ 
+ * Add `wynton utils fuse-tmpdir` for configuring a temporary,
+   size-limited TMPDIR folder, which acknowledges Wynton's local
+   scratch SGE resource requests.
+
+## Deprecated and Defunct
+
+ * Removed `x86-64-level`, which now is a standalone tool outside of
+   wynton-tools.
+ 
+
+# Version 0.3.0 (2024-10-07)
+
+## New Features
+
+ * Add `wynton accounting`, `wynton node`, `wynton session-info`,
+   and `wynton why`.
+
+## Miscellaneous
+
+ * Tweaks to `wynton job`.
+ 
+## Bug Fixes
+
+ * Fix `wynton --help` and `wynton --version` issues.
  
 
 # Version 0.2.0 (2022-12-14)

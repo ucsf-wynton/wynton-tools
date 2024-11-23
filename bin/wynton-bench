@@ -90,23 +90,23 @@ while [[ $# -gt 0 ]]; do
     elif test "$1" == "--drive"; then
 	shift
         drive=$1
-	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+#	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--format"; then
 	shift
         format=$1
-	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+#	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--data-root"; then
 	shift
         data_root=$1
-	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+#	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--hostname"; then
 	shift
         hostname=$1
-	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+#	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--user"; then
 	shift
         user=$1
-	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+#	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
 	
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
@@ -119,13 +119,13 @@ while [[ $# -gt 0 ]]; do
         fi
         if [[ "${key}" == "data-root" ]]; then
             data_root=${value}
-        if [[ "${key}" == "drive" ]]; then
+        elif [[ "${key}" == "drive" ]]; then
             drive=${value}
-        if [[ "${key}" == "format" ]]; then
+        elif [[ "${key}" == "format" ]]; then
             format=${value}
-        if [[ "${key}" == "hostname" ]]; then
+        elif [[ "${key}" == "hostname" ]]; then
             hostname=${value}
-        if [[ "${key}" == "user" ]]; then
+        elif [[ "${key}" == "user" ]]; then
             user=${value}
         else
             error "Unknown option: $1"

@@ -18,6 +18,7 @@ README.md: bin/wynton
 shellcheck:
 	(cd bin; \
 	   shellcheck --shell=bash --external-sources -- incl/*.sh; \
-	   shellcheck --external-sources *[^~]; \
+	   shellcheck --shell=bash --external-sources -- utils/*.sh; \
+	   find . -mindepth 1 -maxdepth 1 -type f -exec shellcheck --external-sources {} \; \
 	)
 
