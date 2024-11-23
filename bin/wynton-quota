@@ -58,15 +58,33 @@ user=${USER}
 while [[ $# -gt 0 ]]; do
     if test "$1" == "--help"; then
         action=help
-    elif test "$1" == "--user"; then
-	shift
-        user=$1
     elif test "$1" == "--version"; then
         action=version
     elif test "$1" == "--debug"; then
         debug=true
     elif test "$1" == "--verbose"; then
         verbose=true
+
+    ## Deprecated
+    elif test "$1" == "--user"; then
+	shift
+        user=$1
+	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        mdebug "Key-value option '$1' parsed to key='${key}', value='${value}'"
+        if [[ -z ${value} ]]; then
+            error "Option '--${key}' must not be empty"
+        fi
+        if [[ "${key}" == "user" ]]; then
+            user=${value}
+        else
+            error "Unknown option: $1"
+        fi
     else
         extras="$extras $1"
     fi

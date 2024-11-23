@@ -78,16 +78,31 @@ while [[ $# -gt 0 ]]; do
         action=$1
     elif test "$1" == "tsv"; then
         action=$1
-    elif test "$1" == "--project"; then
-        shift
-        project=$1
-#    elif test "$1" == "--queue"; then
-#        shift
-#        queue=$1
     elif test "$1" == "--debug"; then
         debug=true
     elif test "$1" == "--verbose"; then
         verbose=true
+
+    ## Deprecated
+    elif test "$1" == "--project"; then
+	shift
+        project=$1
+	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+	
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        mdebug "Key-value option '$1' parsed to key='${key}', value='${value}'"
+        if [[ -z ${value} ]]; then
+            error "Option '--${key}' must not be empty"
+        fi
+        if [[ "${key}" == "project" ]]; then
+            project=${value}
+        else
+            error "Unknown option: $1"
+        fi
     else
         extras="$extras $1"
     fi

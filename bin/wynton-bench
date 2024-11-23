@@ -85,21 +85,51 @@ while [[ $# -gt 0 ]]; do
         verbose=true
     elif test "$1" == "--reverse"; then
         reverse=true
+	
+    ## Deprecated
     elif test "$1" == "--drive"; then
 	shift
         drive=$1
+	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--format"; then
 	shift
         format=$1
+	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--data-root"; then
 	shift
         data_root=$1
+	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--hostname"; then
 	shift
         hostname=$1
+	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--user"; then
 	shift
         user=$1
+	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+	
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        mdebug "Key-value option '$1' parsed to key='${key}', value='${value}'"
+        if [[ -z ${value} ]]; then
+            error "Option '--${key}' must not be empty"
+        fi
+        if [[ "${key}" == "data-root" ]]; then
+            data_root=${value}
+        if [[ "${key}" == "drive" ]]; then
+            drive=${value}
+        if [[ "${key}" == "format" ]]; then
+            format=${value}
+        if [[ "${key}" == "hostname" ]]; then
+            hostname=${value}
+        if [[ "${key}" == "user" ]]; then
+            user=${value}
+        else
+            error "Unknown option: $1"
+        fi
     else
         if [[ -z $drive ]]; then
             drive=$1

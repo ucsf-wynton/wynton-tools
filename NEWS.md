@@ -1,6 +1,8 @@
 # Version (development version)
 
- * ...
+## Deprecated and Defunct
+
+ * Deprecating option format `--key value` in favor of `--key=value`.
  
 
 # Version 0.2.0 (2022-12-14)
