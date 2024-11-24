@@ -307,6 +307,16 @@ if [[ $action == "validate" ]]; then
 	    echo "[FAIL] User UCSF Employee ID is invalid"
 	    n_fail=$((n_fail + 1))
 	fi
+
+        # No duplicated UCSF ID
+        mapfile -t res < <(ldap_search "ucsfIDNumber=${ucsf_id}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber")
+        if [[ ${#res[@]} -gt 1 ]]; then
+            echo "[FAIL] User UCSF Employee ID is not unique: [n=${res[@]}] ${res[*]}"
+	    n_fail=$((n_fail + 1))
+        else
+	    echo "[ OK ] User UCSF Employee ID is unique"
+	    n_ok=$((n_ok + 1))
+	fi
     else
 	if is_ucsf_email "${email}"; then
 	    echo "[FAIL] User UCSF Employee ID is missing"
@@ -316,7 +326,7 @@ if [[ $action == "validate" ]]; then
 	    n_skip=$((n_skip + 1))
 	fi
     fi
-    
+	
     echo
     echo "Summary: ${n_ok} OK, ${n_fail} FAIL, ${n_skip} SKIP"
 
