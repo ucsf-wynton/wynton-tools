@@ -509,7 +509,7 @@ if [[ $action == "validate" ]]; then
 
     if [[ ${n_fail} -gt 0 ]]; then
         echo >&2
-        error "Detected ${n_fail} FAIL:s"
+        error "Detected ${n_fail} FAIL"
     fi
 fi
 
