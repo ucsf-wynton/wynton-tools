@@ -1,0 +1,27 @@
+#! /usr/bin/env python3
+
+import sys
+import luhn
+
+if len(sys.argv) == 1:
+    raise Exception("Missing argument")
+
+id = sys.argv[1]
+
+if len(id) != 9:
+    print("UCSF ID " + id + " is invalid (not of length nine)")
+    sys.exit(1)
+
+if not id.isdigit():
+    print("UCSF ID " + id + " is invalid (not all digits)")
+    sys.exit(1)
+
+if not id.startswith("02"):
+    print("UCSF ID " + id + " is invalid (not starting with '02')")
+    sys.exit(1)
+
+if not luhn.verify(id):
+    print("UCSF ID " + id + " is invalid (incorrect Luhn checksum)")
+    sys.exit(1)
+    
+print("UCSF ID " + id + " is valid")

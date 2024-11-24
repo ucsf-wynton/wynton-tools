@@ -21,6 +21,8 @@ call="$0 $*"
 this="${BASH_SOURCE%/}"
 [[ -L "${this}" ]] && this=$(readlink "${this}")
 
+utils="$(dirname "${this}")/utils"
+
 ## Import bash utility functions
 incl="$(dirname "${this}")/incl"
 
@@ -171,6 +173,9 @@ if [[ $action == "validate" ]]; then
 	access=true
     fi
 
+    email=$(ldap_get_field "mail" "${ldap_info[@]}")
+    ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}")
+    
     echo "# Account Validation"
     echo
     echo "## Overview"
@@ -178,12 +183,14 @@ if [[ $action == "validate" ]]; then
     echo "* User: $user (uid=$uid)"
     echo "* Group: $group (gid=$gid)"
     echo "* HOME: $home"
+    echo "* Email address: ${email}"
+    echo "* UCSF Employee ID: ${ucsf_id}"
+    echo "* Wynton account: ${access}"
+    echo "* PHI account: ${phi}"
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
     echo "* Account created on: $(ldap_as_timestamp "${ts}")"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
     echo "* Account last-modified on: $(ldap_as_timestamp "${ts}")"
-    echo "* Wynton account: ${access}"
-    echo "* PHI account: ${phi}"
     echo
     
     echo "## Checks"
@@ -271,6 +278,34 @@ if [[ $action == "validate" ]]; then
             echo "[FAIL] HOME folder is not owned by user"
             n_fail=$((n_fail + 1))
         fi
+    fi
+
+    # No duplicated email addresses
+    mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
+    if [[ ${#res[@]} -gt 1 ]]; then
+	echo "[FAIL] User email address is not unique: [n=${res[@]}] ${res[*]}"
+	n_fail=$((n_fail + 1))
+    else
+	echo "[ OK ] User email address is unique"
+	n_ok=$((n_ok + 1))
+    fi
+    
+    # Valid email address
+    if grep -q -i -E "$(email_pattern)" <<< "${email}"; then
+	echo "[ OK ] User email address has a valid format"
+	n_ok=$((n_ok + 1))
+    else
+	echo "[FAIL] User email address does not have a valid format"
+	n_fail=$((n_fail + 1))
+    fi
+
+    # Valid UCSF ID
+    if valid_ucsf_id "${ucsf_id}"; then
+	echo "[ OK ] User UCSF Employee ID is valid"
+	n_ok=$((n_ok + 1))
+    else
+	echo "[FAIL] User UCSF Employee ID is invalid"
+	n_fail=$((n_fail + 1))
     fi
     
     echo
