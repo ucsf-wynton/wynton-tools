@@ -36,6 +36,8 @@ source "${incl}/files.sh"
 source "${incl}/output.sh"
 # shellcheck source=incl/system.sh
 source "${incl}/system.sh"
+# shellcheck source=incl/ldap.sh
+source "${incl}/ldap.sh"
 
 
 # -------------------------------------------------------------------------
@@ -125,21 +127,158 @@ elif [[ $action == "help" ]]; then
 fi
 
 if [[ $action == "validate" ]]; then
+    n_ok=0
+    n_fail=0
+    n_skip=0
+
+    same_user=true
+    if [[ "${user}" != "${USER}" ]]; then
+        same_user=false
+	warn "Running as user '${USER}' != '${user}'"
+	echo >&2
+    fi
+    
+    mapfile -t ldap_info < <(ldap_search "uid=${user}" "+" "*" | sort)
+    printf "%s\n" "${ldap_info[@]}"
+
+    # No duplicated username
+    count=$(ldap_get_field "uid" "${ldap_info[@]}" | wc -l)
+    if [[ ${count} -gt 1 ]]; then
+	error "There are ${count} users in LDAP with username '${user}'"
+    fi
+
+    phi=false
+    if [[  $(ldap_get_field "protectedAccess" "${ldap_info[@]}") == "TRUE" ]]; then
+	phi=true
+    fi
+
+    if ${same_user}; then
+	running_as_phi=${phi}
+    else
+	if [[ "$(ldap_search "uid=${USER}" "protectedAccess" | ldap_get_field "protectedAccess")" == "TRUE" ]]; then
+            running_as_phi=true
+	else
+            running_as_phi=false
+	fi
+    fi
+    if [[ ${running_as_phi} != ${phi} ]]; then
+        warn "Cannot run all checks on PHI user, because running as a non-PHI user"
+	echo >&2
+    fi
+    
+    access=false
+    if [[  $(ldap_get_field "wyntonAccess" "${ldap_info[@]}") == "TRUE" ]]; then
+	access=true
+    fi
+
     echo "# Account Validation"
     echo
-    echo "* User : $user (uid=$uid)"
+    echo "## Overview"
+    echo
+    echo "* User: $user (uid=$uid)"
     echo "* Group: $group (gid=$gid)"
     echo "* HOME: $home"
+    ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
+    echo "* Account created on: $(ldap_as_timestamp "${ts}")"
+    ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
+    echo "* Account last-modified on: $(ldap_as_timestamp "${ts}")"
+    echo "* Wynton account: ${access}"
+    echo "* PHI account: ${phi}"
+    echo
     
-    if [[ -d "${home}" ]]; then
-	echo "[ OK ] HOME folder exist"
+    echo "## Checks"
+    echo
+    
+    echo "[ OK ] Username is unique"  ## validated above
+    
+    # No duplicated UID
+    mapfile -t res < <(ldap_search "uidNumber=${uid}" "uid" | ldap_get_field "uid")
+    if [[ ${#res[@]} -gt 1 ]]; then
+	echo "[FAIL] User ID is not unique: [n=${res[@]}] ${res[*]}"
+	n_fail=$((n_fail + 1))
     else
-	echo "[FAIL] HOME folder does not exist"
-    fi			    
-    if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
-	echo "[ OK ] HOME folder owned by user"
+	echo "[ OK ] User ID is unique"
+	n_ok=$((n_ok + 1))
+    fi
+
+    # UIDs within [1023,65535]
+    if [[ ${UID} -lt 1023 ]] || [[ ${UID} -gt 65535 ]]; then
+	echo "[FAIL] User ID is out of range [1023,65535]"
+	n_fail=$((n_fail + 1))
     else
-	echo "[FAIL] HOME folder not owned by user"
-    fi			    
+	echo "[ OK ] User ID is within [1023,65535]"
+	n_ok=$((n_ok + 1))
+    fi
+
+    # No 'reserved' usernames
+    mapfile -t reserved < <(reserved_usernames)
+    if [[ " ${reserved[@]} " =~ " ${user} " ]]; then
+	echo "[FAIL] Username is a 'reserved' username and should not be used"
+	n_fail=$((n_fail + 1))
+    else
+	echo "[ OK ] Username is not a 'reserved' username"
+	n_ok=$((n_ok + 1))
+    fi
+
+    # No duplicated home directories
+    mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory")
+    if [[ ${#res[@]} -gt 1 ]]; then
+	echo "[FAIL] User HOME folder is not unique: [n=${res[@]}] ${res[*]}"
+	n_fail=$((n_fail + 1))
+    else
+	echo "[ OK ] User HOME folder is unique"
+	n_ok=$((n_ok + 1))
+    fi
+    
+    # Users has a HOME directories under expected /wynton/ location
+    if ${phi}; then
+	expected="/wynton/protected/home/{group}/"
+    else
+	expected="/wynton/home/{group}/"
+    fi
+    pattern=$(sed 's/{group}/[[:alnum:]_.-]+/' <<< "${expected}")
+    if grep -q -E "^${pattern}" <<< "${home}"; then
+	echo "[ OK ] User HOME folder is under ${expected}"
+	n_ok=$((n_ok + 1))
+    else
+	echo "[FAIL] User HOME folder is not under ${expected}"
+	n_fail=$((n_fail + 1))
+    fi
+
+    if [[ ${EUID} -ne 0 ]] && ${phi} && ! ${running_as_phi}; then
+	skip=true
+    else
+        skip=false
+    fi
+
+    if ${skip}; then
+        echo "[SKIP] HOME folder exists"
+        echo "[SKIP] HOME folder is owned by user"
+        n_skip=$((n_skip + 2))
+    else
+        if [[ -d "${home}" ]]; then
+            echo "[ OK ] HOME folder exists"
+            n_ok=$((n_ok + 1))
+        else
+            echo "[FAIL] HOME folder does not exist"
+            n_fail=$((n_fail + 1))
+        fi
+        
+        if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
+            echo "[ OK ] HOME folder is owned by user"
+            n_ok=$((n_ok + 1))
+        else
+            echo "[FAIL] HOME folder is not owned by user"
+            n_fail=$((n_fail + 1))
+        fi
+    fi
+    
+    echo
+    echo "Summary: ${n_ok} OK, ${n_fail} FAIL, ${n_skip} SKIP"
+
+    if [[ ${n_fail} -gt 0 ]]; then
+	echo >&2
+        error "Detected ${n_fail} FAIL:s"
+    fi
 fi
 
