@@ -184,7 +184,7 @@ if [[ $action == "validate" ]]; then
     echo "* Group: $group (gid=$gid)"
     echo "* HOME: $home"
     echo "* Email address: ${email}"
-    echo "* UCSF Employee ID: ${ucsf_id}"
+    echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Wynton account: ${access}"
     echo "* PHI account: ${phi}"
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
@@ -257,7 +257,6 @@ if [[ $action == "validate" ]]; then
     else
         skip=false
     fi
-
     if ${skip}; then
         echo "[SKIP] HOME folder exists"
         echo "[SKIP] HOME folder is owned by user"
@@ -300,7 +299,15 @@ if [[ $action == "validate" ]]; then
     fi
 
     # Valid UCSF ID
-    if valid_ucsf_id "${ucsf_id}"; then
+    if [[ -z "${ucsf_id}" ]]; then
+	skip=true
+    else
+        skip=false
+    fi
+    if ${skip}; then
+	echo "[SKIP] User UCSF Employee ID not available"
+	n_skip=$((n_skip + 1))
+    elif valid_ucsf_id "${ucsf_id}"; then
 	echo "[ OK ] User UCSF Employee ID is valid"
 	n_ok=$((n_ok + 1))
     else
