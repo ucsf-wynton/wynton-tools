@@ -104,6 +104,10 @@ email_pattern() {
     echo "^${username}@(${domain}[.])+${tld}$"
 }
 
+is_ucsf_email() {
+    local email=${1:?}
+    grep -q -i -E "@(|[[:alnum:]]+[.])ucsf[.]edu$" <<< "${email}"
+}
 
 valid_ucsf_id() {
     local id=${1:?}

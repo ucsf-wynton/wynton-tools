@@ -299,20 +299,22 @@ if [[ $action == "validate" ]]; then
     fi
 
     # Valid UCSF ID
-    if [[ -z "${ucsf_id}" ]]; then
-	skip=true
+    if [[ -n "${ucsf_id}" ]]; then
+        if valid_ucsf_id "${ucsf_id}"; then
+	    echo "[ OK ] User UCSF Employee ID is valid"
+            n_ok=$((n_ok + 1))
+        else
+	    echo "[FAIL] User UCSF Employee ID is invalid"
+	    n_fail=$((n_fail + 1))
+	fi
     else
-        skip=false
-    fi
-    if ${skip}; then
-	echo "[SKIP] User UCSF Employee ID not available"
-	n_skip=$((n_skip + 1))
-    elif valid_ucsf_id "${ucsf_id}"; then
-	echo "[ OK ] User UCSF Employee ID is valid"
-	n_ok=$((n_ok + 1))
-    else
-	echo "[FAIL] User UCSF Employee ID is invalid"
-	n_fail=$((n_fail + 1))
+	if is_ucsf_email "${email}"; then
+	    echo "[FAIL] User UCSF Employee ID is missing"
+            n_fail=$((n_fail + 1))
+	else
+	    echo "[SKIP] User UCSF Employee ID not required"
+	    n_skip=$((n_skip + 1))
+	fi
     fi
     
     echo
