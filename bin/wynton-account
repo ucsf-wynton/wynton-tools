@@ -173,8 +173,14 @@ if [[ $action == "validate" ]]; then
 	access=true
     fi
 
+    locked=false
+    if [[  $(ldap_get_field "isLocked" "${ldap_info[@]}") == "TRUE" ]]; then
+	locked=true
+    fi
+    
     email=$(ldap_get_field "mail" "${ldap_info[@]}")
     ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}")
+    shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
     
     echo "# Account Validation"
     echo
@@ -186,7 +192,9 @@ if [[ $action == "validate" ]]; then
     echo "* Email address: ${email}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Wynton account: ${access}"
+    echo "* Locked account: ${locked}"
     echo "* PHI account: ${phi}"
+    echo "* Login shell: ${shell}"
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
     echo "* Account created on: $(ldap_as_timestamp "${ts}")"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
@@ -322,11 +330,61 @@ if [[ $action == "validate" ]]; then
 	    echo "[FAIL] User UCSF Employee ID is missing"
             n_fail=$((n_fail + 1))
 	else
-	    echo "[SKIP] User UCSF Employee ID not required"
+	    echo "[ OK ] User UCSF Employee ID is not required"
 	    n_skip=$((n_skip + 1))
 	fi
     fi
-	
+
+    # No locked account has access
+    if ${locked}; then
+        if ${access}; then
+	    echo "[FAIL] Locked account still have access"
+	    n_fail=$((n_fail + 1))
+	else
+	    echo "[ OK ] Locked account does not have access"
+	    n_fail=$((n_fail + 1))
+	fi
+    else
+         echo "[ OK ] Account is not locked"
+         n_skip=$((n_skip + 1))
+    fi
+
+    # Login shell is valid
+    if [[ -z ${shell} ]]; then
+	echo "[FAIL] Login shell is not specified"
+	n_fail=$((n_fail + 1))
+    else
+        if [[ ! -f "${shell}" ]]; then
+	    echo "[FAIL] Login shell does not exist"
+	    n_fail=$((n_fail + 1))
+        elif [[ ! -x "${shell}" ]]; then
+	    echo "[FAIL] Login shell is non-executable"
+	    n_fail=$((n_fail + 1))
+	else
+	    echo "[ OK ] Login shell is an executable"
+	fi
+    fi
+    
+    # No mixed 'wyntonAccess'
+    mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^wyntonAccess:")
+    if [[ ${#res[@]} -gt 1 ]]; then
+	echo "[FAIL] User has multiple LDAP 'wyntonAccess' entries: [n=${#res[@]}] ${res[*]}"
+	n_fail=$((n_fail + 1))
+    else
+	echo "[ OK ] User has unique LDAP 'wyntonAccess' entry"
+	n_ok=$((n_ok + 1))
+    fi
+
+    # No mixed 'protectedAccess'
+    mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^protectedAccess:")
+    if [[ ${#res[@]} -gt 1 ]]; then
+	echo "[FAIL] User has multiple LDAP 'protectedAccess' entries: [n=${#res[@]}] ${res[*]}"
+	n_fail=$((n_fail + 1))
+    else
+	echo "[ OK ] User has unique LDAP 'protectedAccess' entry"
+	n_ok=$((n_ok + 1))
+    fi
+
     echo
     echo "Summary: ${n_ok} OK, ${n_fail} FAIL, ${n_skip} SKIP"
 
