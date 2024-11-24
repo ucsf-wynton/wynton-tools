@@ -181,7 +181,8 @@ if [[ $action == "validate" ]]; then
     email=$(ldap_get_field "mail" "${ldap_info[@]}")
     ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}")
     shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
-    
+    faculty_sponsor=$(ldap_get_field "FacultySponsor" "${ldap_info[@]}")
+
     echo "# Account Validation"
     echo
     echo "## Overview"
@@ -195,6 +196,7 @@ if [[ $action == "validate" ]]; then
     echo "* Locked account: ${locked}"
     echo "* PHI account: ${phi}"
     echo "* Login shell: ${shell}"
+    echo "* Faculty sponsor: ${faculty_sponsor}"
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
     echo "* Account created on: $(ldap_as_timestamp "${ts}")"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
@@ -206,25 +208,6 @@ if [[ $action == "validate" ]]; then
     
     echo "[ OK ] Username is unique"  ## validated above
     
-    # No duplicated UID
-    mapfile -t res < <(ldap_search "uidNumber=${uid}" "uid" | ldap_get_field "uid")
-    if [[ ${#res[@]} -gt 1 ]]; then
-	echo "[FAIL] User ID is not unique: [n=${res[@]}] ${res[*]}"
-	n_fail=$((n_fail + 1))
-    else
-	echo "[ OK ] User ID is unique"
-	n_ok=$((n_ok + 1))
-    fi
-
-    # UIDs within [1023,65535]
-    if [[ ${UID} -lt 1023 ]] || [[ ${UID} -gt 65535 ]]; then
-	echo "[FAIL] User ID is out of range [1023,65535]"
-	n_fail=$((n_fail + 1))
-    else
-	echo "[ OK ] User ID is within [1023,65535]"
-	n_ok=$((n_ok + 1))
-    fi
-
     # No 'reserved' usernames
     mapfile -t reserved < <(reserved_usernames)
     if [[ " ${reserved[@]} " =~ " ${user} " ]]; then
@@ -235,6 +218,53 @@ if [[ $action == "validate" ]]; then
 	n_ok=$((n_ok + 1))
     fi
 
+    # No duplicated UID
+    mapfile -t res < <(ldap_search "uidNumber=${uid}" "uid" | ldap_get_field "uid")
+    if [[ ${#res[@]} -gt 1 ]]; then
+	echo "[FAIL] User ID (UID) is not unique: [n=${res[@]}] ${res[*]}"
+	n_fail=$((n_fail + 1))
+    else
+	echo "[ OK ] User ID (UID) is unique"
+	n_ok=$((n_ok + 1))
+    fi
+
+    # UIDs within [1023,65535]
+    if [[ ${uid} -lt 1023 ]] || [[ ${uid} -gt 65535 ]]; then
+	echo "[FAIL] User ID (UID) is out of range [1023,65535]"
+	n_fail=$((n_fail + 1))
+    else
+	echo "[ OK ] User ID (UID) is within [1023,65535]"
+	n_ok=$((n_ok + 1))
+    fi
+
+    # GIDs within [455,65535]
+    if [[ ${gid} -lt 455 ]] || [[ ${gid} -gt 65535 ]]; then
+	echo "[FAIL] Group ID (GID) is out of range [455,65535]"
+	n_fail=$((n_fail + 1))
+    else
+	echo "[ OK ] Group ID (GID) is within [415,65535]"
+	n_ok=$((n_ok + 1))
+    fi
+
+    # PHI user is in 'wynton-phi', otherwise not
+    if ${phi}; then
+        if id "${user}" | grep -q -F "(wynton-phi)"; then
+	    echo "[ OK ] PHI user is in 'wynton-phi' group"
+	    n_ok=$((n_ok + 1))
+        else
+	    echo "[FAIL] PHI user is not in 'wynton-phi' group"
+	    n_fail=$((n_fail + 1))
+	fi
+    else
+        if id "${user}" | grep -q -F "(wynton-phi)"; then
+	    echo "[FAIL] Non-PHI user is in 'wynton-phi' group"
+	    n_fail=$((n_fail + 1))
+        else
+	    echo "[ OK ] Non-PHI user is not in 'wynton-phi' group"
+	    n_ok=$((n_ok + 1))
+	fi
+    fi
+    
     # No duplicated home directories
     mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory")
     if [[ ${#res[@]} -gt 1 ]]; then
@@ -362,6 +392,33 @@ if [[ $action == "validate" ]]; then
 	    n_fail=$((n_fail + 1))
 	else
 	    echo "[ OK ] Login shell is an executable"
+	fi
+    fi
+
+    # Faculty sponsor is valid
+    if [[ -z ${faculty_sponsor} ]]; then
+	echo "[FAIL] Faculty sponsor is missing"
+	n_fail=$((n_fail + 1))
+    else
+	pattern="^([[:alpha:] .'-]+)[[:blank:]]+<([^>]+)>$"
+        if grep -q -i -E "${pattern}" <<< "${faculty_sponsor}"; then
+	    faculty_sponsor_fullname=$(sed -E "s/${pattern}/\1/" <<< "${faculty_sponsor}")
+	    faculty_sponsor_email=$(sed -E "s/${pattern}/\2/" <<< "${faculty_sponsor}")
+            if [[ -z "${faculty_sponsor_fullname}" ]]; then
+	        echo "[FAIL Faculty sponsor lacks a full name"
+	        n_fail=$((n_fail + 1))
+            elif [[ -z "${faculty_sponsor_email}" ]]; then
+	        echo "[FAIL Faculty sponsor lacks an email address"
+	        n_fail=$((n_fail + 1))
+            elif ! grep -q -i -E "$(email_pattern)" <<< "${faculty_sponsor_email}"; then
+	        echo "[FAIL Faculty sponsor email address is not a valid address"
+	    else
+	        echo "[ OK ] Faculty sponsor has a full name and email address"
+                n_ok=$((n_ok + 1))
+	    fi
+        else
+	    echo "[FAIL] Faculty sponsor does not have a full name and email address"
+	    n_fail=$((n_fail + 1))
 	fi
     fi
     
