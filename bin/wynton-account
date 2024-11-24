@@ -238,10 +238,10 @@ if [[ $action == "validate" ]]; then
     # No duplicated home directories
     mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory")
     if [[ ${#res[@]} -gt 1 ]]; then
-	echo "[FAIL] User HOME folder is not unique: [n=${res[@]}] ${res[*]}"
+	echo "[FAIL] HOME folder is not unique: [n=${res[@]}] ${res[*]}"
 	n_fail=$((n_fail + 1))
     else
-	echo "[ OK ] User HOME folder is unique"
+	echo "[ OK ] HOME folder is unique"
 	n_ok=$((n_ok + 1))
     fi
     
@@ -253,10 +253,10 @@ if [[ $action == "validate" ]]; then
     fi
     pattern=$(sed 's/{group}/[[:alnum:]_.-]+/' <<< "${expected}")
     if grep -q -E "^${pattern}" <<< "${home}"; then
-	echo "[ OK ] User HOME folder is under ${expected}"
+	echo "[ OK ] HOME folder is under ${expected}"
 	n_ok=$((n_ok + 1))
     else
-	echo "[FAIL] User HOME folder is not under ${expected}"
+	echo "[FAIL] HOME folder is not under ${expected}"
 	n_fail=$((n_fail + 1))
     fi
 
@@ -290,47 +290,47 @@ if [[ $action == "validate" ]]; then
     # No duplicated email addresses
     mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
     if [[ ${#res[@]} -gt 1 ]]; then
-	echo "[FAIL] User email address is not unique: [n=${res[@]}] ${res[*]}"
+	echo "[FAIL] Email address is not unique: [n=${res[@]}] ${res[*]}"
 	n_fail=$((n_fail + 1))
     else
-	echo "[ OK ] User email address is unique"
+	echo "[ OK ] Email address is unique"
 	n_ok=$((n_ok + 1))
     fi
     
     # Valid email address
     if grep -q -i -E "$(email_pattern)" <<< "${email}"; then
-	echo "[ OK ] User email address has a valid format"
+	echo "[ OK ] Email address has a valid format"
 	n_ok=$((n_ok + 1))
     else
-	echo "[FAIL] User email address does not have a valid format"
+	echo "[FAIL] Email address does not have a valid format"
 	n_fail=$((n_fail + 1))
     fi
 
     # Valid UCSF ID
     if [[ -n "${ucsf_id}" ]]; then
         if valid_ucsf_id "${ucsf_id}"; then
-	    echo "[ OK ] User UCSF Employee ID is valid"
+	    echo "[ OK ] UCSF Employee ID is valid"
             n_ok=$((n_ok + 1))
         else
-	    echo "[FAIL] User UCSF Employee ID is invalid"
+	    echo "[FAIL] UCSF Employee ID is invalid"
 	    n_fail=$((n_fail + 1))
 	fi
 
         # No duplicated UCSF ID
         mapfile -t res < <(ldap_search "ucsfIDNumber=${ucsf_id}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber")
         if [[ ${#res[@]} -gt 1 ]]; then
-            echo "[FAIL] User UCSF Employee ID is not unique: [n=${res[@]}] ${res[*]}"
+            echo "[FAIL] UCSF Employee ID is not unique: [n=${res[@]}] ${res[*]}"
 	    n_fail=$((n_fail + 1))
         else
-	    echo "[ OK ] User UCSF Employee ID is unique"
+	    echo "[ OK ] UCSF Employee ID is unique"
 	    n_ok=$((n_ok + 1))
 	fi
     else
 	if is_ucsf_email "${email}"; then
-	    echo "[FAIL] User UCSF Employee ID is missing"
+	    echo "[FAIL] UCSF Employee ID is missing"
             n_fail=$((n_fail + 1))
 	else
-	    echo "[ OK ] User UCSF Employee ID is not required"
+	    echo "[ OK ] UCSF Employee ID is not required"
 	    n_skip=$((n_skip + 1))
 	fi
     fi
