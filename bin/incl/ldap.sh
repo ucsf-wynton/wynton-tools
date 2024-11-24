@@ -303,8 +303,6 @@ check_user_cert() {
     user=${1:?}
     since=${2}
 
-    assert_non_empty "${user}" || return 1
-    
     if [[ -n "${since}" ]]; then
         ## Validate 'since' and coerce to Unix epoch time
         if date --date="${since}" 2> /dev/null > /dev/null; then

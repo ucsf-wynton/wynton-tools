@@ -456,6 +456,23 @@ if [[ $action == "validate" ]]; then
             echo "[FAIL] SGE 'default_project' and LDAP 'wyntonProject' do not agree"
             n_fail=$((n_fail + 1))
         fi
+
+        pathname="/wynton/home${SGE_ROOT}/common/sgeCA/usercerts/${user}/cert.pem"
+	if [[ -f "${pathname}" ]]; then
+            ## Skip SGE certificates that expired when Wynton moved to "non-expiring" certs                                         
+            ## "We moved to 40 year SGE certs for unexpired and new users. We did not renew already expired certs."                 
+            ## https://github.com/ucsf-wynton/support/issues/1308
+            since="2022-06-29 17:51:46 -0700"
+            if check_user_cert "${user}" "${since}"; then
+                echo "[ OK ] Has a valid, non-expired SGE certificate"
+                n_ok=$((n_ok + 1))
+	    else
+                echo "[FAIL] Has an SGE certificate that is either invalid or expired"
+                n_fail=$((n_fail + 1))
+	    fi
+	else
+            echo "[FAIL] SGE certificate is missing"
+	fi
     else
         echo "[FAIL] User is not in SGE"
         n_fail=$((n_fail + 1))
