@@ -256,7 +256,7 @@ if [[ $action == "validate" ]]; then
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Faculty sponsor: ${faculty_sponsor}"
     echo "* HOME: $home"
-    echo "* HOME disk quota: $(( beegfs_quota[0] / 1000**3 / 2 )) GB used out of $(( beegfs_quota[1] / 1000**3 / 2 )) GB (${beegfs_quota[3]}%)"
+    echo "* HOME disk quota: $(( beegfs_quota[0] / 1024**3 / 2 )) GiB used out of $(( beegfs_quota[1] / 1024**3 / 2 )) GiB (${beegfs_quota[3]}%)"
     echo "* Wynton access: ${access}"
     echo "* Locked account: ${locked}"
     echo "* PHI account: ${phi}"
@@ -387,14 +387,14 @@ if [[ $action == "validate" ]]; then
     if [[ ${beegfs_quota[2]} -le 0 ]]; then
         fail "HOME disk quota is full (${beegfs_quota[2]} bytes available)"
         n_fail=$((n_fail + 1))
-    elif [[ ${beegfs_quota[2]} -lt $(( 10 * 1000**2 )) ]]; then
-        fail "HOME disk quota has less than 10 MB left ($(( beegfs_quota[2] / 1000 )) kB available)"
+    elif [[ ${beegfs_quota[2]} -lt $(( 10 * 1024**2 )) ]]; then
+        fail "HOME disk quota has less than 10 MiB left ($(( beegfs_quota[2] / 1024 )) KiB available)"
         n_fail=$((n_fail + 1))
-    elif [[ ${beegfs_quota[2]} -lt $(( 1 * 1000 ** 3 )) ]]; then
-        note "HOME disk quota has less than 1.0 GB left ($(( beegfs_quota[2] / 1000**2 )) MB available)"
+    elif [[ ${beegfs_quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
+        note "HOME disk quota has less than 1.0 GiB left ($(( beegfs_quota[2] / 1024**2 )) MiB available)"
         n_note=$((n_note + 1))
     else
-        okay "HOME disk quota has at least 1.0 GB left"
+        okay "HOME disk quota has at least 1.0 GiB left"
         n_ok=$((n_ok + 1))
     fi
 	
