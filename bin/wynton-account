@@ -242,7 +242,7 @@ if [[ $action == "validate" ]]; then
     
     # No 'reserved' usernames
     mapfile -t reserved < <(reserved_usernames)
-    if [[ " ${reserved[@]} " =~ " ${user} " ]]; then
+    if [[ " ${reserved[*]} " =~ [[:space:]]${user}[[:space:]] ]]; then
         fail "Username is a 'reserved' username and should not be used"
         n_fail=$((n_fail + 1))
     else
@@ -313,7 +313,7 @@ if [[ $action == "validate" ]]; then
     else
         expected="/wynton/home/{group}/"
     fi
-    pattern=$(sed 's/{group}/[[:alnum:]_.-]+/' <<< "${expected}")
+    pattern="${expected/\{group\}/[[:alnum:]_.-]+}"
     if grep -q -E "^${pattern}" <<< "${home}"; then
         okay "HOME folder is under ${expected}"
         n_ok=$((n_ok + 1))

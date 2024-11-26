@@ -113,7 +113,7 @@ valid_ucsf_id() {
     local id=${1:?}
     
     ## Assert that all are valid Luhn IDs (https://en.wikipedia.org/wiki/Luhn_algorithm)
-    if PYTHONPATH="${utils}/python_libs" "${utils}/valid-ucsf-id" "${id}" > /dev/null; then
+    if PYTHONPATH="${utils:?}/python_libs" "${utils:?}/valid-ucsf-id" "${id}" > /dev/null; then
 	return 0
     else
 	return 1
