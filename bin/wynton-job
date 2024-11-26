@@ -4,7 +4,7 @@
 #' Usage:
 #'  wynton-job [options] <job_id>
 #'
-#' Options:
+#' Flags:
 #'  --help           Display this help
 #'  --version        Display version
 #'

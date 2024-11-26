@@ -4,9 +4,16 @@
 #' Usage:
 #'  wynton-accounting [options] <filters>
 #'
+#' Flags:
+#'  --help            Display this help
+#'  --version         Display version
+#'
 #' Options:
-#'  --help           Display this help
-#'  --version        Display version
+#'  --user=USER       User to query by username (default: $USER)
+#'  --tail=n          How many history entries to search
+#'  --<name>=<value>  SGE accounting result keys to filter by;
+#'                    exit, failed, group, host, name, priority,
+#'                    project, queue, task, user
 #'
 #' Examples:
 #'  wynton accounting --failed=19

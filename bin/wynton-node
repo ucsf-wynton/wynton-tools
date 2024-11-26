@@ -4,9 +4,9 @@
 #' Usage:
 #'  wynton-node [options] <hostname>
 #'
-#' Options:
+#' Flags:
+#'  --help           Display this help
 #'  --version        Display version
-#'
 #'
 #' Version: 0.0.0-9000
 #' Copyright: Henrik Bengtsson (2024)

@@ -4,14 +4,16 @@
 #' Usage:
 #'  wynton-quota [options]
 #'
-#' Options:
-#'  --user USER      Query another user (default: $USER)
+#' Flags:
 #'  --help           Display this help
 #'  --version        Display version
 #'
+#' Options:
+#'  --user=USER      Query another user (default: $USER)
+#'
 #' Examples:
 #'  wynton quota
-#'  wynton quota --user alice
+#'  wynton quota --user=alice
 #'
 #' Version: 0.0.8
 #' Copyright: Henrik Bengtsson (2019)

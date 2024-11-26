@@ -7,9 +7,9 @@
 #' Commands:
 #'  load             Average cluster load
 #'
-#' Options:
+#' Flags:
+#'  --help           Display this help
 #'  --version        Display version
-#'
 #'
 #' Version: 0.0.8
 #' Copyright: Henrik Bengtsson (2019)

@@ -4,11 +4,13 @@
 #' Usage:
 #'  wynton-account [options]
 #'
+#' Flags:
+#'  --help           Display this help
+#'  --version        Display version
+#'
 #' Options:
 #'  --user=USER      User to query by username (default: $USER)
 #'  --uid=UID        User to query by user ID
-#'  --help           Display this help
-#'  --version        Display version
 #'
 #' Examples:
 #'  wynton account

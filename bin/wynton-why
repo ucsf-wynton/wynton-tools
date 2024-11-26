@@ -4,10 +4,12 @@
 #' Usage:
 #'  wynton-why [options]
 #'
-#' Options:
-#'  --user USER      Query another user (default: $USER)
+#' Flags:
 #'  --help           Display this help
 #'  --version        Display version
+#'
+#' Options:
+#'  --user=USER      Query another user (default: $USER)
 #'
 #' Examples:
 #'  wynton why

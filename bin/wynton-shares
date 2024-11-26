@@ -9,14 +9,16 @@
 #'  tsv              As 'list --fshares' as a tab-separated values
 #'  total            Total number of queue slots
 #'
-#' Options:
-#'  --project PROJ   Subset to a particular project ("group")
+#' Flags:
 #'  --fshares        Include functional shares in output (slow)
 #'  --help           Display this help
 #'  --version        Display version
 #'
+#' Options:
+#'  --project=PROJ   Subset to a particular project ("group")
+#'
 #' Examples:
-#'  wynton shares list --fshares --project salilab
+#'  wynton shares list --fshares --project=salilab
 #'  wynton shares list --fshares
 #'  wynton shares total --fshares
 #'  wynton shares tsv

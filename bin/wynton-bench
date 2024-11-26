@@ -4,20 +4,22 @@
 #' Usage:
 #'  wynton-bench [options]
 #'
-#' Options:
+#' Flags:
 #'  --help              Display this help
 #'  --version           Display version
-#'  --drive <drive>     The drive to report on
-#'  --format <fmt>      Output format: spark (default), int, dbl
-#'  --data-root <path>  Path to root data folder (default: ~hb/wynton-bench-logs)
-#'  --hostname <host>   Host from where data was collected (default: dev3)
-#'  --user <user>       User that collected data (default: hb)
+#'
+#' Options:
+#'  --drive=<drive>     The drive to report on
+#'  --format=<fmt>      Output format: spark (default), int, dbl
+#'  --data-root=<path>  Path to root data folder (default: ~hb/wynton-bench-logs)
+#'  --hostname=<host>   Host from where data was collected (default: dev3)
+#'  --user=<user>       User that collected data (default: hb)
 #'
 #' Examples:
-#'  wynton bench --drive /scratch
-#'  wynton bench --drive /wynton/scratch
-#'  wynton bench --drive /wynton/home
-#'  wynton bench --drive /wynton/group
+#'  wynton bench --drive=/scratch
+#'  wynton bench --drive=/wynton/scratch
+#'  wynton bench --drive=/wynton/home
+#'  wynton bench --drive=/wynton/group
 #'
 #' Requirements:
 #' * spark: https://github.com/holman/spark

@@ -7,9 +7,11 @@
 #' Commands:
 #'  tsv                (project,queue,count,hosts) tab-separated values
 #'
-#' Options:
+#' Flags:
 #'  --help             Display this help
 #'  --version          Display version
+#'
+#' Options:
 #'  --queue=<pattern>  Regular expression to filter on GPU queues
 #'
 #' Examples:
