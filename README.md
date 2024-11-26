@@ -2,13 +2,15 @@
 
 
 ```
+$ wynton --help
+
 UCSF Wynton HPC Command Line Tools
 
 Usage:
  wynton <tool> ...
 
 Installed tools:
- account      Wynton Account Validation
+ account      Wynton Account Information
  accounting   Wynton HPC Job Accounting Details
  bench        Disk IO Benchmark Summary
  downtime     Wynton Downtime Schedule
@@ -20,14 +22,15 @@ Installed tools:
  sessioninfo  Wynton HPC Session Information
  shares       Wynton HPC Shares on the Job Scheduler
  status       Wynton HPC Status
+ trash        Wynton Trash Tool
  utils        Wynton Utilities
  why          Wynton Troubleshooting
 
 Example:
  wynton --help
 
-Version: 0.6.0
+Version: 0.7.0
 Copyright: Henrik Bengtsson (2019-2024)
 License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
-Source: https://github.com/UCSF-HPC/wynton-tools
+Source: https://github.com/ucsf-wynton/wynton-tools
 ```

@@ -245,7 +245,7 @@ if [[ $action == "validate" ]]; then
     }')
 
     
-    echo "# Account Summary"
+    echo "# Account Information"
     echo
     echo "## Overview"
     echo
