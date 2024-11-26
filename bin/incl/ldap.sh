@@ -124,6 +124,12 @@ valid_ucsf_id() {
 # -------------------------------------------------------
 # Unix
 # -------------------------------------------------------
+uid_to_user() {
+    local -i uid
+    uid=${1:?}
+    getent passwd "${uid}" | cut -d ':' -f 1
+}
+
 reserved_usernames() {
     local -a reserved
     

@@ -5,13 +5,15 @@
 #'  wynton-account [options]
 #'
 #' Options:
-#'  --user USER      Query another user (default: $USER)
+#'  --user=USER      User to query by username (default: $USER)
+#'  --uid=UID        User to query by user ID
 #'  --help           Display this help
 #'  --version        Display version
 #'
 #' Examples:
 #'  wynton account
-#'  wynton account --user alice
+#'  wynton account --user=alice
+#'  wynton account --uid=1000
 #'
 #' Version: 0.0.1
 #' Copyright: Henrik Bengtsson (2024)
@@ -112,6 +114,9 @@ while [[ $# -gt 0 ]]; do
         fi
         if [[ "${key}" == "user" ]]; then
             user=${value}
+        elif [[ "${key}" == "uid" ]]; then
+	    assert_integer "${value}"
+            user=$(uid_to_user "${value}")
         else
             error "Unknown option: $1"
         fi
@@ -123,7 +128,6 @@ done
 
 ## Assert that user exists
 id --user "$user" &> /dev/null || error "No such user: $user"
-
 
 if [[ $user == "$USER" ]]; then
     home=$HOME
