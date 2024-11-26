@@ -4,7 +4,7 @@
 #' Usage:
 #'  wynton-downtime [options]
 #'
-#' Options:
+#' Flags:
 #'  --help           Display this help
 #'  --version        Display version
 #'
