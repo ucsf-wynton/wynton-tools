@@ -1,0 +1,114 @@
+#! /usr/bin/env bash
+#' Wynton Trash Tool
+#'
+#' Moves one or more files and folders to a personal trash folder
+#' located under /wynton/scratch/${USER}/_TRASH/. Trashed files
+#' will be cleaned up automatically by the system after two weeks.
+#' Files in the trash counts towards the personal disk quota.
+#'
+#' Usage:
+#'  wynton-trash [options] <files and folders>
+#'
+#' Flags:
+#'  --help           Display this help
+#'  --version        Display version
+#'
+#' Examples:
+#'  wynton trash a-huge-file
+#'  wynton trash ~/a-large-folder/ 
+#'  wynton trash a-huge-file ~/a-large-folder/ 
+#'
+#' Version: 0.0.1
+#' Copyright: Henrik Bengtsson (2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action="trash"
+
+files=()
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    else
+        files+=("$1")
+    fi
+    shift
+done
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "files: [n=${#files[@]}] ${files[*]}"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help ""
+    exit 0
+fi
+
+
+if [[ $action == "trash" ]]; then
+    if [[ ${#files[@]} -eq 0 ]]; then
+	warn "Nothing to trash; no files or folders specified"
+	exit 0
+    fi
+
+    ## Protect against trashing the critical folders by mistake
+    for file in "${files[@]}"; do
+	file2=$(realpath "${file}")
+	if [[ ${file2} == "$HOME" ]]; then
+	    error "You must not trash your HOME folder: ${file} => ${file2}"
+	elif [[ ${file} == "." ]] || [[ ${file2} == "${PWD}" ]]; then
+	    error "You must not trash the current directory: ${file} => ${file2}"
+	elif [[ ${file} == ".." ]]; then
+	    error "You must not trash the parent directory: ${file} => ${file2}"
+	elif [[ ${file} == ../* ]]; then
+	    error "You must not trash any parent directory: ${file} => ${file2}"
+	fi
+    done
+    
+    ## Assert that all files exist
+    for file in "${files[@]}"; do
+	if [[ ! -e "${file}" ]]; then
+	    error "No such file or folder: ${file}"
+	fi
+    done
+
+    trash_root=/wynton/scratch/${USER}/_TRASH/$(date --iso-8601)
+    mkdir -p "${trash_root}"
+    if [[ ! -d "${trash_root}" ]]; then
+        error "Failed to create trash root folder: '${trash_root}'"
+    fi
+    
+    trash_path=$(mktemp --directory "${trash_root}/XXXXXX");
+    if [[ ! -d "${trash_path}" ]]; then
+       error " Failed to create trash folder: '${trash_path}'"
+    fi
+    echo "Trash folder: ${trash_path}/";
+    /bin/mv "${files[@]}" "${trash_path}/";
+fi
