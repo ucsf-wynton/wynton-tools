@@ -10,12 +10,11 @@
 #'
 #' Options:
 #'  --user=USER      User to query by username (default: $USER)
-#'  --uid=UID        User to query by user ID
 #'
 #' Examples:
 #'  wynton account
 #'  wynton account --user=alice
-#'  wynton account --uid=1000
+#'  wynton account --user=1000
 #'
 #' Version: 0.0.1
 #' Copyright: Henrik Bengtsson (2024)
@@ -116,9 +115,9 @@ while [[ $# -gt 0 ]]; do
         fi
         if [[ "${key}" == "user" ]]; then
             user=${value}
-        elif [[ "${key}" == "uid" ]]; then
-	    assert_integer "${value}"
-            user=$(uid_to_user "${value}")
+	    if is_integer "${value}"; then
+                user=$(uid_to_user "${value}")
+	    fi
         else
             error "Unknown option: $1"
         fi

@@ -1,4 +1,13 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# DATA TYPES
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+## Check if an integer
+function is_integer {
+    grep -q -E "^[[:digit:]]+$" <<< "${1:?}"
+}
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # ASSERTIONS
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ## Usage: assert_file_exists /path/to/file
@@ -36,5 +45,5 @@ function assert_executable {
 
 ## Usage: assert_executable string
 function assert_integer {
-    echo "${1:?}" | grep -q -E "^[[:digit:]]+$" || error "Not an integer: ${1}"
+    is_integer "${1:?}" || error "Not an integer: ${1}"
 }
