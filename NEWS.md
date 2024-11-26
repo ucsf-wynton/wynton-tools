@@ -1,3 +1,15 @@
+# Version 0.7.0 (2024-11-26)
+
+## New Features
+
+ * Add `wynton trash` for quickly moving large files and folders to a
+   personal trash folder under `/wynton/scratch/`, which then will be
+   removed by the system after two weeks.
+   
+ * Now `wynton account` reports also on HOME disk quota, and
+   the Wynton and SGE projects.
+
+
 # Version 0.6.0 (2024-11-25)
 
 ## New Features
