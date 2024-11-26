@@ -1,6 +1,9 @@
 # Version (development version)
 
- * ...
+## New Features
+
+ * Now `wynton account` reports also on HOME disk quota, and
+   the Wynton and SGE projects.
 
 
 # Version 0.6.0 (2024-11-25)
