@@ -1,5 +1,8 @@
 #! /usr/bin/env bash
-#' Wynton Account Validation
+#' Wynton Account Information
+#'
+#' Looks up a Wynton user account, outputs a summary, and
+#' validates its settings.
 #'
 #' Usage:
 #'  wynton-account [options]
@@ -213,22 +216,36 @@ if [[ $action == "validate" ]]; then
     ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}")
     shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
     faculty_sponsor=$(ldap_get_field "FacultySponsor" "${ldap_info[@]}")
+    wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}")
 
-    
-    echo "# Account Validation"
+    if qconf -suserl | grep -q -E "^${user}$"; then
+	in_sge=true
+        mapfile -t sge_info < <(qconf -suser "${user}" | sort)
+        sge_project=$(printf "%s\n" "${sge_info[@]}" | grep -E "^default_project" | sed -E 's/^default_project[[:space:]]+//')
+    else
+	in_sge=false
+	sge_info=()
+	sge_project=
+    fi
+
+		     
+    echo "# Account Summary"
     echo
     echo "## Overview"
     echo
     echo "* User: $user (uid=$uid)"
     echo "* Group: $group (gid=$gid)"
     echo "* HOME: $home"
+    echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* Email address: ${email}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
-    echo "* Wynton account: ${access}"
+    echo "* Faculty sponsor: ${faculty_sponsor}"
+    echo "* Wynton access: ${access}"
     echo "* Locked account: ${locked}"
     echo "* PHI account: ${phi}"
     echo "* Login shell: ${shell}"
-    echo "* Faculty sponsor: ${faculty_sponsor}"
+    echo "* Wynton project: ${wynton_project}"
+    echo "* SGE project: ${sge_project}"
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
     echo "* Account created on: $(ldap_as_timestamp "${ts}")"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
@@ -474,12 +491,9 @@ if [[ $action == "validate" ]]; then
         n_ok=$((n_ok + 1))
     fi
 
-    if qconf -suserl | grep -q -E "^${user}$"; then
-        mapfile -t sge_info < <(qconf -suser "${user}")        
+    if ${in_sge}; then
         okay "User is in SGE"
         n_ok=$((n_ok + 1))
-        wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}")
-        sge_project=$(sge_get_field "default_project" "${sge_info[@]}")
         if [[ ${wynton_project} == "${sge_project}" ]]; then
             okay "SGE 'default_project' and LDAP 'wyntonProject' agree"
             n_ok=$((n_ok + 1))
@@ -508,7 +522,7 @@ if [[ $action == "validate" ]]; then
         fail "User is not in SGE"
         n_fail=$((n_fail + 1))
     fi
-    
+
     echo
     echo "Summary: ${n_ok} OK, ${n_fail} FAIL, ${n_skip} SKIP"
 
