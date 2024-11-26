@@ -9,7 +9,7 @@
 #'  --version        Display version
 #'
 #' Options:
-#'  --user=USER      User to query by username (default: $USER)
+#'  --user=<user>    User to query (default: $USER)
 #'
 #' Examples:
 #'  wynton account

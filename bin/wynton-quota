@@ -9,7 +9,7 @@
 #'  --version        Display version
 #'
 #' Options:
-#'  --user=USER      Query another user (default: $USER)
+#'  --user=<user>    User to query (default: $USER)
 #'
 #' Examples:
 #'  wynton quota

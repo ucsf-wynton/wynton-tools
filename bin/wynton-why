@@ -9,11 +9,11 @@
 #'  --version        Display version
 #'
 #' Options:
-#'  --user=USER      Query another user (default: $USER)
+#'  --user=<user>    User to query (default: $USER)
 #'
 #' Examples:
 #'  wynton why
-#'  wynton why --user alice
+#'  wynton why --user=alice
 #'
 #' Version: 0.0.1-9002
 #' Copyright: Henrik Bengtsson (2024)
@@ -86,6 +86,9 @@ while [[ $# -gt 0 ]]; do
         fi
         if [[ "${key}" == "user" ]]; then
             user=${value}
+	    if is_integer "${value}"; then
+                user=$(uid_to_user "${value}")
+	    fi
         else
             error "Unknown option: $1"
         fi

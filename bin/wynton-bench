@@ -129,6 +129,9 @@ while [[ $# -gt 0 ]]; do
             hostname=${value}
         elif [[ "${key}" == "user" ]]; then
             user=${value}
+	    if is_integer "${value}"; then
+                user=$(uid_to_user "${value}")
+	    fi
         else
             error "Unknown option: $1"
         fi
