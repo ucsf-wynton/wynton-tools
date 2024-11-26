@@ -1,4 +1,12 @@
-# Version (development version)
+# Version 0.6.0 (2024-11-25)
+
+## New Features
+
+ * Add `wynton account` for looking up account information and
+   validating the account settings.
+ 
+ * All tools taking option `--user=<username>` now also supports
+   specifying user by user ID, i.e. `--user=<uid>`.
 
 ## Deprecated and Defunct
 
