@@ -442,7 +442,7 @@ if [[ $action == "validate" ]]; then
             n_fail=$((n_fail + 1))
         else
             okay "UCSF Employee ID is not required"
-            n_skip=$((n_skip + 1))
+            n_ok=$((n_ok + 1))
         fi
     fi
 
@@ -457,7 +457,7 @@ if [[ $action == "validate" ]]; then
         fi
     else
          okay "Account is not locked"
-         n_skip=$((n_skip + 1))
+         n_ok=$((n_ok + 1))
     fi
 
     # Login shell is valid
