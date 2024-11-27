@@ -453,7 +453,7 @@ if [[ $action == "validate" ]]; then
             n_fail=$((n_fail + 1))
         else
             okay "Locked account does not have access"
-            n_fail=$((n_fail + 1))
+            n_ok=$((n_ok + 1))
         fi
     else
          okay "Account is not locked"
