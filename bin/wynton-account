@@ -20,6 +20,7 @@
 #'  wynton account --user=alice
 #'  wynton account --user=alice --check
 #'  wynton account --user=1000
+#'  wynton account --user=alice@bobsonlab.org
 #'
 #' Version: 0.2.0
 #' Copyright: Henrik Bengtsson (2024)
@@ -133,6 +134,8 @@ while [[ $# -gt 0 ]]; do
             user=${value}
 	    if is_integer "${value}"; then
                 user=$(uid_to_user "${value}")
+	    elif is_email "${value}"; then
+                user=$(email_to_user "${value}")
 	    fi
         else
             error "Unknown option: $1"

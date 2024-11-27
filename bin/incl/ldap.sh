@@ -14,6 +14,11 @@ email_pattern() {
     echo "^${username}@(${domain}[.])+${tld}$"
 }
 
+is_email() {
+    local email=${1:?}
+    grep -q -i -E "$(email_pattern)" <<< "${email}"
+}
+
 is_ucsf_email() {
     local email=${1:?}
     grep -q -i -E "@(|[[:alnum:]]+[.])ucsf[.]edu$" <<< "${email}"
@@ -38,6 +43,12 @@ uid_to_user() {
     local -i uid
     uid=${1:?}
     getent passwd "${uid}" | cut -d ':' -f 1
+}
+
+email_to_user() {
+    local email
+    email=${1:?}
+    ldap_search "mail=${email}" "uid" | grep -E "^uid:" | sed -E "s/^( *uid: *| *$)//g"
 }
 
 reserved_usernames() {

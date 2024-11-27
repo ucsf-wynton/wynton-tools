@@ -5,6 +5,9 @@
  * Now `wynton account` displays account information by default. To
    also check the account, add `--check`.
 
+ * Now `wynton account` supports also `--user=<email>`, which looks up
+   the username by email address.
+
 
 # Version 0.7.0 (2024-11-26)
 
