@@ -1,6 +1,9 @@
 # Version (development version)
 
- * ...
+## New Features
+
+ * Now `wynton account` displays account information by default. To
+   also check the account, add `--check`.
 
 
 # Version 0.7.0 (2024-11-26)
