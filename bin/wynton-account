@@ -233,7 +233,7 @@ if [[ $action == "validate" ]]; then
     fi
     
     email=$(ldap_get_field "mail" "${ldap_info[@]}")
-    ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}")
+    ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}" | grep -i -v -E "^(none)$")
     shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
     faculty_sponsor=$(ldap_get_field "FacultySponsor" "${ldap_info[@]}")
     wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}")
