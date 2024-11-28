@@ -200,6 +200,7 @@ if [[ $action == "validate" ]]; then
         error "There are ${count} users in LDAP with username '${user}'"
     fi
 
+    ## Access to PHI?
     phi=false
     if [[  $(ldap_get_field "protectedAccess" "${ldap_info[@]}") == "TRUE" ]]; then
         phi=true
@@ -219,11 +220,13 @@ if [[ $action == "validate" ]]; then
         echo >&2
     fi
     
+    ## Access to Wynton?
     access=false
     if [[  $(ldap_get_field "wyntonAccess" "${ldap_info[@]}") == "TRUE" ]]; then
         access=true
     fi
 
+    ## Is account locked?
     locked=false
     if [[  $(ldap_get_field "isLocked" "${ldap_info[@]}") == "TRUE" ]]; then
         locked=true
@@ -235,6 +238,14 @@ if [[ $action == "validate" ]]; then
     faculty_sponsor=$(ldap_get_field "FacultySponsor" "${ldap_info[@]}")
     wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}")
 
+    ## Access to Information Commons, i.e. an "IC user"?
+    if id "${user}" | grep -q -F "(icusers)"; then
+	ic=true
+    else
+	ic=false
+    fi
+
+    ## SGE information
     if qconf -suserl | grep -q -E "^${user}$"; then
 	in_sge=true
         mapfile -t sge_info < <(qconf -suser "${user}" | sort)
@@ -270,8 +281,9 @@ if [[ $action == "validate" ]]; then
     echo "* HOME: $home"
     echo "* HOME disk quota: $(( beegfs_quota[0] / 1024**3 / 2 )) GiB used out of $(( beegfs_quota[1] / 1024**3 / 2 )) GiB (${beegfs_quota[3]}%)"
     echo "* Wynton access: ${access}"
+    echo "* PHI access: ${phi}"
+    echo "* IC access: ${ic}"
     echo "* Locked account: ${locked}"
-    echo "* PHI account: ${phi}"
     echo "* Login shell: ${shell}"
     echo "* Wynton project: ${wynton_project}"
     echo "* SGE project: ${sge_project}"
