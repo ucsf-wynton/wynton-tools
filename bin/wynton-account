@@ -330,6 +330,17 @@ if [[ $action == "validate" ]]; then
             okay "Group ID (GID) is within [415,65535]"
         fi
     
+        # IC access => PHI access
+        if ${ic}; then
+            if ${phi}; then
+                okay "IC user has PHI access"
+            else
+                fail "IC user without PHI access"
+            fi
+        else
+            okay "Not an IC user"
+        fi
+
         # PHI user is in 'wynton-phi', otherwise not
         if ${phi}; then
             if id "${user}" | grep -q -F "(wynton-phi)"; then
