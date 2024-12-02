@@ -1,4 +1,4 @@
-# Version (development version)
+# Version 0.8.0 (2024-12-02)
 
 ## New Features
 
