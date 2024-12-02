@@ -1,3 +1,17 @@
+# Version 0.8.0 (2024-12-02)
+
+## New Features
+
+ * Now `wynton account` displays account information by default. To
+   also check the account, add `--check`.
+
+ * Now `wynton account` supports also `--user=<email>`, which looks up
+   the username by email address.
+
+ * Now `wynton account` reports also on Information Commons (IC)
+   access, and asserts such users have PHI access.
+
+
 # Version 0.7.0 (2024-11-26)
 
 ## New Features
