@@ -68,6 +68,59 @@ warn="${yellow}WARN${reset}"
 fail="${red}FAIL${reset}"
 na="${magenta}??${reset}"
 
+
+# Outputs: (bytes, kB, MB, GB, KiB, MiB, GiB)
+# shellcheck disable=2034
+SIZES_INPUT=0
+# shellcheck disable=2034
+SIZES_B=1
+# shellcheck disable=2034
+SIZES_kB=2
+# shellcheck disable=2034
+SIZES_MB=3
+# shellcheck disable=2034
+SIZES_GB=4
+# shellcheck disable=2034
+SIZES_KiB=5
+# shellcheck disable=2034
+SIZES_MiB=6
+# shellcheck disable=2034
+SIZES_GiB=7
+
+parse_size_spec() {
+    local bytes_str
+    local -i bytes kB MB GB KiB MiB GiB
+    
+    bytes_str=${1:?}
+
+    ## Convert to IEC units to SI units
+    bytes_str=${bytes_str//G/*1024M}
+    bytes_str=${bytes_str//M/*1024K}
+    bytes_str=${bytes_str//K/*1024}
+
+    ## Bytes
+    bytes=$(bc <<< "${bytes_str}")
+
+    ## Sizes in SI units
+    kB=$(bc <<< "${bytes} / 1000")
+    MB=$(bc <<< "${kB} / 1000")
+    GB=$(bc <<< "${MB} / 1000")
+    
+    ## Sizes in IEC units
+    KiB=$(bc <<< "${bytes} / 1024")
+    MiB=$(bc <<< "${KiB} / 1024")
+    GiB=$(bc <<< "${MiB} / 1024")
+
+    echo "${1}"
+    echo "${bytes}"
+    echo "${kB}"
+    echo "${MB}"
+    echo "${GB}"
+    echo "${KiB}"
+    echo "${MiB}"
+    echo "${GiB}"
+}
+
 # -------------------------------------------------------------------------
 # MAIN
 # -------------------------------------------------------------------------
@@ -354,53 +407,23 @@ if [[ $action == "job" ]]; then
 
 	key="mem_free"
         if grep -q -F "${key}" <<< "${value}"; then
-          value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
-  	  bytes=${value2}
-	  bytes=${bytes//G/*1024M}
-	  bytes=${bytes//M/*1024K}
-	  bytes=${bytes//K/*1024}
-	  bytes=$(bc <<< "${bytes}")
-	  KiB=$(bc <<< "${bytes} / 1024")
-	  MiB=$(bc <<< "${KiB} / 1024")
-	  GiB=$(bc <<< "${MiB} / 1024")
-	  kB=$(bc <<< "${bytes} / 1000")
-	  MB=$(bc <<< "${kB} / 1000")
-	  GB=$(bc <<< "${MB} / 1000")
-          echo "       - ${key}=${value2} => $(printf "%'d" "${MiB}") MiB = $(printf "%'d" "${GiB}") GiB"
+            value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
+	    mapfile -t sizes < <(parse_size_spec "${value2}")
+            echo "       - ${key}=${value2} => $(printf "%'d" "${sizes[SIZES_MiB]}") MiB = $(printf "%'d" "${sizes[SIZES_GiB]}") GiB"
         fi
 
         key="gpu_mem"
         if grep -q -F "${key}" <<< "${value}"; then
-          value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
-  	  bytes=${value2}
-	  bytes=${bytes//G/*1024M}
-	  bytes=${bytes//M/*1024K}
-	  bytes=${bytes//K/*1024}
-	  bytes=$(bc <<< "${bytes}")
-	  KiB=$(bc <<< "${bytes} / 1024")
-	  MiB=$(bc <<< "${KiB} / 1024")
-	  GiB=$(bc <<< "${MiB} / 1024")
-	  kB=$(bc <<< "${bytes} / 1000")
-	  MB=$(bc <<< "${kB} / 1000")
-	  GB=$(bc <<< "${MB} / 1000")
-          echo "       - ${key}=${value2} => $(printf "%'d" "${MiB}") MiB = $(printf "%'d" "${GiB}") GiB"
+            value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
+	    mapfile -t sizes < <(parse_size_spec "${value2}")
+            echo "       - ${key}=${value2} => $(printf "%'d" "${sizes[SIZES_MiB]}") MiB = $(printf "%'d" "${sizes[SIZES_GiB]}") GiB"
         fi
 
 	key="scratch"
         if grep -q -F "${key}" <<< "${value}"; then
-          value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
-  	  bytes=${value2}
-	  bytes=${bytes//G/*1024M}
-	  bytes=${bytes//M/*1024K}
-	  bytes=${bytes//K/*1024}
-	  bytes=$(bc <<< "${bytes}")
-	  KiB=$(bc <<< "${bytes} / 1024")
-	  MiB=$(bc <<< "${KiB} / 1024")
-	  GiB=$(bc <<< "${MiB} / 1024")
-	  kB=$(bc <<< "${bytes} / 1000")
-	  MB=$(bc <<< "${kB} / 1000")
-	  GB=$(bc <<< "${MB} / 1000")
-          echo "       - ${key}=${value2} => $(printf "%'d" "${MiB}") MiB = $(printf "%'d" "${GiB}") GiB"
+            value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
+	    mapfile -t sizes < <(parse_size_spec "${value2}")
+            echo "       - ${key}=${value2} => $(printf "%'d" "${sizes[SIZES_MiB]}") MiB = $(printf "%'d" "${sizes[SIZES_GiB]}") GiB"
         fi
 
         # shellcheck disable=2154
