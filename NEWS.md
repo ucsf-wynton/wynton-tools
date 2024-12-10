@@ -1,3 +1,11 @@
+# Version (development version)
+
+## Bug Fixes
+
+ * `wynton account` would incorrectly give an error for accounts with
+   `isLocked=TRUE` and `wyntonAccess=TRUE`; downgraded to a note.
+
+
 # Version 0.8.0 (2024-12-02)
 
 ## New Features
