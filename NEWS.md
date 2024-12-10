@@ -1,5 +1,12 @@
 # Version (development version)
 
+## New Features
+
+ * `wynton job` reports on more job details.
+
+ * `wynton job` how also parses `scratch` and `gpu_mem` resource
+   specifications.
+
 ## Bug Fixes
 
  * `wynton account` would incorrectly give an error for accounts with

@@ -329,6 +329,12 @@ if [[ $action == "job" ]]; then
         echo "$status Submitted on: ${timestamp}${info}"
 
         # shellcheck disable=2154
+        value=${_THIS_JOB_project}
+        status="[ $ok ]"
+        info=""
+        echo "$status Project: ${value}"
+	
+        # shellcheck disable=2154
         value=${_THIS_JOB_hard_queue_list}
         status="[ $ok ]"
         info=""
@@ -354,11 +360,76 @@ if [[ $action == "job" ]]; then
 	  bytes=${bytes//M/*1024K}
 	  bytes=${bytes//K/*1024}
 	  bytes=$(bc <<< "${bytes}")
+	  KiB=$(bc <<< "${bytes} / 1024")
+	  MiB=$(bc <<< "${KiB} / 1024")
+	  GiB=$(bc <<< "${MiB} / 1024")
 	  kB=$(bc <<< "${bytes} / 1000")
 	  MB=$(bc <<< "${kB} / 1000")
 	  GB=$(bc <<< "${MB} / 1000")
-          echo "       - ${key}=${value2} => $(printf "%'d" "${bytes}") bytes = ~$(printf "%'d" "${kB}") kB = ~$(printf "%'d" "${MB}") MB = ~$(printf "%'d" "${GB}") GB"
+          echo "       - ${key}=${value2} => $(printf "%'d" "${MiB}") MiB = $(printf "%'d" "${GiB}") GiB"
         fi
+
+        key="gpu_mem"
+        if grep -q -F "${key}" <<< "${value}"; then
+          value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
+  	  bytes=${value2}
+	  bytes=${bytes//G/*1024M}
+	  bytes=${bytes//M/*1024K}
+	  bytes=${bytes//K/*1024}
+	  bytes=$(bc <<< "${bytes}")
+	  KiB=$(bc <<< "${bytes} / 1024")
+	  MiB=$(bc <<< "${KiB} / 1024")
+	  GiB=$(bc <<< "${MiB} / 1024")
+	  kB=$(bc <<< "${bytes} / 1000")
+	  MB=$(bc <<< "${kB} / 1000")
+	  GB=$(bc <<< "${MB} / 1000")
+          echo "       - ${key}=${value2} => $(printf "%'d" "${MiB}") MiB = $(printf "%'d" "${GiB}") GiB"
+        fi
+
+	key="scratch"
+        if grep -q -F "${key}" <<< "${value}"; then
+          value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
+  	  bytes=${value2}
+	  bytes=${bytes//G/*1024M}
+	  bytes=${bytes//M/*1024K}
+	  bytes=${bytes//K/*1024}
+	  bytes=$(bc <<< "${bytes}")
+	  KiB=$(bc <<< "${bytes} / 1024")
+	  MiB=$(bc <<< "${KiB} / 1024")
+	  GiB=$(bc <<< "${MiB} / 1024")
+	  kB=$(bc <<< "${bytes} / 1000")
+	  MB=$(bc <<< "${kB} / 1000")
+	  GB=$(bc <<< "${MB} / 1000")
+          echo "       - ${key}=${value2} => $(printf "%'d" "${MiB}") MiB = $(printf "%'d" "${GiB}") GiB"
+        fi
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_parallel_environment}
+        echo "[ $ok ] Parallel environment: ${value:-<none>}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_job_array_tasks}
+        echo "[ $ok ] Job array tasks: ${value:-<none>}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_sge_o_shell}
+        status="[ $ok ]"
+	if [[ ! -x "${value}" ]]; then
+            status="[$fail]"
+	elif [[ "$(basename "${value}")" != "bash" ]]; then
+            status="[$warn]"
+        fi
+        echo "${status} Job shell: ${value:-<none>}"
+	
+        # shellcheck disable=2154
+        value=${_THIS_JOB_merge}
+        status="[ $ok ]"
+        echo "${status} Merge stdout and stderr: ${value:-<none>}"
+	
+        # shellcheck disable=2154
+        value=${_THIS_JOB_notify}
+        status="[ $ok ]"
+        echo "${status} Signal job, if terminated: ${value:-<none>}"
 	
         # shellcheck disable=2154
         value=${_THIS_JOB_cwd}
@@ -374,9 +445,7 @@ if [[ $action == "job" ]]; then
             info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$warn]"
         fi
-	if [[ -d "${value}" ]]; then
-	    info="$(dir_info "${value}" "${is_owner}")${info}"
-	fi
+        info="$(dir_info "${value}" "${is_owner}")${info}"
         echo "${status} Working directory: ${info}"
 
         # shellcheck disable=2154
