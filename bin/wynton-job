@@ -274,6 +274,8 @@ if [[ $action == "job" ]]; then
 
         ## Current status
         mapfile -t values < <(awk '{ print $5 }' <<< "$bfr2")
+	ntasks=${#values[@]}
+        mapfile -t values < <(printf "%s\n" "${values[@]}" | uniq -c | sort -k 2 | sed -E 's/^ +//' | sed 's/ /*/')
         level=0
 	values1=()
         values2=()
@@ -284,33 +286,33 @@ if [[ $action == "job" ]]; then
 	    if [[ -z ${value} ]]; then
 		continue
 	    fi
-
+	
             values1+=("$value")
 
-            value=${value/d/00}
-            value=${value/E/01}
-            value=${value/h/02}
-            value=${value/q/03}
-            value=${value/r/04}
-            value=${value/R/05}
-            value=${value/s/0S}
-            value=${value/S/06}
-            value=${value/t/07}
-            value=${value/T/08}
-            value=${value/w/09}
-            value=${value/z/10}
+            value=${value/d/_00}
+            value=${value/E/_01}
+            value=${value/h/_02}
+            value=${value/q/_03}
+            value=${value/r/_04}
+            value=${value/R/_05}
+            value=${value/s/_0S}
+            value=${value/S/_06}
+            value=${value/t/_07}
+            value=${value/T/_08}
+            value=${value/w/_09}
+            value=${value/z/_10}
 
-            value=${value/00/${yellow}deletion${reset} }
-            value=${value/01/${red}error${reset} }
-            value=${value/02/${yellow}hold${reset} }
-            value=${value/03/${yellow}queued${reset} }
-            value=${value/04/${green}running${reset} }
-            value=${value/05/${blue}restarted${reset} }
-            value=${value/06/${yellow}suspended${reset} }
-            value=${value/07/${blue}transfering${reset} }
-            value=${value/08/${yellow}threshold${reset} }
-            value=${value/09/${blue}waiting${reset} }
-            value=${value/10/${magenta}recently finished (\"zombie\")${reset} [${yellow}check again soon${reset}] }
+            value=${value/_00/${yellow}deletion${reset} }
+            value=${value/_01/${red}error${reset} }
+            value=${value/_02/${yellow}hold${reset} }
+            value=${value/_03/${yellow}queued${reset} }
+            value=${value/_04/${green}running${reset} }
+            value=${value/_05/${blue}restarted${reset} }
+            value=${value/_06/${yellow}suspended${reset} }
+            value=${value/_07/${blue}transfering${reset} }
+            value=${value/_08/${yellow}threshold${reset} }
+            value=${value/_09/${blue}waiting${reset} }
+            value=${value/_10/${magenta}recently finished (\"zombie\")${reset} [${yellow}check again soon${reset}] }
 
             if [[ $level -lt 2 ]]; then
                 if [[ $value == *error* ]]; then
@@ -331,7 +333,7 @@ if [[ $action == "job" ]]; then
                     level=2
                 fi
             fi
-            values2+=("$value")
+            values2+=("${value/[*]/ * }")
         done
 
         status="[ $ok ]"
@@ -343,7 +345,10 @@ if [[ $action == "job" ]]; then
             status="[$fail]"
         fi
 	if [[ ${#values1[@]} -gt 0 ]]; then
-            echo "$status Job status: [n=${#values1[@]}] ${values1[*]} => ${values2[*]}"
+	    old_IFS=${IFS}
+	    IFS=", "
+            echo "$status Job status: [ntasks=${ntasks}] ${values1[*]} => ${values2[*]}" | sed -E 's/,/, /g' | sed -E 's/ ,/,/g'
+	    IFS="${old_IFS}"
 	else
             status="[ $na ]"
             echo "$status Job status: N/A"
