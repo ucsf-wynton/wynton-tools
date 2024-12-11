@@ -88,8 +88,8 @@ SIZES_MiB=6
 SIZES_GiB=7
 
 parse_size_spec() {
-    local bytes_str
-    local -i bytes kB MB GB KiB MiB GiB
+    local bytes_str bytes
+    local -i kB MB GB KiB MiB GiB
     
     bytes_str=${1:?}
 
@@ -405,23 +405,24 @@ if [[ $action == "job" ]]; then
 
         echo "       - ${key}=${value2} => $(seconds_to_dhms "${value2}")"
 
+        pattern_size="[[:digit:]]+([.][[:digit:]]*)?[[:alpha:]]?"
 	key="mem_free"
         if grep -q -F "${key}" <<< "${value}"; then
-            value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
+            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,*)/\1/" <<< "${value}")
 	    mapfile -t sizes < <(parse_size_spec "${value2}")
             echo "       - ${key}=${value2} => $(printf "%'d" "${sizes[SIZES_MiB]}") MiB = $(printf "%'d" "${sizes[SIZES_GiB]}") GiB"
         fi
 
         key="gpu_mem"
         if grep -q -F "${key}" <<< "${value}"; then
-            value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
+            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,*)/\1/" <<< "${value}")
 	    mapfile -t sizes < <(parse_size_spec "${value2}")
             echo "       - ${key}=${value2} => $(printf "%'d" "${sizes[SIZES_MiB]}") MiB = $(printf "%'d" "${sizes[SIZES_GiB]}") GiB"
         fi
 
 	key="scratch"
         if grep -q -F "${key}" <<< "${value}"; then
-            value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
+            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,*)/\1/" <<< "${value}")
 	    mapfile -t sizes < <(parse_size_spec "${value2}")
             echo "       - ${key}=${value2} => $(printf "%'d" "${sizes[SIZES_MiB]}") MiB = $(printf "%'d" "${sizes[SIZES_GiB]}") GiB"
         fi
