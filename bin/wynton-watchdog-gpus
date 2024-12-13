@@ -33,7 +33,7 @@ help() {
 }
 
 debug() {
-    false && >&2 echo "$@"
+    true && >&2 echo "$@"
 }
 
 info() {
@@ -62,7 +62,7 @@ illegal_gpu_pids() {
     debug "UID: ${uid}"
     debug "SGE_GPU: ${SGE_GPU}"
     
-    mapfile -t gpus < <(tr ',' $'\n' <<< "${SGE_GPU:?}" | sort | uniq)
+    mapfile -t gpus < <(tr ',' $'\n' <<< "${SGE_GPU}" | sed '/^$/d' | sort | uniq)
     debug "GPUs: [n=${#gpus[@]}] ${gpus[*]}"
     
     ## Find all process IDs that runs on GPUs other than SGE_GPU
@@ -78,7 +78,7 @@ illegal_gpu_pids() {
     else
         query="//gpu/processes/process_info/pid/text()"
     fi
-    mapfile -t pids < <(gpu_info | xpath -q -n -e "${query}" | sort | uniq)
+    mapfile -t pids < <(gpu_info | xpath -q -n -e "${query}" | sed '/^$/d' | sort | uniq)
     debug "Unique PIDs: [n=${#pids[@]}] ${pids[*]}"
 
     ## Find subset that owned by the current user
@@ -91,8 +91,10 @@ illegal_gpu_pids() {
       fi
     done
     debug "Illegal PIDs: [n=${#bad[@]}] ${bad[*]}"
-    
-    printf "%s\n" "${bad[@]}"
+
+    if [[ ${#bad[@]} -gt 0 ]]; then
+        printf "%s\n" "${bad[@]}"
+    fi
 } # illegal_gpu_pids()
 
 
@@ -107,7 +109,7 @@ kill_illegal_gpu_pids() {
 
     ## Find illegal GPU processes
     mapfile -t pids < <(illegal_gpu_pids)
-
+    
     ## Nothing to do?
     if [[ ${#pids[@]} -eq 0 ]]; then
         return 0
@@ -125,7 +127,7 @@ kill_illegal_gpu_pids() {
         name=$(grep -E "^Name:" "/proc/${pid}/status" | cut -f 2)
     
         ## Identify GPUs where these "bad" processes are running on
-        mapfile -t gpus < <(gpu_info | xpath -q -n -e "//gpu[processes/process_info/pid=${pid}]/minor_number/text()")
+        mapfile -t gpus < <(gpu_info | xpath -q -n -e "//gpu[processes/process_info/pid=${pid}]/minor_number/text()" | sed '/^$/d' | sort | uniq)
         info " ${kk}. illegal PID ${pid} (${name}) running on GPU ${gpus[*]}"
         if [[ -n "${signal}" ]]; then
             kill -s "${signal}" "${pid}"
@@ -134,8 +136,9 @@ kill_illegal_gpu_pids() {
 } ## kill_illegal_gpu_pids()
 
 
-if [[ $# -gt 0 ]]; then
-    kill_illegal_gpu_pids "$@"
-else
+if [[ $# -eq 1 ]] && [[ $1 == "--help" ]]; then
     help
-fi    
+    exit 0
+fi
+
+kill_illegal_gpu_pids "$@"
