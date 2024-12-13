@@ -1,0 +1,144 @@
+#! /usr/bin/env bash
+#' Watchdog for Processes Running on Non-Allocated GPUs
+#'
+#' Usage:
+#' gpu_info              - get current GPU use
+#' illegal_gpu_pids      - find illegal GPU PIDs of current user
+#' kill_illegal_gpu_pids - kill illegal GPU PIDs of current user
+#'
+#' Example:
+#' kill_illegal_gpu_pids ""      # list, but don't kill illegal processes
+#' kill_illegal_gpu_pids SIGKILL
+#'
+#' Details:
+#' These tools identifies processes (PIDs) by the current user (UID)
+#' running on GPUs (nvidia-smi) that are not the GPUs listed in
+#' environment variable 'SGE_GPU'.
+#'
+#' Requirements:
+#' * Bash
+#' * nvidia-smi
+#'
+#' Author: Henrik Bengtsson (2024)
+#' License: MIT
+
+# shellcheck disable=2034
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+help() {
+    grep "^#'" "$0" | sed -E "s/^#'[[:blank:]]?//"
+}
+
+debug() {
+    ${DEBUG:-false} && >&2 echo "$@"
+}
+
+info() {
+    >&2 echo "$@"
+}
+
+_gpu_info_=()
+gpu_info() {
+    ## Record, if missing
+    if [[ ${#_gpu_info_[@]} -eq 0 ]]; then
+        mapfile -t _gpu_info_ < <(nvidia-smi --query --xml-format)
+    fi
+    printf "%s\n" "${_gpu_info_[@]}"
+}
+
+illegal_gpu_pids() {
+    local -a gpus
+    local -a -i pids
+    local -a -i bad
+    local -i kk
+    local -i pid
+    local -i owner
+    local query
+
+    uid=${uid:-${UID}}
+    debug "UID: ${uid}"
+    debug "SGE_GPU: ${SGE_GPU}"
+    
+    mapfile -t gpus < <(tr ',' $'\n' <<< "${SGE_GPU}" | sed '/^$/d' | sort | uniq)
+    debug "GPUs: [n=${#gpus[@]}] ${gpus[*]}"
+    
+    ## Find all process IDs that runs on GPUs other than SGE_GPU
+    if [[ ${#gpus[@]} -gt 0 ]]; then
+        query=""
+        for gpu in "${gpus[@]}"; do
+            if [[ -n ${query} ]]; then
+                query+=" or "
+            fi
+            query+="minor_number=${gpu}"
+        done
+        query="//gpu[not(${query})]/processes/process_info/pid/text()"
+    else
+        query="//gpu/processes/process_info/pid/text()"
+    fi
+    mapfile -t pids < <(gpu_info | xpath -q -n -e "${query}" | sed '/^$/d' | sort | uniq)
+    debug "Unique PIDs: [n=${#pids[@]}] ${pids[*]}"
+
+    ## Find subset that owned by the current user
+    bad=()
+    for kk in $(seq "${#pids[@]}"); do
+      pid=${pids[((kk-1))]}
+      owner=$(grep -E "^Uid:" "/proc/${pid}/status" | cut -f 2)
+      if [[ "${owner}" == "${uid}" ]]; then
+        bad+=("${pid}")
+      fi
+    done
+    debug "Illegal PIDs: [n=${#bad[@]}] ${bad[*]}"
+
+    if [[ ${#bad[@]} -gt 0 ]]; then
+        printf "%s\n" "${bad[@]}"
+    fi
+} # illegal_gpu_pids()
+
+
+kill_illegal_gpu_pids() {
+    local -a pids
+    local signal
+
+    signal=${1}
+
+    ## Reset current GPU information
+    _gpu_info_=()
+
+    ## Find illegal GPU processes
+    mapfile -t pids < <(illegal_gpu_pids)
+    
+    ## Nothing to do?
+    if [[ ${#pids[@]} -eq 0 ]]; then
+        return 0
+    fi
+
+    if [[ -n "${signal}" ]]; then
+        info "Terminating (${signal}) processes running illegally on non-assigned GPUs:"
+    else
+        info "Detected processes running illegally on non-assigned GPUs:"
+    fi
+
+    ## Terminate illegal PIDs
+    for kk in $(seq "${#pids[@]}"); do
+        pid=${pids[((kk-1))]}
+        name=$(grep -E "^Name:" "/proc/${pid}/status" | cut -f 2)
+    
+        ## Identify GPUs where these "bad" processes are running on
+        mapfile -t gpus < <(gpu_info | xpath -q -n -e "//gpu[processes/process_info/pid=${pid}]/minor_number/text()" | sed '/^$/d' | sort | uniq)
+        info " ${kk}. illegal PID ${pid} (${name}) running on GPU ${gpus[*]}"
+        if [[ -n "${signal}" ]]; then
+            kill -s "${signal}" "${pid}"
+        fi
+    done
+} ## kill_illegal_gpu_pids()
+
+
+if [[ $# -eq 1 ]] && [[ $1 == "--help" ]]; then
+    help
+    exit 0
+fi
+
+kill_illegal_gpu_pids "$@"
