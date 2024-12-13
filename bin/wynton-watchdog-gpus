@@ -107,7 +107,7 @@ kill_illegal_gpu_pids() {
 
     ## Find illegal GPU processes
     mapfile -t pids < <(illegal_gpu_pids)
-    
+
     ## Nothing to do?
     if [[ ${#pids[@]} -eq 0 ]]; then
         return 0
@@ -121,7 +121,7 @@ kill_illegal_gpu_pids() {
 
     ## Terminate illegal PIDs
     for kk in $(seq "${#pids[@]}"); do
-        pid=${bad[((kk-1))]}
+        pid=${pids[((kk-1))]}
         name=$(grep -E "^Name:" "/proc/${pid}/status" | cut -f 2)
     
         ## Identify GPUs where these "bad" processes are running on
