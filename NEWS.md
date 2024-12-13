@@ -1,3 +1,18 @@
+# Version 0.9.0 (2024-12-13)
+
+## New Features
+
+ * `wynton job` reports on more job details.
+
+ * `wynton job` how also parses `scratch` and `gpu_mem` resource
+   specifications.
+
+## Bug Fixes
+
+ * `wynton account` would incorrectly give an error for accounts with
+   `isLocked=TRUE` and `wyntonAccess=TRUE`; downgraded to a note.
+
+
 # Version 0.8.0 (2024-12-02)
 
 ## New Features

@@ -450,7 +450,7 @@ if [[ $action == "validate" ]]; then
         # No locked account has access
         if ${locked}; then
             if ${access}; then
-                fail "Locked account still have access"
+                note "Locked account still have access"
             else
                 okay "Locked account does not have access"
             fi

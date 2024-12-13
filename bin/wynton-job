@@ -68,6 +68,59 @@ warn="${yellow}WARN${reset}"
 fail="${red}FAIL${reset}"
 na="${magenta}??${reset}"
 
+
+# Outputs: (bytes, kB, MB, GB, KiB, MiB, GiB)
+# shellcheck disable=2034
+SIZES_INPUT=0
+# shellcheck disable=2034
+SIZES_B=1
+# shellcheck disable=2034
+SIZES_kB=2
+# shellcheck disable=2034
+SIZES_MB=3
+# shellcheck disable=2034
+SIZES_GB=4
+# shellcheck disable=2034
+SIZES_KiB=5
+# shellcheck disable=2034
+SIZES_MiB=6
+# shellcheck disable=2034
+SIZES_GiB=7
+
+parse_size_spec() {
+    local bytes_str
+    local bytes kB MB GB KiB MiB GiB
+    
+    bytes_str=${1:?}
+
+    ## Convert to IEC units to SI units
+    bytes_str=${bytes_str//G/*1024M}
+    bytes_str=${bytes_str//M/*1024K}
+    bytes_str=${bytes_str//K/*1024}
+
+    ## Bytes
+    bytes=$(bc <<< "${bytes_str}")
+
+    ## Sizes in SI units
+    kB=$(bc <<< "scale=1; ${bytes} / 1000")
+    MB=$(bc <<< "scale=1; ${kB} / 1000")
+    GB=$(bc <<< "scale=1; ${MB} / 1000")
+    
+    ## Sizes in IEC units
+    KiB=$(bc <<< "scale=1; ${bytes} / 1024")
+    MiB=$(bc <<< "scale=1; ${KiB} / 1024")
+    GiB=$(bc <<< "scale=1; ${MiB} / 1024")
+
+    echo "${1}"
+    echo "${bytes}"
+    echo "${kB}"
+    echo "${MB}"
+    echo "${GB}"
+    echo "${KiB}"
+    echo "${MiB}"
+    echo "${GiB}"
+}
+
 # -------------------------------------------------------------------------
 # MAIN
 # -------------------------------------------------------------------------
@@ -221,6 +274,8 @@ if [[ $action == "job" ]]; then
 
         ## Current status
         mapfile -t values < <(awk '{ print $5 }' <<< "$bfr2")
+	ntasks=${#values[@]}
+        mapfile -t values < <(printf "%s\n" "${values[@]}" | uniq -c | sort -k 2 | sed -E 's/^ +//' | sed 's/ /*/')
         level=0
 	values1=()
         values2=()
@@ -231,33 +286,33 @@ if [[ $action == "job" ]]; then
 	    if [[ -z ${value} ]]; then
 		continue
 	    fi
-
+	
             values1+=("$value")
 
-            value=${value/d/00}
-            value=${value/E/01}
-            value=${value/h/02}
-            value=${value/q/03}
-            value=${value/r/04}
-            value=${value/R/05}
-            value=${value/s/0S}
-            value=${value/S/06}
-            value=${value/t/07}
-            value=${value/T/08}
-            value=${value/w/09}
-            value=${value/z/10}
+            value=${value/d/_00}
+            value=${value/E/_01}
+            value=${value/h/_02}
+            value=${value/q/_03}
+            value=${value/r/_04}
+            value=${value/R/_05}
+            value=${value/s/_0S}
+            value=${value/S/_06}
+            value=${value/t/_07}
+            value=${value/T/_08}
+            value=${value/w/_09}
+            value=${value/z/_10}
 
-            value=${value/00/${yellow}deletion${reset} }
-            value=${value/01/${red}error${reset} }
-            value=${value/02/${yellow}hold${reset} }
-            value=${value/03/${yellow}queued${reset} }
-            value=${value/04/${green}running${reset} }
-            value=${value/05/${blue}restarted${reset} }
-            value=${value/06/${yellow}suspended${reset} }
-            value=${value/07/${blue}transfering${reset} }
-            value=${value/08/${yellow}threshold${reset} }
-            value=${value/09/${blue}waiting${reset} }
-            value=${value/10/${magenta}recently finished (\"zombie\")${reset} [${yellow}check again soon${reset}] }
+            value=${value/_00/${yellow}deletion${reset} }
+            value=${value/_01/${red}error${reset} }
+            value=${value/_02/${yellow}hold${reset} }
+            value=${value/_03/${yellow}queued${reset} }
+            value=${value/_04/${green}running${reset} }
+            value=${value/_05/${blue}restarted${reset} }
+            value=${value/_06/${yellow}suspended${reset} }
+            value=${value/_07/${blue}transfering${reset} }
+            value=${value/_08/${yellow}threshold${reset} }
+            value=${value/_09/${blue}waiting${reset} }
+            value=${value/_10/${magenta}recently finished (\"zombie\")${reset} [${yellow}check again soon${reset}] }
 
             if [[ $level -lt 2 ]]; then
                 if [[ $value == *error* ]]; then
@@ -278,7 +333,7 @@ if [[ $action == "job" ]]; then
                     level=2
                 fi
             fi
-            values2+=("$value")
+            values2+=("${value/[*]/ * }")
         done
 
         status="[ $ok ]"
@@ -290,7 +345,10 @@ if [[ $action == "job" ]]; then
             status="[$fail]"
         fi
 	if [[ ${#values1[@]} -gt 0 ]]; then
-            echo "$status Job status: [n=${#values1[@]}] ${values1[*]} => ${values2[*]}"
+	    old_IFS=${IFS}
+	    IFS=", "
+            echo "$status Job status: [ntasks=${ntasks}] ${values1[*]} => ${values2[*]}" | sed -E 's/,/, /g' | sed -E 's/ ,/,/g'
+	    IFS="${old_IFS}"
 	else
             status="[ $na ]"
             echo "$status Job status: N/A"
@@ -329,6 +387,12 @@ if [[ $action == "job" ]]; then
         echo "$status Submitted on: ${timestamp}${info}"
 
         # shellcheck disable=2154
+        value=${_THIS_JOB_project}
+        status="[ $ok ]"
+        info=""
+        echo "$status Project: ${value}"
+	
+        # shellcheck disable=2154
         value=${_THIS_JOB_hard_queue_list}
         status="[ $ok ]"
         info=""
@@ -346,19 +410,55 @@ if [[ $action == "job" ]]; then
 
         echo "       - ${key}=${value2} => $(seconds_to_dhms "${value2}")"
 
+        pattern_size="[[:digit:]]+([.][[:digit:]]*)?[[:alpha:]]?"
 	key="mem_free"
         if grep -q -F "${key}" <<< "${value}"; then
-          value2=$(sed -E "s/.*\b${key}=([[:digit:]]+[[:alpha:]]?)\b.*/\1/" <<< "${value}")
-  	  bytes=${value2}
-	  bytes=${bytes//G/*1024M}
-	  bytes=${bytes//M/*1024K}
-	  bytes=${bytes//K/*1024}
-	  bytes=$(bc <<< "${bytes}")
-	  kB=$(bc <<< "${bytes} / 1000")
-	  MB=$(bc <<< "${kB} / 1000")
-	  GB=$(bc <<< "${MB} / 1000")
-          echo "       - ${key}=${value2} => $(printf "%'d" "${bytes}") bytes = ~$(printf "%'d" "${kB}") kB = ~$(printf "%'d" "${MB}") MB = ~$(printf "%'d" "${GB}") GB"
+            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,*)/\1/" <<< "${value}")
+	    mapfile -t sizes < <(parse_size_spec "${value2}")
+            echo "       - ${key}=${value2} => $(printf "%'.1f" "${sizes[SIZES_MiB]}") MiB = $(printf "%'.1f" "${sizes[SIZES_GiB]}") GiB"
         fi
+
+        key="gpu_mem"
+        if grep -q -F "${key}" <<< "${value}"; then
+            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,*)/\1/" <<< "${value}")
+	    mapfile -t sizes < <(parse_size_spec "${value2}")
+            echo "       - ${key}=${value2} => $(printf "%'.1f" "${sizes[SIZES_MiB]}") MiB = $(printf "%'.1f" "${sizes[SIZES_GiB]}") GiB"
+        fi
+
+	key="scratch"
+        if grep -q -F "${key}" <<< "${value}"; then
+            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,*)/\1/" <<< "${value}")
+	    mapfile -t sizes < <(parse_size_spec "${value2}")
+            echo "       - ${key}=${value2} => $(printf "%'.1f" "${sizes[SIZES_MiB]}") MiB = $(printf "%'.1f" "${sizes[SIZES_GiB]}") GiB"
+        fi
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_parallel_environment}
+        echo "[ $ok ] Parallel environment: ${value:-<none>}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_job_array_tasks}
+        echo "[ $ok ] Job array tasks: ${value:-<none>}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_sge_o_shell}
+        status="[ $ok ]"
+	if [[ ! -x "${value}" ]]; then
+            status="[$fail]"
+	elif [[ "$(basename "${value}")" != "bash" ]]; then
+            status="[$warn]"
+        fi
+        echo "${status} Job shell: ${value:-<none>}"
+	
+        # shellcheck disable=2154
+        value=${_THIS_JOB_merge}
+        status="[ $ok ]"
+        echo "${status} Merge stdout and stderr: ${value:-<none>}"
+	
+        # shellcheck disable=2154
+        value=${_THIS_JOB_notify}
+        status="[ $ok ]"
+        echo "${status} Signal job, if terminated: ${value:-<none>}"
 	
         # shellcheck disable=2154
         value=${_THIS_JOB_cwd}
@@ -374,9 +474,7 @@ if [[ $action == "job" ]]; then
             info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$warn]"
         fi
-	if [[ -d "${value}" ]]; then
-	    info="$(dir_info "${value}" "${is_owner}")${info}"
-	fi
+        info="$(dir_info "${value}" "${is_owner}")${info}"
         echo "${status} Working directory: ${info}"
 
         # shellcheck disable=2154
