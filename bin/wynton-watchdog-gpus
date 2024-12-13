@@ -33,7 +33,7 @@ help() {
 }
 
 debug() {
-    true && >&2 echo "$@"
+    ${DEBUG:-false} && >&2 echo "$@"
 }
 
 info() {
