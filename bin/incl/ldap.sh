@@ -1,96 +1,6 @@
 #!/usr/bin/env bash
 
 # -------------------------------------------------------
-# ASSERTS
-# -------------------------------------------------------
-#' Assert that all folders specified in a "path" environment variable exist
-#'
-#' Usage: assert_envpath <envvar> [exclude]*
-#'
-#' Examples:
-#' assert_envpath LD_LIBRARY_PATH
-#'
-#' # Same, but ignore anything under HOME
-#' assert_envpath LD_LIBRARY_PATH "$HOME"
-assert_envpath_exist() {
-    local name=${1:?}
-    local path=${!name}    
-    local excl
-    local -a missing
-
-    ## Nothing to do?
-    [[ -z ${path} ]] && return 0
-
-    shift
-    excl=$(IFS="|"; echo "$*")
-    
-    IFS=':' read -r -a dirs <<< "$path"
-    for dir in "${dirs[@]}"; do
-	[[ -z ${dir} ]] && continue
-	[[ -n ${excl} ]] && grep -q -E "${excl}" <<< "$dir" && continue
-        [[ -d "${dir}" ]] || { missing+=( "$dir" ); continue; }
-        [[ -r "${dir}" ]] || { missing+=( "$dir [no permission]" ); continue; }
-        [[ -x "${dir}" ]] || { missing+=( "$dir [no recursive permission]" ); continue; }
-    done
-    
-    if [[ ${#missing[@]} -gt 0 ]]; then
-	 >&2 echo "Detected non-existing or inaccessible folder(s) in ${name}: [n=${#missing[@]}] ${missing[*]}"
-	return 1
-    fi
-    
-    return 0
-}
-
-
-assert_MODULEPATH_exist() {
-    ## FIXME: Do not add those missing folders in the first place /HB 2023-10-04
-    assert_envpath_exist MODULEPATH /usr/share/modulefiles/Linux /usr/share/modulefiles/Core
-}
-
-assert_PATH_exist() {
-    assert_envpath_exist PATH "$HOME" "$@"
-}
-
-assert_LD_LIBRARY_PATH_exist() {
-    assert_envpath_exist LD_LIBRARY_PATH "$HOME" "$@"
-}
-
-assert_MANPATH_exist() {
-    assert_envpath_exist MANPATH "$HOME" "$@"
-}
-
-assert_INFO_PATH_exist() {
-    assert_envpath_exist INFO_PATH "$HOME" "$@"
-}
-
-assert_CPATH_exist() {
-    assert_envpath_exist CPATH "$HOME" "$@"
-}
-
-assert_PKG_CONFIG_PATH_exist() {
-    assert_envpath_exist PKG_CONFIG_PATH "$HOME" "$@"
-}
-
-assert_CUDA_LIB_PATH_exist() {
-    assert_envpath_exist CUDA_LIB_PATH "$HOME" "$@"
-}
-
-
-assert_no_base64() {
-    local field
-    local value=${1:?}
-    local pattern="^([[:alpha:]]+):: ([A-Za-z0-9]+[=*])$"
-    if grep -i -E "${pattern}" <<< "${value}"; then
-        field=$(sed -E "s/${pattern}/\1/" <<< "${value}")
-        value=$(sed -E "s/${pattern}/\2/" <<< "${value}")
-	>&2 echo "ERROR: Detected a Base64 encoded value in field '${field}': ${value} => '$(base64 --decode <<< "${value}")'"
-	exit 1
-    fi
-}    
-
-
-
-# -------------------------------------------------------
 # Regular expressions
 # -------------------------------------------------------
 email_pattern() {
@@ -104,6 +14,11 @@ email_pattern() {
     echo "^${username}@(${domain}[.])+${tld}$"
 }
 
+is_email() {
+    local email=${1:?}
+    grep -q -i -E "$(email_pattern)" <<< "${email}"
+}
+
 is_ucsf_email() {
     local email=${1:?}
     grep -q -i -E "@(|[[:alnum:]]+[.])ucsf[.]edu$" <<< "${email}"
@@ -113,7 +28,7 @@ valid_ucsf_id() {
     local id=${1:?}
     
     ## Assert that all are valid Luhn IDs (https://en.wikipedia.org/wiki/Luhn_algorithm)
-    if PYTHONPATH="${utils}/python_libs" "${utils}/valid-ucsf-id" "${id}" > /dev/null; then
+    if PYTHONPATH="${utils:?}/python_libs" "${utils:?}/valid-ucsf-id" "${id}" > /dev/null; then
 	return 0
     else
 	return 1
@@ -124,6 +39,18 @@ valid_ucsf_id() {
 # -------------------------------------------------------
 # Unix
 # -------------------------------------------------------
+uid_to_user() {
+    local -i uid
+    uid=${1:?}
+    getent passwd "${uid}" | cut -d ':' -f 1
+}
+
+email_to_user() {
+    local email
+    email=${1:?}
+    ldap_search "mail=${email}" "uid" | grep -E "^uid:" | sed -E "s/^( *uid: *| *$)//g"
+}
+
 reserved_usernames() {
     local -a reserved
     
@@ -143,6 +70,19 @@ reserved_usernames() {
 LDAP_URI="ldap://m1,ldap://m2"
 LDAP_SEARCHBASE="dc=cgl,dc=ucsf,dc=edu"
 LDAP_FILTER="(wyntonAccess=TRUE)(!(wyntonAdmin=TRUE))"
+
+assert_no_base64() {
+    local field
+    local value=${1:?}
+    local pattern="^([[:alpha:]]+):: ([A-Za-z0-9]+[=*])$"
+    if grep -i -E "${pattern}" <<< "${value}"; then
+        field=$(sed -E "s/${pattern}/\1/" <<< "${value}")
+        value=$(sed -E "s/${pattern}/\2/" <<< "${value}")
+	>&2 echo "ERROR: Detected a Base64 encoded value in field '${field}': ${value} => '$(base64 --decode <<< "${value}")'"
+	exit 1
+    fi
+}    
+
 
 ldap_search_raw() {
     ldapsearch "$@"

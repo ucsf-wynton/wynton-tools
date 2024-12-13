@@ -1,4 +1,38 @@
-# Version (development version)
+# Version 0.8.0 (2024-12-02)
+
+## New Features
+
+ * Now `wynton account` displays account information by default. To
+   also check the account, add `--check`.
+
+ * Now `wynton account` supports also `--user=<email>`, which looks up
+   the username by email address.
+
+ * Now `wynton account` reports also on Information Commons (IC)
+   access, and asserts such users have PHI access.
+
+
+# Version 0.7.0 (2024-11-26)
+
+## New Features
+
+ * Add `wynton trash` for quickly moving large files and folders to a
+   personal trash folder under `/wynton/scratch/`, which then will be
+   removed by the system after two weeks.
+   
+ * Now `wynton account` reports also on HOME disk quota, and
+   the Wynton and SGE projects.
+
+
+# Version 0.6.0 (2024-11-25)
+
+## New Features
+
+ * Add `wynton account` for looking up account information and
+   validating the account settings.
+ 
+ * All tools taking option `--user=<username>` now also supports
+   specifying user by user ID, i.e. `--user=<uid>`.
 
 ## Deprecated and Defunct
 

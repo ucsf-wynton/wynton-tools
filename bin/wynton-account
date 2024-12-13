@@ -1,19 +1,28 @@
 #! /usr/bin/env bash
-#' Wynton Account Validation
+#' Wynton Account Information
+#'
+#' Looks up a Wynton user account, outputs a summary, and,
+#' optionally, checks its settings.
 #'
 #' Usage:
 #'  wynton-account [options]
 #'
-#' Options:
-#'  --user USER      Query another user (default: $USER)
+#' Flags:
 #'  --help           Display this help
 #'  --version        Display version
+#'  --check          Checks the account settings
+#'
+#' Options:
+#'  --user=<user>    User to query (default: $USER)
 #'
 #' Examples:
 #'  wynton account
-#'  wynton account --user alice
+#'  wynton account --user=alice
+#'  wynton account --user=alice --check
+#'  wynton account --user=1000
+#'  wynton account --user=alice@bobsonlab.org
 #'
-#' Version: 0.0.1
+#' Version: 0.2.0
 #' Copyright: Henrik Bengtsson (2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -58,19 +67,30 @@ function outcome {
     shift
     echo " $*"
 }    
-    
+
+n_okay=0
 function okay {
     outcome " OK " 2 "$@" ## green
+    n_okay=$((n_okay + 1))
 }
 
+n_fail=0
 function fail {
     outcome "FAIL" 1 "$@" ## red
+    n_fail=$((n_fail + 1))
 }
 
+n_note=0
+function note {
+    outcome "NOTE" 3 "$@" ## yellow
+    n_note=$((n_note + 1))
+}
+
+n_skip=0
 function skip {
     outcome "SKIP" 8 "$@" ## gray
+    n_skip=$((n_skip + 1))
 }
-
 
 
 # -------------------------------------------------------------------------
@@ -80,8 +100,8 @@ function skip {
 action=validate
 
 ## Options
+check=false
 debug=false
-verbose=false
 user=${USER}
 
 # Parse command-line options
@@ -92,8 +112,8 @@ while [[ $# -gt 0 ]]; do
         action=version
     elif test "$1" == "--debug"; then
         debug=true
-    elif test "$1" == "--verbose"; then
-        verbose=true
+    elif test "$1" == "--check"; then
+        check=true
 
     ## Deprecated
     elif test "$1" == "--user"; then
@@ -112,6 +132,11 @@ while [[ $# -gt 0 ]]; do
         fi
         if [[ "${key}" == "user" ]]; then
             user=${value}
+	    if is_integer "${value}"; then
+                user=$(uid_to_user "${value}")
+	    elif is_email "${value}"; then
+                user=$(email_to_user "${value}")
+	    fi
         else
             error "Unknown option: $1"
         fi
@@ -123,7 +148,6 @@ done
 
 ## Assert that user exists
 id --user "$user" &> /dev/null || error "No such user: $user"
-
 
 if [[ $user == "$USER" ]]; then
     home=$HOME
@@ -138,7 +162,7 @@ group=$(id --group --name "$user")
 if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
-    mdebug "verbose: $verbose"
+    mdebug "check: $check"
     mdebug "user: $user"
     mdebug "group: $group"
     mdebug "uid: $uid"
@@ -155,7 +179,8 @@ elif [[ $action == "help" ]]; then
 fi
 
 if [[ $action == "validate" ]]; then
-    n_ok=0
+    n_okay=0
+    n_note=0
     n_fail=0
     n_skip=0
 
@@ -175,6 +200,7 @@ if [[ $action == "validate" ]]; then
         error "There are ${count} users in LDAP with username '${user}'"
     fi
 
+    ## Access to PHI?
     phi=false
     if [[  $(ldap_get_field "protectedAccess" "${ldap_info[@]}") == "TRUE" ]]; then
         phi=true
@@ -194,322 +220,327 @@ if [[ $action == "validate" ]]; then
         echo >&2
     fi
     
+    ## Access to Wynton?
     access=false
     if [[  $(ldap_get_field "wyntonAccess" "${ldap_info[@]}") == "TRUE" ]]; then
         access=true
     fi
 
+    ## Is account locked?
     locked=false
     if [[  $(ldap_get_field "isLocked" "${ldap_info[@]}") == "TRUE" ]]; then
         locked=true
     fi
     
     email=$(ldap_get_field "mail" "${ldap_info[@]}")
-    ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}")
+    ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}" | grep -i -v -E "^(none)$")
     shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
     faculty_sponsor=$(ldap_get_field "FacultySponsor" "${ldap_info[@]}")
+    wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}")
+
+    ## Access to Information Commons, i.e. an "IC user"?
+    if id "${user}" | grep -q -F "(icusers)"; then
+	ic=true
+    else
+	ic=false
+    fi
+
+    ## SGE information
+    if qconf -suserl | grep -q -E "^${user}$"; then
+	in_sge=true
+        mapfile -t sge_info < <(qconf -suser "${user}" | sort)
+        sge_project=$(printf "%s\n" "${sge_info[@]}" | grep -E "^default_project" | sed -E 's/^default_project[[:space:]]+//')
+    else
+	in_sge=false
+	sge_info=()
+	sge_project=
+    fi
+
+
+    # Disk quota
+    beegfs_home_storagepool=11
+    mapfile -t beegfs_quota < <(beegfs-ctl --getquota --csv --storagepoolid="${beegfs_home_storagepool}" --uid "${uid}" | awk -F "," 'NR > 1 {
+        used=$3
+        max=$4
+        if (used ~ /[^0-9]/) used = -1
+        if (max ~ /[^0-9]/) max = -1
+        printf "%d\n%d\n%d\n%.1f\n", used, max, max-used, 100*used/max
+    }')
 
     
-    echo "# Account Validation"
+    echo "# Account Information"
     echo
     echo "## Overview"
     echo
+    echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* User: $user (uid=$uid)"
     echo "* Group: $group (gid=$gid)"
-    echo "* HOME: $home"
     echo "* Email address: ${email}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
-    echo "* Wynton account: ${access}"
-    echo "* Locked account: ${locked}"
-    echo "* PHI account: ${phi}"
-    echo "* Login shell: ${shell}"
     echo "* Faculty sponsor: ${faculty_sponsor}"
+    echo "* HOME: $home"
+    echo "* HOME disk quota: $(( beegfs_quota[0] / 1024**3 / 2 )) GiB used out of $(( beegfs_quota[1] / 1024**3 / 2 )) GiB (${beegfs_quota[3]}%)"
+    echo "* Wynton access: ${access}"
+    echo "* PHI access: ${phi}"
+    echo "* IC access: ${ic}"
+    echo "* Locked account: ${locked}"
+    echo "* Login shell: ${shell}"
+    echo "* Wynton project: ${wynton_project}"
+    echo "* SGE project: ${sge_project}"
+    
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
     echo "* Account created on: $(ldap_as_timestamp "${ts}")"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
     echo "* Account last-modified on: $(ldap_as_timestamp "${ts}")"
     echo
-    
-    echo "## Checks"
-    echo
-    
-    okay "Username is unique"  ## validated above
-    
-    # No 'reserved' usernames
-    mapfile -t reserved < <(reserved_usernames)
-    if [[ " ${reserved[@]} " =~ " ${user} " ]]; then
-        fail "Username is a 'reserved' username and should not be used"
-        n_fail=$((n_fail + 1))
-    else
-        okay "Username is not a 'reserved' username"
-        n_ok=$((n_ok + 1))
-    fi
 
-    # No duplicated UID
-    mapfile -t res < <(ldap_search "uidNumber=${uid}" "uid" | ldap_get_field "uid")
-    if [[ ${#res[@]} -gt 1 ]]; then
-        fail "User ID (UID) is not unique: [n=${#res[@]}] ${res[*]}"
-        n_fail=$((n_fail + 1))
-    else
-        okay "User ID (UID) is unique"
-        n_ok=$((n_ok + 1))
-    fi
-
-    # UIDs within [1023,65535]
-    if [[ ${uid} -lt 1023 ]] || [[ ${uid} -gt 65535 ]]; then
-        fail "User ID (UID) is out of range [1023,65535]"
-        n_fail=$((n_fail + 1))
-    else
-        okay "User ID (UID) is within [1023,65535]"
-        n_ok=$((n_ok + 1))
-    fi
-
-    # GIDs within [455,65535]
-    if [[ ${gid} -lt 455 ]] || [[ ${gid} -gt 65535 ]]; then
-        fail "Group ID (GID) is out of range [455,65535]"
-        n_fail=$((n_fail + 1))
-    else
-        okay "Group ID (GID) is within [415,65535]"
-        n_ok=$((n_ok + 1))
-    fi
-
-    # PHI user is in 'wynton-phi', otherwise not
-    if ${phi}; then
-        if id "${user}" | grep -q -F "(wynton-phi)"; then
-            okay "PHI user is in 'wynton-phi' group"
-            n_ok=$((n_ok + 1))
-        else
-            fail "PHI user is not in 'wynton-phi' group"
-            n_fail=$((n_fail + 1))
-        fi
-    else
-        if id "${user}" | grep -q -F "(wynton-phi)"; then
-            fail "Non-PHI user is in 'wynton-phi' group"
-            n_fail=$((n_fail + 1))
-        else
-            okay "Non-PHI user is not in 'wynton-phi' group"
-            n_ok=$((n_ok + 1))
-        fi
-    fi
+    if ${check}; then
+        echo "## Checks"
+        echo
     
-    # No duplicated home directories
-    mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory")
-    if [[ ${#res[@]} -gt 1 ]]; then
-        fail "HOME folder is not unique: [n=${#res[@]}] ${res[*]}"
-        n_fail=$((n_fail + 1))
-    else
-        okay "HOME folder is unique"
-        n_ok=$((n_ok + 1))
-    fi
-    
-    # Users has a HOME directories under expected /wynton/ location
-    if ${phi}; then
-        expected="/wynton/protected/home/{group}/"
-    else
-        expected="/wynton/home/{group}/"
-    fi
-    pattern=$(sed 's/{group}/[[:alnum:]_.-]+/' <<< "${expected}")
-    if grep -q -E "^${pattern}" <<< "${home}"; then
-        okay "HOME folder is under ${expected}"
-        n_ok=$((n_ok + 1))
-    else
-        fail "HOME folder is not under ${expected}"
-        n_fail=$((n_fail + 1))
-    fi
-
-    if [[ ${EUID} -ne 0 ]] && ${phi} && ! ${running_as_phi}; then
-        skip=true
-    else
-        skip=false
-    fi
-    if ${skip}; then
-        skip "HOME folder exists"
-        skip "HOME folder is owned by user"
-        n_skip=$((n_skip + 2))
-    else
-        if [[ -d "${home}" ]]; then
-            okay "HOME folder exists"
-            n_ok=$((n_ok + 1))
-        else
-            fail "HOME folder does not exist"
-            n_fail=$((n_fail + 1))
-        fi
+        okay "Username is unique"  ## validated above
         
-        if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
-            okay "HOME folder is owned by user"
-            n_ok=$((n_ok + 1))
+        # No 'reserved' usernames
+        mapfile -t reserved < <(reserved_usernames)
+        if [[ " ${reserved[*]} " =~ [[:space:]]${user}[[:space:]] ]]; then
+            fail "Username is a 'reserved' username and should not be used"
         else
-            fail "HOME folder is not owned by user"
-            n_fail=$((n_fail + 1))
+            okay "Username is not a 'reserved' username"
         fi
-    fi
-
-    # No duplicated email addresses
-    mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
-    if [[ ${#res[@]} -gt 1 ]]; then
-        fail "Email address is not unique: [n=${#res[@]}] ${res[*]}"
-        n_fail=$((n_fail + 1))
-    else
-        okay "Email address is unique"
-        n_ok=$((n_ok + 1))
-    fi
     
-    # Valid email address
-    if grep -q -i -E "$(email_pattern)" <<< "${email}"; then
-        okay "Email address has a valid format"
-        n_ok=$((n_ok + 1))
-    else
-        fail "Email address does not have a valid format"
-        n_fail=$((n_fail + 1))
-    fi
-
-    # Valid UCSF ID
-    if [[ -n "${ucsf_id}" ]]; then
-        if valid_ucsf_id "${ucsf_id}"; then
-            okay "UCSF Employee ID is valid"
-            n_ok=$((n_ok + 1))
-        else
-            fail "UCSF Employee ID is invalid"
-            n_fail=$((n_fail + 1))
-        fi
-
-        # No duplicated UCSF ID
-        mapfile -t res < <(ldap_search "ucsfIDNumber=${ucsf_id}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber")
+        # No duplicated UID
+        mapfile -t res < <(ldap_search "uidNumber=${uid}" "uid" | ldap_get_field "uid")
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "UCSF Employee ID is not unique: [n=${#res[@]}] ${res[*]}"
-            n_fail=$((n_fail + 1))
+            fail "User ID (UID) is not unique: [n=${#res[@]}] ${res[*]}"
         else
-            okay "UCSF Employee ID is unique"
-            n_ok=$((n_ok + 1))
+            okay "User ID (UID) is unique"
         fi
-    else
-        if is_ucsf_email "${email}"; then
-            fail "UCSF Employee ID is missing"
-            n_fail=$((n_fail + 1))
+    
+        # UIDs within [1023,65535]
+        if [[ ${uid} -lt 1023 ]] || [[ ${uid} -gt 65535 ]]; then
+            fail "User ID (UID) is out of range [1023,65535]"
         else
-            okay "UCSF Employee ID is not required"
-            n_skip=$((n_skip + 1))
+            okay "User ID (UID) is within [1023,65535]"
         fi
-    fi
-
-    # No locked account has access
-    if ${locked}; then
-        if ${access}; then
-            fail "Locked account still have access"
-            n_fail=$((n_fail + 1))
+    
+        # GIDs within [455,65535]
+        if [[ ${gid} -lt 455 ]] || [[ ${gid} -gt 65535 ]]; then
+            fail "Group ID (GID) is out of range [455,65535]"
         else
-            okay "Locked account does not have access"
-            n_fail=$((n_fail + 1))
+            okay "Group ID (GID) is within [415,65535]"
         fi
-    else
-         okay "Account is not locked"
-         n_skip=$((n_skip + 1))
-    fi
-
-    # Login shell is valid
-    if [[ -z ${shell} ]]; then
-        fail "Login shell is not specified"
-        n_fail=$((n_fail + 1))
-    else
-        if [[ ! -f "${shell}" ]]; then
-            fail "Login shell does not exist"
-            n_fail=$((n_fail + 1))
-        elif [[ ! -x "${shell}" ]]; then
-            fail "Login shell is non-executable"
-            n_fail=$((n_fail + 1))
-        else
-            okay "Login shell is an executable"
-        fi
-    fi
-
-    # Faculty sponsor is valid
-    if [[ -z ${faculty_sponsor} ]]; then
-        fail "Faculty sponsor is missing"
-        n_fail=$((n_fail + 1))
-    else
-        pattern="^([[:alpha:] .'-]+)[[:blank:]]+<([^>]+)>$"
-        if grep -q -i -E "${pattern}" <<< "${faculty_sponsor}"; then
-            faculty_sponsor_fullname=$(sed -E "s/${pattern}/\1/" <<< "${faculty_sponsor}")
-            faculty_sponsor_email=$(sed -E "s/${pattern}/\2/" <<< "${faculty_sponsor}")
-            if [[ -z "${faculty_sponsor_fullname}" ]]; then
-                echo "[FAIL Faculty sponsor lacks a full name"
-                n_fail=$((n_fail + 1))
-            elif [[ -z "${faculty_sponsor_email}" ]]; then
-                echo "[FAIL Faculty sponsor lacks an email address"
-                n_fail=$((n_fail + 1))
-            elif ! grep -q -i -E "$(email_pattern)" <<< "${faculty_sponsor_email}"; then
-                echo "[FAIL Faculty sponsor email address is not a valid address"
+    
+        # IC access => PHI access
+        if ${ic}; then
+            if ${phi}; then
+                okay "IC user has PHI access"
             else
-                okay "Faculty sponsor has a full name and email address"
-                n_ok=$((n_ok + 1))
+                fail "IC user without PHI access"
             fi
         else
-            fail "Faculty sponsor does not have a full name and email address"
-            n_fail=$((n_fail + 1))
+            okay "Not an IC user"
         fi
-    fi
-    
-    # No mixed 'wyntonAccess'
-    mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^wyntonAccess:")
-    if [[ ${#res[@]} -gt 1 ]]; then
-        fail "User has multiple LDAP 'wyntonAccess' entries: [n=${#res[@]}] ${res[*]}"
-        n_fail=$((n_fail + 1))
-    else
-        okay "User has unique LDAP 'wyntonAccess' entry"
-        n_ok=$((n_ok + 1))
-    fi
 
-    # No mixed 'protectedAccess'
-    mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^protectedAccess:")
-    if [[ ${#res[@]} -gt 1 ]]; then
-        fail "User has multiple LDAP 'protectedAccess' entries: [n=${#res[@]}] ${res[*]}"
-        n_fail=$((n_fail + 1))
-    else
-        okay "User has unique LDAP 'protectedAccess' entry"
-        n_ok=$((n_ok + 1))
-    fi
-
-    if qconf -suserl | grep -q -E "^${user}$"; then
-        mapfile -t sge_info < <(qconf -suser "${user}")        
-        okay "User is in SGE"
-        n_ok=$((n_ok + 1))
-        wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}")
-        sge_project=$(sge_get_field "default_project" "${sge_info[@]}")
-        if [[ ${wynton_project} == "${sge_project}" ]]; then
-            okay "SGE 'default_project' and LDAP 'wyntonProject' agree"
-            n_ok=$((n_ok + 1))
+        # PHI user is in 'wynton-phi', otherwise not
+        if ${phi}; then
+            if id "${user}" | grep -q -F "(wynton-phi)"; then
+                okay "PHI user is in 'wynton-phi' group"
+            else
+                fail "PHI user is not in 'wynton-phi' group"
+            fi
         else
-            fail "SGE 'default_project' and LDAP 'wyntonProject' do not agree"
-            n_fail=$((n_fail + 1))
+            if id "${user}" | grep -q -F "(wynton-phi)"; then
+                fail "Non-PHI user is in 'wynton-phi' group"
+            else
+                okay "Non-PHI user is not in 'wynton-phi' group"
+            fi
         fi
-
-        pathname="/wynton/home${SGE_ROOT}/common/sgeCA/usercerts/${user}/cert.pem"
-	if [[ -f "${pathname}" ]]; then
-            ## Skip SGE certificates that expired when Wynton moved to "non-expiring" certs                                         
-            ## "We moved to 40 year SGE certs for unexpired and new users. We did not renew already expired certs."                 
-            ## https://github.com/ucsf-wynton/support/issues/1308
-            since="2022-06-29 17:51:46 -0700"
-            if check_user_cert "${user}" "${since}"; then
-                okay "Has a valid, non-expired SGE certificate"
-                n_ok=$((n_ok + 1))
-	    else
-                fail "Has an SGE certificate that is either invalid or expired"
-                n_fail=$((n_fail + 1))
-	    fi
-	else
-            fail "SGE certificate is missing"
-	fi
-    else
-        fail "User is not in SGE"
-        n_fail=$((n_fail + 1))
-    fi
+        
+        # No duplicated home directories
+        mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory")
+        if [[ ${#res[@]} -gt 1 ]]; then
+            fail "HOME folder is not unique: [n=${#res[@]}] ${res[*]}"
+        else
+            okay "HOME folder is unique"
+        fi
+        
+        # Users has a HOME directories under expected /wynton/ location
+        if ${phi}; then
+            expected="/wynton/protected/home/{group}/"
+        else
+            expected="/wynton/home/{group}/"
+        fi
+        pattern="${expected/\{group\}/[[:alnum:]_.-]+}"
+        if grep -q -E "^${pattern}" <<< "${home}"; then
+            okay "HOME folder is under ${expected}"
+        else
+            fail "HOME folder is not under ${expected}"
+        fi
     
-    echo
-    echo "Summary: ${n_ok} OK, ${n_fail} FAIL, ${n_skip} SKIP"
-
-    if [[ ${n_fail} -gt 0 ]]; then
-        echo >&2
-        error "Detected ${n_fail} FAIL"
+        if [[ ${EUID} -ne 0 ]] && ${phi} && ! ${running_as_phi}; then
+            skip=true
+        else
+            skip=false
+        fi
+        if ${skip}; then
+            skip "HOME folder exists"
+            skip "HOME folder is owned by user"
+        else
+            if [[ -d "${home}" ]]; then
+                okay "HOME folder exists"
+            else
+                fail "HOME folder does not exist"
+            fi
+            
+            if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
+                okay "HOME folder is owned by user"
+            else
+                fail "HOME folder is not owned by user"
+            fi
+        fi
+    
+        if [[ ${beegfs_quota[2]} -le 0 ]]; then
+            fail "HOME disk quota is full (${beegfs_quota[2]} bytes available)"
+        elif [[ ${beegfs_quota[2]} -lt $(( 10 * 1024**2 )) ]]; then
+            fail "HOME disk quota has less than 10 MiB left ($(( beegfs_quota[2] / 1024 )) KiB available)"
+        elif [[ ${beegfs_quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
+            note "HOME disk quota has less than 1.0 GiB left ($(( beegfs_quota[2] / 1024**2 )) MiB available)"
+        else
+            okay "HOME disk quota has at least 1.0 GiB left"
+        fi
+    	
+        # No duplicated email addresses
+        mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
+        if [[ ${#res[@]} -gt 1 ]]; then
+            fail "Email address is not unique: [n=${#res[@]}] ${res[*]}"
+        else
+            okay "Email address is unique"
+        fi
+        
+        # Valid email address
+        if grep -q -i -E "$(email_pattern)" <<< "${email}"; then
+            okay "Email address has a valid format"
+        else
+            fail "Email address does not have a valid format"
+        fi
+    
+        # Valid UCSF ID
+        if [[ -n "${ucsf_id}" ]]; then
+            if valid_ucsf_id "${ucsf_id}"; then
+                okay "UCSF Employee ID is valid"
+            else
+                fail "UCSF Employee ID is invalid"
+            fi
+    
+            # No duplicated UCSF ID
+            mapfile -t res < <(ldap_search "ucsfIDNumber=${ucsf_id}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber")
+            if [[ ${#res[@]} -gt 1 ]]; then
+                fail "UCSF Employee ID is not unique: [n=${#res[@]}] ${res[*]}"
+            else
+                okay "UCSF Employee ID is unique"
+            fi
+        else
+            if is_ucsf_email "${email}"; then
+                fail "UCSF Employee ID is missing"
+            else
+                okay "UCSF Employee ID is not required"
+            fi
+        fi
+    
+        # No locked account has access
+        if ${locked}; then
+            if ${access}; then
+                fail "Locked account still have access"
+            else
+                okay "Locked account does not have access"
+            fi
+        else
+             okay "Account is not locked"
+        fi
+    
+        # Login shell is valid
+        if [[ -z ${shell} ]]; then
+            fail "Login shell is not specified"
+        else
+            if [[ ! -f "${shell}" ]]; then
+                fail "Login shell does not exist"
+            elif [[ ! -x "${shell}" ]]; then
+                fail "Login shell is non-executable"
+            else
+                okay "Login shell is an executable"
+            fi
+        fi
+    
+        # Faculty sponsor is valid
+        if [[ -z ${faculty_sponsor} ]]; then
+            fail "Faculty sponsor is missing"
+        else
+            pattern="^([[:alpha:] .'-]+)[[:blank:]]+<([^>]+)>$"
+            if grep -q -i -E "${pattern}" <<< "${faculty_sponsor}"; then
+                faculty_sponsor_fullname=$(sed -E "s/${pattern}/\1/" <<< "${faculty_sponsor}")
+                faculty_sponsor_email=$(sed -E "s/${pattern}/\2/" <<< "${faculty_sponsor}")
+                if [[ -z "${faculty_sponsor_fullname}" ]]; then
+                    echo "[FAIL Faculty sponsor lacks a full name"
+                elif [[ -z "${faculty_sponsor_email}" ]]; then
+                    echo "[FAIL Faculty sponsor lacks an email address"
+                elif ! grep -q -i -E "$(email_pattern)" <<< "${faculty_sponsor_email}"; then
+                    echo "[FAIL Faculty sponsor email address is not a valid address"
+                else
+                    okay "Faculty sponsor has a full name and email address"
+                fi
+            else
+                fail "Faculty sponsor does not have a full name and email address"
+            fi
+        fi
+        
+        # No mixed 'wyntonAccess'
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^wyntonAccess:")
+        if [[ ${#res[@]} -gt 1 ]]; then
+            fail "User has multiple LDAP 'wyntonAccess' entries: [n=${#res[@]}] ${res[*]}"
+        else
+            okay "User has unique LDAP 'wyntonAccess' entry"
+        fi
+    
+        # No mixed 'protectedAccess'
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^protectedAccess:")
+        if [[ ${#res[@]} -gt 1 ]]; then
+            fail "User has multiple LDAP 'protectedAccess' entries: [n=${#res[@]}] ${res[*]}"
+        else
+            okay "User has unique LDAP 'protectedAccess' entry"
+        fi
+    
+        if ${in_sge}; then
+            okay "User is in SGE"
+            if [[ ${wynton_project} == "${sge_project}" ]]; then
+                okay "SGE 'default_project' and LDAP 'wyntonProject' agree"
+            else
+                fail "SGE 'default_project' and LDAP 'wyntonProject' do not agree"
+            fi
+    
+            pathname="/wynton/home${SGE_ROOT}/common/sgeCA/usercerts/${user}/cert.pem"
+    	if [[ -f "${pathname}" ]]; then
+                ## Skip SGE certificates that expired when Wynton moved to "non-expiring" certs                                         
+                ## "We moved to 40 year SGE certs for unexpired and new users. We did not renew already expired certs."                 
+                ## https://github.com/ucsf-wynton/support/issues/1308
+                since="2022-06-29 17:51:46 -0700"
+                if check_user_cert "${user}" "${since}"; then
+                    okay "Has a valid, non-expired SGE certificate"
+    	    else
+                    fail "Has an SGE certificate that is either invalid or expired"
+    	    fi
+    	else
+                fail "SGE certificate is missing"
+    	fi
+        else
+            fail "User is not in SGE"
+        fi
+    
+        echo
+        echo "Summary: ${n_okay} OK, ${n_note} NOTE, ${n_fail} FAIL, ${n_skip} SKIP"
+    
+        if [[ ${n_fail} -gt 0 ]]; then
+            echo >&2
+            error "Detected ${n_fail} FAIL"
+        fi
     fi
 fi
-

@@ -4,12 +4,12 @@
 #' Usage:
 #'  wynton-session-info [options]
 #'
-#' Options:
+#' Flags:
 #'  --help           Display this help
 #'  --version        Display version
 #'
 #' Examples:
-#'  wynton check
+#'  wynton sessioninfo
 #'
 #' Version: 0.0.1
 #' Copyright: Henrik Bengtsson (2024)

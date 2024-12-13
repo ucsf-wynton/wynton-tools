@@ -4,10 +4,10 @@
 #' Usage:
 #'  wynton-utils [options] <utility>
 #'
-#' Options:
+#' Flags:
 #'  --help           Display this help
 #'  --version        Display version
-#'  --apply          
+#'  --apply          Load and apply (default is just to load)
 #'
 #' Examples:
 #'  eval $(wynton utils fuse-tmpdir --apply)  ## load & apply utility
@@ -18,7 +18,7 @@
 #'
 #'  wynton utils fuse-tmpdir                  ## view code and help
 #'
-#' Version: 0.0.1-9001
+#' Version: 0.0.2
 #' Copyright: Henrik Bengtsson (2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"

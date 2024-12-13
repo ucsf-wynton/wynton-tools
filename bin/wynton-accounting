@@ -4,9 +4,15 @@
 #' Usage:
 #'  wynton-accounting [options] <filters>
 #'
+#' Flags:
+#'  --help            Display this help
+#'  --version         Display version
+#'
 #' Options:
-#'  --help           Display this help
-#'  --version        Display version
+#'  --tail=<int>      How many history entries to search
+#'  --<name>=<value>  SGE accounting result keys to filter by;
+#'                    exit, failed, group, host, name, priority,
+#'                    project, queue, task, user
 #'
 #' Examples:
 #'  wynton accounting --failed=19
@@ -97,6 +103,12 @@ while [[ $# -gt 0 ]]; do
             error "Option '--$key' must not be empty"
         fi
         if [[ ${key} =~ ^(exit|failed|group|host|name|priority|project|queue|task|user)$ ]]; then
+	    ## Make it possible to filter by UID too
+	    if [[ ${key} == "user" ]]; then
+	    	if is_integer "${value}"; then
+                    value=$(uid_to_user "${value}")
+		fi
+	    fi
             filter_patterns+=("${key}=${value}")
         else
             echo >&2 "ERROR: Unknown option: $1"
@@ -113,11 +125,18 @@ while [[ $# -gt 0 ]]; do
         if [[ -z $value ]]; then
             error "Option '--$key' must not be empty"
         fi
-        if [[ "${key}" == "tail" ]]; then
+        ## Make it possible to filter by UID too
+	if [[ "${key}" == "tail" ]]; then
 	    assert_integer "${value}"
 	    [[ ${tail} -gt 0 ]] || error "--${key}=${value} must be greater than zero"
             tail=${value}
         elif [[ ${key} =~ ^(exit|failed|group|host|job|name|priority|project|queue|task|user)$ ]]; then
+	    ## Make it possible to filter by UID too
+	    if [[ ${key} == "user" ]]; then
+	    	if is_integer "${value}"; then
+                    value=$(uid_to_user "${value}")
+		fi
+	    fi
             filter_patterns+=("${key}=^${value}\$")
         else
             echo >&2 "ERROR: Unknown option: $1"

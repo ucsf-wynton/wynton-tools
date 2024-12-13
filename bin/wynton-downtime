@@ -1,14 +1,17 @@
 #! /usr/bin/env bash
-#' Wynton HPC Status
+#' Wynton Downtime Schedule
 #'
 #' Usage:
-#'  wynton-node [options] <hostname>
+#'  wynton-downtime [options]
 #'
 #' Flags:
 #'  --help           Display this help
 #'  --version        Display version
 #'
-#' Version: 0.0.1
+#' Examples:
+#'  wynton downtime
+#'
+#' Version: 0.0.2
 #' Copyright: Henrik Bengtsson (2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
@@ -31,6 +34,8 @@ source "${incl}/files.sh"
 source "${incl}/output.sh"
 # shellcheck source=incl/system.sh
 source "${incl}/system.sh"
+# shellcheck source=incl/sge.sh
+source "${incl}/sge.sh"
 
 
 # -------------------------------------------------------------------------
@@ -42,13 +47,12 @@ source "${incl}/system.sh"
 # MAIN
 # -------------------------------------------------------------------------
 ## Actions
-action=view
+action="when"
 
 ## Options
+full=false
 debug=false
 verbose=false
-
-hostname=
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -56,24 +60,28 @@ while [[ $# -gt 0 ]]; do
         action=help
     elif test "$1" == "--version"; then
         action=version
+    elif test "$1" == "--full"; then
+        full=true
     elif test "$1" == "--debug"; then
         debug=true
     elif test "$1" == "--verbose"; then
         verbose=true
+    elif test "$1" == "--delta"; then
+        action="delta"
     else
-	if [[ -n "${hostname}" ]]; then
-	    error "The hostname has already been specified: ${hostname}"
-	fi
-	hostname=$1
+        extras="$extras $1"
     fi
     shift
 done
+
+downtime=$(sge_downtime_start)
 
 if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
     mdebug "verbose: $verbose"
-    mdebug "hostname: $hostname"
+    mdebug "full: $full"
+    mdebug "downtime: $(date_iso "${downtime}")"
 fi
 
 if [[ $action == "version" ]]; then
@@ -84,12 +92,33 @@ elif [[ $action == "help" ]]; then
     exit 0
 fi
 
-if [[ $action == "view" ]]; then
-    echo "# Wynton HPC Compute Node Overview"
-    echo
-    echo "Hostname: ${hostname}"
-    echo
-    echo "## SGE Configuration"
-    echo
-    qconf -se "${hostname}" | sed ':a;N;$!ba;s/\\\n/ /g' | sed -E 's/[[:blank:]]+/ /g' | sed -E 's/, /,/g' | sed 's/ /:/' | sed -E 's/([[:alnum:]_.-]*)=([^,]+)(,|)/\n  \1=\2/g'
+downtime_iso=$(date_iso "${downtime}")
+when=$(date +%s -d "${downtime}")
+now=$(date +%s)
+delta=$((when - now))
+
+if [[ $action == "when" ]]; then
+    if [[ ${delta} -gt 0 ]]; then
+	if $full; then
+            echo "Upcoming downtime: ${downtime_iso} [in $(seconds_to_dhms "${delta}")]"
+	else
+            echo "${downtime_iso}"
+	fi
+    elif [[ ${delta} -le 0 ]]; then
+	if $full; then
+            echo "Past downtime: ${downtime_iso} [$(seconds_to_dhms "-${delta}") ago]"
+	fi
+    fi
+elif [[ $action == "delta" ]]; then
+    if [[ ${delta} -gt 0 ]]; then
+	if $full; then
+            echo "in $(seconds_to_dhms "${delta}")"
+	else
+            seconds_to_dhms "${delta}"
+	fi
+    elif [[ ${delta} -le 0 ]]; then
+	if $full; then
+            echo "$(seconds_to_dhms "-${delta}") ago"
+	fi
+    fi
 fi
