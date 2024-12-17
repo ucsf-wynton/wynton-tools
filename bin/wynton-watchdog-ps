@@ -1,0 +1,138 @@
+#! /usr/bin/env bash
+#' Watchdog for Processes Running on Hosts
+#'
+#' Usage:
+#'  wynton-watchdog-ps [options]
+#' 
+#' Flags:
+#'  --help             Display this help
+#'  --version          Display version
+#'  --check            Checks the account settings
+#'
+#' Options:
+#'  --hosttype=<type>  'log', 'dt', 'dev', or 'compute'
+#'
+#' Examples:
+#' wynton watchdog-ps --hosttype=log
+#'
+#' Author: Henrik Bengtsson (2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+utils="$(dirname "${this}")/utils"
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+# shellcheck source=incl/ldap.sh
+source "${incl}/ldap.sh"
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action=list
+hosttype=
+
+## Options
+debug=false
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        mdebug "Key-value option '$1' parsed to key='${key}', value='${value}'"
+        if [[ -z ${value} ]]; then
+            error "Option '--${key}' must not be empty"
+        fi
+        if [[ "${key}" == "hosttype" ]]; then
+            shift
+            hosttype=$1
+        else
+            error "Unknown option: $1"
+        fi
+     else
+        extras="$extras $1"
+    fi
+    shift
+done
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "check: $check"
+    mdebug "hosttype: $hosttype"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help ""
+    exit 0
+fi
+
+
+reject_cmds() {
+    echo "jupyter"
+}
+
+if [[ $action == "list" ]]; then
+    mapfile -t ps_info < <(ps -e -o "uid,user,pid,pcpu,start_time,comm,cmd")
+    
+    ## Display column headers
+    printf "%s\n" "${ps_info[0]}"
+    
+    ## Ignore system UIDs (uid < 1000)
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$1 >= 1000')
+
+    ## Ignore know users
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$2 !~ /^hb-test$/')
+    
+    ## Ignore allowed commands ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|awk|bash|cat|cp|csh|dbus-daemon|emacs|find|flock|grep|less|ls|ln|mv|nano|more|ps|qconf|qstat|rm|scp|screen|sftp|sftp-server|sh|sleep|sort|ssh|ssh-agent|sshd|stat|systemd|tcsh|tmux|tmux:|touch|uniq|vi|watch|xargs)$/')
+
+    ## Ignore allowed commands ('comm') on dt nodes
+    if [[ ${HOSTNAME} == dt* ]] || [[ ${HOSTNAME} == pdt* ]]; then
+      mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ftp|lftp|globus-gridftp-.*|rsync)$/')
+    fi
+
+    ## Allow VS Code ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(code-insiders-.+)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$7 !~ /([/][.]vscode-server[/])/')
+    
+    ## Allow AWS ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(aws)$/')
+
+    printf "%s\n" "${ps_info[@]}"
+fi
