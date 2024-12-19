@@ -251,6 +251,12 @@ if [[ $action == "validate" ]]; then
         ic=false
     fi
 
+    ## Access to Plato, i.e. a "Plato account"?
+    plato=false
+    if [[  $(ldap_get_field "platoAccess" "${ldap_info[@]}") == "TRUE" ]]; then
+        plato=true
+    fi
+
     ## SGE information
     if qconf -suserl | grep -q -E "^${user}$"; then
         in_sge=true
@@ -289,6 +295,7 @@ if [[ $action == "validate" ]]; then
     echo "* Wynton access: ${access}"
     echo "* PHI access: ${phi}"
     echo "* IC access: ${ic}"
+    echo "* Plato access: ${plato}"
     echo "* Locked account: ${locked}"
     echo "* Login shell: ${shell}"
     echo "* Wynton project: ${wynton_project}"
@@ -347,6 +354,17 @@ if [[ $action == "validate" ]]; then
             okay "Not an IC user"
         fi
 
+        # Plato access => no PHI access
+        if ${plato}; then
+            if ${phi}; then
+                fail "Plato user has PHI access"
+            else
+                okay "Plato user without PHI access"
+            fi
+        else
+            okay "Not a Plato user"
+        fi
+	
         # PHI user is in 'wynton-phi', otherwise not
         if ${phi}; then
             if id "${user}" | grep -q -F "(wynton-phi)"; then
