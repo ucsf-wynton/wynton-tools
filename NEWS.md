@@ -1,6 +1,17 @@
 # Version (development version)
 
- * ...
+## New Features
+
+ * `wynton account` reports also by whom the account was created and
+   last modified.
+
+ * `wynton access`: reports also on Plato access.
+
+ * `wynton account` detects when an email address maps to more than
+   one user account, which results in an error that lists the
+   different usernames.
+ 
+ * Add `wynton-watchdog-ps`.
  
 
 # Version 0.9.0 (2024-12-13)
