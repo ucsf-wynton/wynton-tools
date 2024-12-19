@@ -7,7 +7,6 @@
 #' Flags:
 #'  --help             Display this help
 #'  --version          Display version
-#'  --check            Checks the account settings
 #'
 #' Options:
 #'  --hosttype=<type>  'log', 'dt', 'dev', or 'compute'
@@ -90,7 +89,6 @@ done
 if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
-    mdebug "check: $check"
     mdebug "hosttype: $hosttype"
 fi
 
