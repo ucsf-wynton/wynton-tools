@@ -107,9 +107,7 @@ reject_cmds() {
 
 if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(ps -e -o "uid,user,pid,pcpu,start_time,comm,cmd")
-    
-    ## Display column headers
-    printf "%s\n" "${ps_info[0]}"
+    header="${ps_info[0]}"
     
     ## Ignore system UIDs (uid < 1000)
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$1 >= 1000')
@@ -154,5 +152,15 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
 
-    printf "%s\n" "${ps_info[@]}"
+    ## Display column headers
+    if [[ "${#ps_info[@]}" -gt 0 ]]; then
+	mapfile -t users < <(printf "%s\n" "${ps_info[@]}" | awk '{ print $2 }' | sort | uniq)
+	echo "# Suspicious processes"
+	echo
+	echo "* Users: [n=${#users[@]}] ${users[*]}"
+	echo "* Number of processes: ${#ps_info[@]}"
+	echo
+        printf "%s\n" "${header}"
+        printf "%s\n" "${ps_info[@]}"
+    fi
 fi
