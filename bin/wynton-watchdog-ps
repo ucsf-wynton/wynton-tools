@@ -1,0 +1,166 @@
+#! /usr/bin/env bash
+#' Watchdog for Processes Running on Hosts
+#'
+#' Usage:
+#'  wynton-watchdog-ps [options]
+#' 
+#' Flags:
+#'  --help             Display this help
+#'  --version          Display version
+#'
+#' Options:
+#'  --hosttype=<type>  'log', 'dt', 'dev', or 'compute'
+#'
+#' Examples:
+#' wynton watchdog-ps --hosttype=log
+#'
+#' Author: Henrik Bengtsson (2024)
+#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+utils="$(dirname "${this}")/utils"
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+# shellcheck source=incl/ldap.sh
+source "${incl}/ldap.sh"
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action=list
+hosttype=
+
+## Options
+debug=false
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        mdebug "Key-value option '$1' parsed to key='${key}', value='${value}'"
+        if [[ -z ${value} ]]; then
+            error "Option '--${key}' must not be empty"
+        fi
+        if [[ "${key}" == "hosttype" ]]; then
+            shift
+            hosttype=$1
+        else
+            error "Unknown option: $1"
+        fi
+     else
+        extras="$extras $1"
+    fi
+    shift
+done
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "hosttype: $hosttype"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help ""
+    exit 0
+fi
+
+
+reject_cmds() {
+    echo "jupyter"
+}
+
+if [[ $action == "list" ]]; then
+    mapfile -t ps_info < <(ps -e -o "uid,user,pid,pcpu,start_time,comm,cmd")
+    header="${ps_info[0]}"
+    
+    ## Ignore system UIDs (uid < 1000)
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$1 >= 1000')
+
+    ## Ignore known users
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$2 !~ /^hb-test$/')
+    
+    ## Ignore allowed commands ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|dbus-daemon|dshbak|flock|pdsh|ps|sleep|ssh|ssh-agent|sshd|systemd|top|watch|xargs)$/')
+
+    ## Allow SGE tools ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(qacct|qalter|qconf|qhold|qhost|qmod|qrls|qstat|qsub)$/')
+
+    ## Allow shells ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bash|csh|sh|tcsh)$/')
+
+    ## Allow shell environments ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(byobu|byobu-status|screen|tmux|tmux:)$/')
+
+    ## Allowed editors ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim)$/')
+
+    ## Allowed file-related tools ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|df|find|gzip|ls|ln|mv|rm|rsync|scp|sftp|sftp-server|stat|tar|touch|zip)$/')
+
+    ## Allowed file processing tools ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|grep|less|more|sort|uniq)$/')
+    
+    ## Allowed commands ('comm') on dt nodes
+    if [[ ${HOSTNAME} == dt* ]] || [[ ${HOSTNAME} == pdt* ]]; then
+      mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ftp|lftp|globus-gridftp-.*|rsync)$/')
+    fi
+
+    ## Allow AWS ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(aws)$/')
+
+    ## Allow VS Code ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(code-insiders-.+)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$7 !~ /([/][.]vscode-server[/])/')
+
+    ## Allow VS Code extension 'mypy', 'lsp_server' ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
+
+    ## Display column headers
+    if [[ "${#ps_info[@]}" -gt 0 ]]; then
+	mapfile -t users < <(printf "%s\n" "${ps_info[@]}" | awk '{ print $2 }' | sort | uniq)
+	echo "# Suspicious processes"
+	echo
+	echo "* Users: [n=${#users[@]}] ${users[*]}"
+	echo "* Number of processes: ${#ps_info[@]}"
+	echo
+        printf "%s\n" "${header}"
+        printf "%s\n" "${ps_info[@]}"
+    fi
+fi

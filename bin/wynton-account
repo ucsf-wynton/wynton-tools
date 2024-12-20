@@ -132,11 +132,17 @@ while [[ $# -gt 0 ]]; do
         fi
         if [[ "${key}" == "user" ]]; then
             user=${value}
-	    if is_integer "${value}"; then
+            if is_integer "${value}"; then
                 user=$(uid_to_user "${value}")
-	    elif is_email "${value}"; then
-                user=$(email_to_user "${value}")
-	    fi
+            elif is_email "${value}"; then
+                mapfile -t users < <(email_to_user "${value}")
+                if [[ ${#users[@]} -eq 0 ]]; then
+                        error "There is no user with email address ${email}"
+                elif [[ ${#users[@]} -gt 1 ]]; then
+                        error "There are more than one user with email address ${value}: [n=${#users[@]}] ${users[*]}"
+                fi
+                user=${users[0]}
+            fi
         else
             error "Unknown option: $1"
         fi
@@ -240,20 +246,26 @@ if [[ $action == "validate" ]]; then
 
     ## Access to Information Commons, i.e. an "IC user"?
     if id "${user}" | grep -q -F "(icusers)"; then
-	ic=true
+        ic=true
     else
-	ic=false
+        ic=false
+    fi
+
+    ## Access to Plato, i.e. a "Plato account"?
+    plato=false
+    if [[  $(ldap_get_field "platoAccess" "${ldap_info[@]}") == "TRUE" ]]; then
+        plato=true
     fi
 
     ## SGE information
     if qconf -suserl | grep -q -E "^${user}$"; then
-	in_sge=true
+        in_sge=true
         mapfile -t sge_info < <(qconf -suser "${user}" | sort)
         sge_project=$(printf "%s\n" "${sge_info[@]}" | grep -E "^default_project" | sed -E 's/^default_project[[:space:]]+//')
     else
-	in_sge=false
-	sge_info=()
-	sge_project=
+        in_sge=false
+        sge_info=()
+        sge_project=
     fi
 
 
@@ -283,15 +295,18 @@ if [[ $action == "validate" ]]; then
     echo "* Wynton access: ${access}"
     echo "* PHI access: ${phi}"
     echo "* IC access: ${ic}"
+    echo "* Plato access: ${plato}"
     echo "* Locked account: ${locked}"
     echo "* Login shell: ${shell}"
     echo "* Wynton project: ${wynton_project}"
     echo "* SGE project: ${sge_project}"
     
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
-    echo "* Account created on: $(ldap_as_timestamp "${ts}")"
+    by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
+    echo "* Account created on: $(ldap_as_timestamp "${ts}") (by '${by}')"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
-    echo "* Account last-modified on: $(ldap_as_timestamp "${ts}")"
+    by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
+    echo "* Account last-modified on: $(ldap_as_timestamp "${ts}") (by '${by}')"
     echo
 
     if ${check}; then
@@ -341,6 +356,17 @@ if [[ $action == "validate" ]]; then
             okay "Not an IC user"
         fi
 
+        # Plato access => no PHI access
+        if ${plato}; then
+            if ${phi}; then
+                fail "Plato user has PHI access"
+            else
+                okay "Plato user without PHI access"
+            fi
+        else
+            okay "Not a Plato user"
+        fi
+	
         # PHI user is in 'wynton-phi', otherwise not
         if ${phi}; then
             if id "${user}" | grep -q -F "(wynton-phi)"; then
@@ -388,15 +414,15 @@ if [[ $action == "validate" ]]; then
         else
             if [[ -d "${home}" ]]; then
                 okay "HOME folder exists"
+                if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
+                    okay "HOME folder is owned by user"
+                else
+                    fail "HOME folder is not owned by user"
+                fi
             else
                 fail "HOME folder does not exist"
-            fi
-            
-            if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
-                okay "HOME folder is owned by user"
-            else
-                fail "HOME folder is not owned by user"
-            fi
+                skip "HOME folder is owned by user"
+	    fi
         fi
     
         if [[ ${beegfs_quota[2]} -le 0 ]]; then
@@ -408,7 +434,7 @@ if [[ $action == "validate" ]]; then
         else
             okay "HOME disk quota has at least 1.0 GiB left"
         fi
-    	
+            
         # No duplicated email addresses
         mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
         if [[ ${#res[@]} -gt 1 ]]; then
@@ -518,19 +544,19 @@ if [[ $action == "validate" ]]; then
             fi
     
             pathname="/wynton/home${SGE_ROOT}/common/sgeCA/usercerts/${user}/cert.pem"
-    	if [[ -f "${pathname}" ]]; then
+        if [[ -f "${pathname}" ]]; then
                 ## Skip SGE certificates that expired when Wynton moved to "non-expiring" certs                                         
                 ## "We moved to 40 year SGE certs for unexpired and new users. We did not renew already expired certs."                 
                 ## https://github.com/ucsf-wynton/support/issues/1308
                 since="2022-06-29 17:51:46 -0700"
                 if check_user_cert "${user}" "${since}"; then
                     okay "Has a valid, non-expired SGE certificate"
-    	    else
+            else
                     fail "Has an SGE certificate that is either invalid or expired"
-    	    fi
-    	else
+            fi
+        else
                 fail "SGE certificate is missing"
-    	fi
+        fi
         else
             fail "User is not in SGE"
         fi
