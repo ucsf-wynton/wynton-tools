@@ -2,6 +2,8 @@
 
 ## Miscellaneous
 
+ * `wynton account` now reports on the age of LDAP timestamps.
+ 
  * Tweaks to `wynton account` output.
 
 

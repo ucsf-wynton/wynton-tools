@@ -302,11 +302,15 @@ if [[ $action == "validate" ]]; then
     echo "* SGE project: ${sge_project:-N/A}"
     
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
+    ts=$(ldap_as_timestamp "${ts}")
+    age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account created on: $(ldap_as_timestamp "${ts}") (by '${by:-N/A}')"
+    echo "* Account created on: ${ts} [${age}] (by '${by:-N/A}')"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
+    ts=$(ldap_as_timestamp "${ts}")
+    age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account last-modified on: $(ldap_as_timestamp "${ts}") (by '${by:-N/A}')"
+    echo "* Account last-modified on: ${ts} [${age}] (by '${by:-N/A}')"
     echo
 
     if ${check}; then
