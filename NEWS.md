@@ -1,6 +1,8 @@
 # Version (development version)
 
- * ...
+## Miscellaneous
+
+ * Tweaks to `wynton account` output.
 
 
 # Version 0.10.0 (2024-12-19)

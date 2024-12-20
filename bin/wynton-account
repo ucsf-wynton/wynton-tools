@@ -285,28 +285,28 @@ if [[ $action == "validate" ]]; then
     echo "## Overview"
     echo
     echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
-    echo "* User: $user (uid=$uid)"
-    echo "* Group: $group (gid=$gid)"
-    echo "* Email address: ${email}"
+    echo "* User: ${user} (uid: ${uid:-N/A})"
+    echo "* Group: ${group:-N/A} (gid: ${gid:-N/A})"
+    echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
-    echo "* Faculty sponsor: ${faculty_sponsor}"
-    echo "* HOME: $home"
+    echo "* Faculty sponsor: ${faculty_sponsor:-N/A}"
+    echo "* HOME: ${home:-N/A}"
     echo "* HOME disk quota: $(( beegfs_quota[0] / 1024**3 / 2 )) GiB used out of $(( beegfs_quota[1] / 1024**3 / 2 )) GiB (${beegfs_quota[3]}%)"
-    echo "* Wynton access: ${access}"
-    echo "* PHI access: ${phi}"
-    echo "* IC access: ${ic}"
-    echo "* Plato access: ${plato}"
-    echo "* Locked account: ${locked}"
-    echo "* Login shell: ${shell}"
-    echo "* Wynton project: ${wynton_project}"
-    echo "* SGE project: ${sge_project}"
+    echo "* Wynton access: ${access:-N/A}"
+    echo "* PHI access: ${phi:-N/A}"
+    echo "* IC access: ${ic:-N/A}"
+    echo "* Plato access: ${plato:-N/A}"
+    echo "* Locked account: ${locked:-N/A}"
+    echo "* Login shell: ${shell:-N/A}"
+    echo "* Wynton project: ${wynton_project:-N/A}"
+    echo "* SGE project: ${sge_project:-N/A}"
     
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
     by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account created on: $(ldap_as_timestamp "${ts}") (by '${by}')"
+    echo "* Account created on: $(ldap_as_timestamp "${ts}") (by '${by:-N/A}')"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
     by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account last-modified on: $(ldap_as_timestamp "${ts}") (by '${by}')"
+    echo "* Account last-modified on: $(ldap_as_timestamp "${ts}") (by '${by:-N/A}')"
     echo
 
     if ${check}; then
