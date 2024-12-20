@@ -132,23 +132,27 @@ if [[ $action == "list" ]]; then
     ## Allowed editors ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim)$/')
 
-    ## Allowed file-modifying tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|find|gzip|ls|ln|mv|rm|rsync|scp|sftp|sftp-server|stat|tar|touch|zip)$/')
+    ## Allowed file-related tools ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|df|find|gzip|ls|ln|mv|rm|rsync|scp|sftp|sftp-server|stat|tar|touch|zip)$/')
 
     ## Allowed file processing tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|grep|less|more|sort|uniq)$/')
     
-    ## Allow VS Code ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(code-insiders-.+)$/')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$7 !~ /([/][.]vscode-server[/])/')
-    
-    ## Allow AWS ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(aws)$/')
-
     ## Allowed commands ('comm') on dt nodes
     if [[ ${HOSTNAME} == dt* ]] || [[ ${HOSTNAME} == pdt* ]]; then
       mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ftp|lftp|globus-gridftp-.*|rsync)$/')
     fi
+
+    ## Allow AWS ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(aws)$/')
+
+    ## Allow VS Code ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(code-insiders-.+)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$7 !~ /([/][.]vscode-server[/])/')
+
+    ## Allow VS Code extension 'mypy', 'lsp_server' ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
 
     printf "%s\n" "${ps_info[@]}"
 fi
