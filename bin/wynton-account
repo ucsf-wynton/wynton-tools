@@ -414,15 +414,15 @@ if [[ $action == "validate" ]]; then
         else
             if [[ -d "${home}" ]]; then
                 okay "HOME folder exists"
+                if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
+                    okay "HOME folder is owned by user"
+                else
+                    fail "HOME folder is not owned by user"
+                fi
             else
                 fail "HOME folder does not exist"
-            fi
-            
-            if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
-                okay "HOME folder is owned by user"
-            else
-                fail "HOME folder is not owned by user"
-            fi
+                skip "HOME folder is owned by user"
+	    fi
         fi
     
         if [[ ${beegfs_quota[2]} -le 0 ]]; then
