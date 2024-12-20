@@ -136,6 +136,7 @@ ldap_as_timestamp() {
 ldap_timestamp_age() {
     local ts=${1}
     local now
+    local ss mm hh dd
     
     if [[ -z ${ts} ]]; then
 	echo "N/A"
