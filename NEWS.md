@@ -6,6 +6,10 @@
  
  * Tweaks to `wynton account` output.
 
+## Bug Fixes
+
+ * `wynton job` did not correctly parse requested resources.
+
 
 # Version 0.10.0 (2024-12-19)
 

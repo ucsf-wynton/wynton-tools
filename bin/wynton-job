@@ -413,21 +413,21 @@ if [[ $action == "job" ]]; then
         pattern_size="[[:digit:]]+([.][[:digit:]]*)?[[:alpha:]]?"
 	key="mem_free"
         if grep -q -F "${key}" <<< "${value}"; then
-            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,*)/\1/" <<< "${value}")
+            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,.*)/\1/" <<< "${value}")
 	    mapfile -t sizes < <(parse_size_spec "${value2}")
             echo "       - ${key}=${value2} => $(printf "%'.1f" "${sizes[SIZES_MiB]}") MiB = $(printf "%'.1f" "${sizes[SIZES_GiB]}") GiB"
         fi
 
         key="gpu_mem"
         if grep -q -F "${key}" <<< "${value}"; then
-            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,*)/\1/" <<< "${value}")
+            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,.*)/\1/" <<< "${value}")
 	    mapfile -t sizes < <(parse_size_spec "${value2}")
             echo "       - ${key}=${value2} => $(printf "%'.1f" "${sizes[SIZES_MiB]}") MiB = $(printf "%'.1f" "${sizes[SIZES_GiB]}") GiB"
         fi
 
 	key="scratch"
         if grep -q -F "${key}" <<< "${value}"; then
-            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,*)/\1/" <<< "${value}")
+            value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,.*)/\1/" <<< "${value}")
 	    mapfile -t sizes < <(parse_size_spec "${value2}")
             echo "       - ${key}=${value2} => $(printf "%'.1f" "${sizes[SIZES_MiB]}") MiB = $(printf "%'.1f" "${sizes[SIZES_GiB]}") GiB"
         fi
