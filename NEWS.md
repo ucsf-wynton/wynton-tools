@@ -1,5 +1,9 @@
 # Version (development version)
 
+## New Features
+
+ * `wynton job` now detects `-l rocky8=false` as a FAIL.
+
 ## Miscellaneous
 
  * `wynton account` now reports on the age of LDAP timestamps.
