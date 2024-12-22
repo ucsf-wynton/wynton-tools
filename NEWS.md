@@ -4,6 +4,10 @@
 
  * `wynton job` now detects `-l rocky8=false` as a FAIL.
 
+ * `wynton job` now reports on job scripts arguments (`job_args`).
+
+ * `wynton job` now reports on more resource requests.
+
 ## Miscellaneous
 
  * `wynton account` now reports on the age of LDAP timestamps.
