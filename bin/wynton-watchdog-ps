@@ -155,6 +155,9 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
 
+    ## Trim
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | grep -v -E "^$")
+    
     ## Display column headers
     if [[ "${#ps_info[@]}" -gt 0 ]]; then
 	mapfile -t users < <(printf "%s\n" "${ps_info[@]}" | awk '{ print $2 }' | sort | uniq)
