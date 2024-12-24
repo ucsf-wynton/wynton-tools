@@ -10,7 +10,7 @@
 #' Example:
 #'  wynton --help
 #'
-#' Version: 0.10.0
+#' Version: 0.11.0
 #' Copyright: Henrik Bengtsson (2019-2024)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 #' Source: https://github.com/ucsf-wynton/wynton-tools
@@ -76,7 +76,7 @@ function whatis {
 function table_of_tools {
     local cmd
     for cmd in $(list_tools); do
-        printf " %-11s  %s\\n" "$cmd" "$(whatis "$cmd")"
+        printf " %-13s %s\\n" "$cmd" "$(whatis "$cmd")"
     done
 }
 

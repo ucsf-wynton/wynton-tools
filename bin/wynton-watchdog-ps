@@ -131,10 +131,13 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim)$/')
 
     ## Allowed file-related tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|df|find|gzip|ls|ln|mv|rm|rsync|scp|sftp|sftp-server|stat|tar|touch|zip)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|df|du|find|gzip|ls|ln|mv|rm|rsync|scp|sftp|sftp-server|stat|tar|touch|zip)$/')
 
     ## Allowed file processing tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|grep|less|more|sort|uniq)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|grep|head|less|more|sort|tail|uniq)$/')
+    
+    ## Allowed misc. tools ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc)$/')
     
     ## Allowed commands ('comm') on dt nodes
     if [[ ${HOSTNAME} == dt* ]] || [[ ${HOSTNAME} == pdt* ]]; then
@@ -152,6 +155,9 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
 
+    ## Trim
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | grep -v -E "^$")
+    
     ## Display column headers
     if [[ "${#ps_info[@]}" -gt 0 ]]; then
 	mapfile -t users < <(printf "%s\n" "${ps_info[@]}" | awk '{ print $2 }' | sort | uniq)

@@ -120,12 +120,46 @@ ldap_get_field() {
 
 ldap_as_timestamp() {
     local ts=${1}
-    if [[ -n ${ts} ]]; then
-       ts="${ts:0:8} ${ts:8:2}:${ts:10:2}:${ts:12:2}${ts:14}"
-       date --date="${ts}" --rfc-3339=seconds
-    else
-       echo "N/A"
+    if [[ -z ${ts} ]]; then
+	echo "N/A"
+	return 0
     fi
+
+    ## Normalize an LDAP timestamp?
+    if grep -q -E "^[[:digit:]]{14}Z" <<< "${ts}"; then
+        ts="${ts:0:8} ${ts:8:2}:${ts:10:2}:${ts:12:2}${ts:14}"
+    fi
+    
+    date --date="${ts}" --rfc-3339=seconds
+}
+
+ldap_timestamp_age() {
+    local ts=${1}
+    local now
+    local ss mm hh dd
+    
+    if [[ -z ${ts} ]]; then
+	echo "N/A"
+	return 0
+    fi
+
+    ## Normalize an LDAP timestamp?
+    if grep -q -E "^[[:digit:]]{14}Z" <<< "${ts}"; then
+        ts="${ts:0:8} ${ts:8:2}:${ts:10:2}:${ts:12:2}${ts:14}"
+    fi
+    ts=$(date --date="${ts}" +%s)
+    now=$(date +%s)
+    ss=$((now - ts))
+
+    ## Convert seconds to (days, hours, minutes, seconds)
+    mm=$((ss / 60))
+    ss=$((ss - 60*mm))
+    hh=$((mm / 60))
+    mm=$((mm - 60*hh))
+    dd=$((hh / 24))
+    hh=$((hh - 24*dd))
+
+    printf "%dd%02dh%02dm%02ds ago" "${dd}" "${hh}" "${mm}" "${ss}"
 }
 
 ldap_as_date() {
