@@ -4,7 +4,7 @@
 
  * `wynton account` reports on secondary groups.
 
- * `wynton account` now report on primary group storage quota.
+ * `wynton account` reports on primary group storage quota.
  
 
 # Version 0.11.0 (2024-12-23)
