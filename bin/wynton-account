@@ -23,7 +23,7 @@
 #'  wynton account --user=alice@bobsonlab.org
 #'
 #' Version: 0.2.0
-#' Copyright: Henrik Bengtsson (2024)
+#' Copyright: Henrik Bengtsson (2024-2025)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
@@ -275,7 +275,7 @@ if [[ $action == "validate" ]]; then
 
     # Disk quota
     beegfs_home_storagepool=11
-    mapfile -t beegfs_quota < <(beegfs-ctl --getquota --csv --storagepoolid="${beegfs_home_storagepool}" --uid "${uid}" | awk -F "," 'NR > 1 {
+    mapfile -t beegfs_home_quota < <(beegfs-ctl --getquota --csv --storagepoolid="${beegfs_home_storagepool}" --uid "${uid}" | awk -F "," 'NR > 1 {
         used=$3
         max=$4
         if (used ~ /[^0-9]/) used = -1
@@ -283,6 +283,16 @@ if [[ $action == "validate" ]]; then
         printf "%d\n%d\n%d\n%.1f\n", used, max, max-used, 100*used/max
     }')
 
+    # Disk quota
+    beegfs_group_storagepool=12
+    mapfile -t beegfs_group_quota < <(beegfs-ctl --getquota --csv --storagepoolid="${beegfs_group_storagepool}" --gid "${gid}" | awk -F "," 'NR > 1 {
+        used=$3
+        max=$4
+        if (used ~ /[^0-9]/) used = -1
+        if (max ~ /[^0-9]/) max = -1
+        printf "%d\n%d\n%d\n%.1f\n", used, max, max-used, 100*used/max
+    }')
+    
     
     echo "# Account Information"
     echo
@@ -297,14 +307,19 @@ if [[ $action == "validate" ]]; then
 	    other_groups_info+=("${other_groups[$((kk-1))]} (${other_gids[$((kk-1))]})")
         done
     else
-        other_groups_info="N/A"
+        other_groups_info=("N/A")
     fi
     echo "* Secondary groups: ${other_groups_info[*]}"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Faculty sponsor: ${faculty_sponsor:-N/A}"
     echo "* HOME: ${home:-N/A}"
-    echo "* HOME disk quota: $(( beegfs_quota[0] / 1024**3 / 2 )) GiB used out of $(( beegfs_quota[1] / 1024**3 / 2 )) GiB (${beegfs_quota[3]}%)"
+    echo "* HOME disk quota: $(( beegfs_home_quota[0] / 1024**3 / 2 )) GiB used out of $(( beegfs_home_quota[1] / 1024**3 / 2 )) GiB (${beegfs_home_quota[3]}%)"
+    if [[ ${beegfs_group_quota[1]} -le 1 ]]; then
+        echo "* Group '${group}' disk quota: N/A"
+    else
+        echo "* Group '${group}' disk quota: $(( beegfs_group_quota[0] / 1024**3 / 2 )) GiB used out of $(( beegfs_group_quota[1] / 1024**3 / 2 )) GiB (${beegfs_group_quota[3]}%)"
+    fi
     echo "* Wynton access: ${access:-N/A}"
     echo "* PHI access: ${phi:-N/A}"
     echo "* IC access: ${ic:-N/A}"
@@ -442,15 +457,29 @@ if [[ $action == "validate" ]]; then
 	    fi
         fi
     
-        if [[ ${beegfs_quota[2]} -le 0 ]]; then
-            fail "HOME disk quota is full (${beegfs_quota[2]} bytes available)"
-        elif [[ ${beegfs_quota[2]} -lt $(( 10 * 1024**2 )) ]]; then
-            fail "HOME disk quota has less than 10 MiB left ($(( beegfs_quota[2] / 1024 )) KiB available)"
-        elif [[ ${beegfs_quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
-            note "HOME disk quota has less than 1.0 GiB left ($(( beegfs_quota[2] / 1024**2 )) MiB available)"
+        if [[ ${beegfs_home_quota[2]} -le 0 ]]; then
+            fail "HOME disk quota is full (${beegfs_home_quota[2]} bytes available)"
+        elif [[ ${beegfs_home_quota[2]} -lt $(( 10 * 1024**2 )) ]]; then
+            fail "HOME disk quota has less than 10 MiB left ($(( beegfs_home_quota[2] / 1024 )) KiB available)"
+        elif [[ ${beegfs_home_quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
+            note "HOME disk quota has less than 1.0 GiB left ($(( beegfs_home_quota[2] / 1024**2 )) MiB available)"
         else
             okay "HOME disk quota has at least 1.0 GiB left"
         fi
+            
+        if [[ ${beegfs_group_quota[1]} -le 1 ]]; then
+            okay "Group '${group}' disk quota not available"
+        else
+            if [[ ${beegfs_group_quota[2]} -le 0 ]]; then
+                fail "Group '${group}' disk quota is full (${beegfs_group_quota[2]} bytes available)"
+            elif [[ ${beegfs_group_quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
+                fail "Group '${group}' disk quota has less than 1.0 GiB left ($(( beegfs_group_quota[2] / 1024**2 )) MiB available)"
+            elif [[ ${beegfs_group_quota[2]} -lt $(( 100 * 1024 ** 3 )) ]]; then
+                note "Group '${group}' disk quota has less than 100 GiB left ($(( beegfs_group_quota[2] / 1024**3 )) GiB available)"
+            else
+                okay "Group '${group}' disk quota has at least 100 GiB left"
+            fi
+	fi
             
         # No duplicated email addresses
         mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
