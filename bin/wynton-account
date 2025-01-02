@@ -300,7 +300,7 @@ if [[ $action == "validate" ]]; then
     echo
     echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* User: ${user} (${uid:-N/A})"
-    echo "* Group: ${group:-N/A} (${gid:-N/A})"
+    echo "* Primary group: ${group:-N/A} (${gid:-N/A})"
     if [[ ${#other_groups[@]} -gt 0 ]]; then
 	other_groups_info=()
 	for kk in $(seq "${#other_groups[@]}"); do
