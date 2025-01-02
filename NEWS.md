@@ -1,6 +1,8 @@
 # Version (development version)
 
- * ...
+## New Features
+
+ * `wynton account` reports on secondary groups.
 
 
 # Version 0.11.0 (2024-12-23)

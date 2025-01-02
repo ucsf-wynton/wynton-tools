@@ -164,6 +164,8 @@ fi
 uid=$(id --user "$user")
 gid=$(id --group "$user")
 group=$(id --group --name "$user")
+mapfile -t other_groups < <(id --groups --name "${user}" | tr ' ' $'\n' | grep -v -E "^${group}$")
+mapfile -t other_gids < <(getent group "${other_groups[@]}" | awk -F ':' '{ print $3 }')
 
 if $debug; then
     mdebug "call: $call"
@@ -171,6 +173,8 @@ if $debug; then
     mdebug "check: $check"
     mdebug "user: $user"
     mdebug "group: $group"
+    mdebug "other_groups: [n=${#other_groups[@]}] ${other_groups[*]}"
+    mdebug "other_gids: [n=${#other_gids[@]}] ${other_gids[*]}"
     mdebug "uid: $uid"
     mdebug "gid: $gid"
     mdebug "home: $home"
@@ -285,8 +289,17 @@ if [[ $action == "validate" ]]; then
     echo "## Overview"
     echo
     echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
-    echo "* User: ${user} (uid: ${uid:-N/A})"
-    echo "* Group: ${group:-N/A} (gid: ${gid:-N/A})"
+    echo "* User: ${user} (${uid:-N/A})"
+    echo "* Group: ${group:-N/A} (${gid:-N/A})"
+    if [[ ${#other_groups[@]} -gt 0 ]]; then
+	other_groups_info=()
+	for kk in $(seq "${#other_groups[@]}"); do
+	    other_groups_info+=("${other_groups[$((kk-1))]} (${other_gids[$((kk-1))]})")
+        done
+    else
+        other_groups_info="N/A"
+    fi
+    echo "* Secondary groups: ${other_groups_info[*]}"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Faculty sponsor: ${faculty_sponsor:-N/A}"
