@@ -314,11 +314,11 @@ if [[ $action == "validate" ]]; then
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Faculty sponsor: ${faculty_sponsor:-N/A}"
     echo "* HOME: ${home:-N/A}"
-    echo "* HOME disk quota: $(( beegfs_home_quota[0] / 1024**3 / 2 )) GiB used out of $(( beegfs_home_quota[1] / 1024**3 / 2 )) GiB (${beegfs_home_quota[3]}%)"
+    echo "* HOME disk quota: $(( beegfs_home_quota[0] / 1024**3 / 2 )) GiB (${beegfs_home_quota[3]}%) used out of $(( beegfs_home_quota[1] / 1024**3 / 2 )) GiB"
     if [[ ${beegfs_group_quota[1]} -le 1 ]]; then
         echo "* Group '${group}' disk quota: N/A"
     else
-        echo "* Group '${group}' disk quota: $(( beegfs_group_quota[0] / 1024**3 / 2 )) GiB used out of $(( beegfs_group_quota[1] / 1024**3 / 2 )) GiB (${beegfs_group_quota[3]}%)"
+        echo "* Group '${group}' disk quota: $(( beegfs_group_quota[0] / 1024**3 / 2 )) GiB (${beegfs_group_quota[3]}%) used out of $(( beegfs_group_quota[1] / 1024**3 / 2 )) GiB"
     fi
     echo "* Wynton access: ${access:-N/A}"
     echo "* PHI access: ${phi:-N/A}"
