@@ -2,6 +2,9 @@
 
 ## New Features
 
+ * `wynton account --check` verifies that user is member of the SGE
+   project.
+ 
  * `wynton account` reports on secondary groups.
 
  * `wynton account` reports on storage quota for all groups.
