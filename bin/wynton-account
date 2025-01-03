@@ -612,7 +612,7 @@ if [[ $action == "validate" ]]; then
         if ${in_sge}; then
             okay "User is in SGE"
 
-	    if qconf -su "${sge_project}" | grep -E "^entries " | grep -q -E "\b${user}\b"; then
+	    if qconf -su "${sge_project}" | sed ':a;N;$!ba;s/\\\n/ /g' | grep -E "^entries " | grep -q -E "\b${user}\b"; then
                 okay "User is member of SGE project"
 	    else
                 fail "User is not member of SGE project"
