@@ -331,7 +331,7 @@ if [[ $action == "validate" ]]; then
 	fi
 	gid_kk=${gids[$((kk-1))]}
         mapfile -t quota < <(beegfs_group_quota "${gid_kk}")
-	if [[ ${kk} -eq 0 ]]; then
+	if [[ ${kk} -eq 1 ]]; then
             echo "* Group disk quotas:"
 	fi
         if [[ ${quota[1]} -le 1 ]]; then
@@ -476,9 +476,18 @@ if [[ $action == "validate" ]]; then
                 skip "HOME folder is owned by user"
 	    fi
         fi
-    
+
         if [[ ${beegfs_home_quota[2]} -le 0 ]]; then
-            fail "HOME disk quota is full (${beegfs_home_quota[2]} bytes available)"
+	    overuse=-${beegfs_home_quota[2]}
+            if [[ ${overuse} -gt $(( 10 * 1024**3 )) ]]; then
+                fail "HOME disk quota is full ($(( overuse / 1024**3 )) GiB overuse)"
+            elif [[ ${overuse} -gt $(( 10 * 1024**2 )) ]]; then
+                fail "HOME disk quota is full ($(( overuse / 1024**2 )) MiB overuse)"
+            elif [[ ${overuse} -gt $(( 10 * 1024 )) ]]; then
+                fail "HOME disk quota is full ($(( overuse / 1024 )) KiB overuse)"
+            else
+                fail "HOME disk quota is full (${overuse} bytes overuse)"
+	    fi
         elif [[ ${beegfs_home_quota[2]} -lt $(( 10 * 1024**2 )) ]]; then
             fail "HOME disk quota has less than 10 MiB left ($(( beegfs_home_quota[2] / 1024 )) KiB available)"
         elif [[ ${beegfs_home_quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
