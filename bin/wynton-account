@@ -23,7 +23,7 @@
 #'  wynton account --user=alice@bobsonlab.org
 #'
 #' Version: 0.2.0
-#' Copyright: Henrik Bengtsson (2024)
+#' Copyright: Henrik Bengtsson (2024-2025)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 call="$0 $*"
 
@@ -90,6 +90,33 @@ n_skip=0
 function skip {
     outcome "SKIP" 8 "$@" ## gray
     n_skip=$((n_skip + 1))
+}
+
+
+function beegfs_user_quota {
+    local -i uid=${1:?}
+    local -i beegfs_storagepool=11
+
+    beegfs-ctl --getquota --csv --storagepoolid="${beegfs_storagepool}" --uid "${uid}" | awk -F "," 'NR > 1 {
+        used=$3
+        max=$4
+        if (used ~ /[^0-9]/) used = -1
+        if (max ~ /[^0-9]/) max = -1
+        printf "%d\n%d\n%d\n%.1f\n", used, max, max-used, 100*used/max
+    }'
+}
+
+function beegfs_group_quota {
+    local -i gid=${1:?}
+    local -i beegfs_storagepool=12
+
+    beegfs-ctl --getquota --csv --storagepoolid="${beegfs_storagepool}" --gid "${gid}" | awk -F "," 'NR > 1 {
+        used=$3
+        max=$4
+        if (used ~ /[^0-9]/) used = -1
+        if (max ~ /[^0-9]/) max = -1
+        printf "%d\n%d\n%d\n%.1f\n", used, max, max-used, 100*used/max
+    }'
 }
 
 
@@ -164,6 +191,8 @@ fi
 uid=$(id --user "$user")
 gid=$(id --group "$user")
 group=$(id --group --name "$user")
+mapfile -t groups < <(id --groups --name "${user}" | tr ' ' $'\n')
+mapfile -t gids < <(getent group "${groups[@]}" | awk -F ':' '{ print $3 }')
 
 if $debug; then
     mdebug "call: $call"
@@ -171,6 +200,8 @@ if $debug; then
     mdebug "check: $check"
     mdebug "user: $user"
     mdebug "group: $group"
+    mdebug "groups: [n=${#groups[@]}] ${groups[*]}"
+    mdebug "gids: [n=${#gids[@]}] ${gids[*]}"
     mdebug "uid: $uid"
     mdebug "gid: $gid"
     mdebug "home: $home"
@@ -270,28 +301,45 @@ if [[ $action == "validate" ]]; then
 
 
     # Disk quota
-    beegfs_home_storagepool=11
-    mapfile -t beegfs_quota < <(beegfs-ctl --getquota --csv --storagepoolid="${beegfs_home_storagepool}" --uid "${uid}" | awk -F "," 'NR > 1 {
-        used=$3
-        max=$4
-        if (used ~ /[^0-9]/) used = -1
-        if (max ~ /[^0-9]/) max = -1
-        printf "%d\n%d\n%d\n%.1f\n", used, max, max-used, 100*used/max
-    }')
+    mapfile -t beegfs_home_quota < <(beegfs_user_quota "${uid}")
 
-    
     echo "# Account Information"
     echo
     echo "## Overview"
     echo
     echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
-    echo "* User: ${user} (uid: ${uid:-N/A})"
-    echo "* Group: ${group:-N/A} (gid: ${gid:-N/A})"
+    echo "* User: ${user} (${uid:-N/A})"
+    echo "* Primary group: ${group:-N/A} (${gid:-N/A})"
+    if [[ ${#groups[@]} -gt 0 ]]; then
+	groups_info=()
+	for kk in $(seq "${#groups[@]}"); do
+	    groups_info+=("${groups[$((kk-1))]} (${gids[$((kk-1))]})")
+        done
+    else
+        groups_info=("N/A")
+    fi
+    echo "* Secondary groups: ${groups_info[*]}"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Faculty sponsor: ${faculty_sponsor:-N/A}"
     echo "* HOME: ${home:-N/A}"
-    echo "* HOME disk quota: $(( beegfs_quota[0] / 1024**3 / 2 )) GiB used out of $(( beegfs_quota[1] / 1024**3 / 2 )) GiB (${beegfs_quota[3]}%)"
+    echo "* HOME disk quota: $(( beegfs_home_quota[0] / 1024**3 / 2 )) GiB (${beegfs_home_quota[3]}%) used out of $(( beegfs_home_quota[1] / 1024**3 / 2 )) GiB"
+    for kk in $(seq "${#groups[@]}"); do
+	group_kk=${groups[$((kk-1))]}
+	if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
+	    continue
+	fi
+	gid_kk=${gids[$((kk-1))]}
+        mapfile -t quota < <(beegfs_group_quota "${gid_kk}")
+	if [[ ${kk} -eq 1 ]]; then
+            echo "* Group disk quotas:"
+	fi
+        if [[ ${quota[1]} -le 1 ]]; then
+            echo "  - '${group_kk}': N/A"
+        else
+            echo "  - '${group_kk}': $(( quota[0] / 1024**3 / 2 )) GiB (${quota[3]}%) used out of $(( quota[1] / 1024**3 / 2 )) GiB"
+	fi
+    done
     echo "* Wynton access: ${access:-N/A}"
     echo "* PHI access: ${phi:-N/A}"
     echo "* IC access: ${ic:-N/A}"
@@ -428,16 +476,47 @@ if [[ $action == "validate" ]]; then
                 skip "HOME folder is owned by user"
 	    fi
         fi
-    
-        if [[ ${beegfs_quota[2]} -le 0 ]]; then
-            fail "HOME disk quota is full (${beegfs_quota[2]} bytes available)"
-        elif [[ ${beegfs_quota[2]} -lt $(( 10 * 1024**2 )) ]]; then
-            fail "HOME disk quota has less than 10 MiB left ($(( beegfs_quota[2] / 1024 )) KiB available)"
-        elif [[ ${beegfs_quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
-            note "HOME disk quota has less than 1.0 GiB left ($(( beegfs_quota[2] / 1024**2 )) MiB available)"
+
+        if [[ ${beegfs_home_quota[2]} -le 0 ]]; then
+	    overuse=-${beegfs_home_quota[2]}
+            if [[ ${overuse} -gt $(( 10 * 1024**3 )) ]]; then
+                fail "HOME disk quota is full ($(( overuse / 1024**3 )) GiB overuse)"
+            elif [[ ${overuse} -gt $(( 10 * 1024**2 )) ]]; then
+                fail "HOME disk quota is full ($(( overuse / 1024**2 )) MiB overuse)"
+            elif [[ ${overuse} -gt $(( 10 * 1024 )) ]]; then
+                fail "HOME disk quota is full ($(( overuse / 1024 )) KiB overuse)"
+            else
+                fail "HOME disk quota is full (${overuse} bytes overuse)"
+	    fi
+        elif [[ ${beegfs_home_quota[2]} -lt $(( 10 * 1024**2 )) ]]; then
+            fail "HOME disk quota has less than 10 MiB left ($(( beegfs_home_quota[2] / 1024 )) KiB available)"
+        elif [[ ${beegfs_home_quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
+            note "HOME disk quota has less than 1.0 GiB left ($(( beegfs_home_quota[2] / 1024**2 )) MiB available)"
         else
             okay "HOME disk quota has at least 1.0 GiB left"
         fi
+            
+        for kk in $(seq "${#groups[@]}"); do
+    	    group_kk=${groups[$((kk-1))]}
+            if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
+	        continue
+	    fi
+    	    gid_kk=${gids[$((kk-1))]}
+            mapfile -t quota < <(beegfs_group_quota "${gid_kk}")
+            if [[ ${quota[1]} -le 1 ]]; then
+                okay "Group '${group_kk}' disk quota not available"
+            else
+                if [[ ${quota[2]} -le 0 ]]; then
+                    fail "Group '${group_kk}' disk quota is full (${quota[2]} bytes available)"
+                elif [[ ${quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
+                    fail "Group '${group_kk}' disk quota has less than 1.0 GiB left ($(( quota[2] / 1024**2 )) MiB available)"
+                elif [[ ${quota[2]} -lt $(( 100 * 1024 ** 3 )) ]]; then
+                    note "Group '${group_kk}' disk quota has less than 100 GiB left ($(( quota[2] / 1024**3 )) GiB available)"
+                else
+                    okay "Group '${group_kk}' disk quota has at least 100 GiB left"
+                fi
+            fi
+        done
             
         # No duplicated email addresses
         mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
@@ -541,6 +620,13 @@ if [[ $action == "validate" ]]; then
     
         if ${in_sge}; then
             okay "User is in SGE"
+
+	    if qconf -su "${sge_project}" | sed ':a;N;$!ba;s/\\\n/ /g' | grep -E "^entries " | grep -q -E "\b${user}\b"; then
+                okay "User is member of SGE project"
+	    else
+                fail "User is not member of SGE project"
+	    fi	
+	    
             if [[ ${wynton_project} == "${sge_project}" ]]; then
                 okay "SGE 'default_project' and LDAP 'wyntonProject' agree"
             else
@@ -548,7 +634,7 @@ if [[ $action == "validate" ]]; then
             fi
     
             pathname="/wynton/home${SGE_ROOT}/common/sgeCA/usercerts/${user}/cert.pem"
-        if [[ -f "${pathname}" ]]; then
+            if [[ -f "${pathname}" ]]; then
                 ## Skip SGE certificates that expired when Wynton moved to "non-expiring" certs                                         
                 ## "We moved to 40 year SGE certs for unexpired and new users. We did not renew already expired certs."                 
                 ## https://github.com/ucsf-wynton/support/issues/1308

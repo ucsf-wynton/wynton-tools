@@ -3,7 +3,6 @@
 
 ```
 $ wynton --help
-
 UCSF Wynton HPC Command Line Tools
 
 Usage:
@@ -31,8 +30,8 @@ Installed tools:
 Example:
  wynton --help
 
-Version: 0.11.0
-Copyright: Henrik Bengtsson (2019-2024)
+Version: 0.12.0
+Copyright: Henrik Bengtsson (2019-2025)
 License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 Source: https://github.com/ucsf-wynton/wynton-tools
 ```

@@ -116,7 +116,7 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$2 !~ /^hb-test$/')
     
     ## Ignore allowed commands ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|dbus-daemon|dshbak|flock|pdsh|ps|sleep|ssh|ssh-agent|sshd|systemd|top|watch|xargs)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|dbus-daemon|dshbak|flock|htop|pdsh|ps|sleep|ssh|ssh-agent|sshd|systemd|top|watch|xargs)$/')
 
     ## Allow SGE tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(qacct|qalter|qconf|qhold|qhost|qmod|qrls|qstat|qsub)$/')
