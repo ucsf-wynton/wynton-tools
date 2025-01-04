@@ -603,33 +603,36 @@ if [[ $action == "validate" ]]; then
         fi
         
         # No mixed 'wyntonAccess'
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^wyntonAccess:")
+	field="wyntonAccess"
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP 'wyntonAccess' entries: [n=${#res[@]}] ${res[*]}"
+            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
         elif [[ ${#res[@]} -eq 0 ]]; then
-            fail "User lacks LDAP 'wyntonAccess' entry"
+            fail "User lacks LDAP '${field}' entry"
         else
-            okay "User has unique LDAP 'wyntonAccess' entry"
+            okay "User has unique LDAP '${field}' entry"
         fi
     
         # No mixed 'protectedAccess'
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^protectedAccess:")
+	field="protectedAccess"
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP 'protectedAccess' entries: [n=${#res[@]}] ${res[*]}"
+            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
         elif [[ ${#res[@]} -eq 0 ]]; then
-            fail "User lacks LDAP 'protectedAccess' entry"
+            fail "User lacks LDAP '${field}' entry"
         else
-            okay "User has unique LDAP 'protectedAccess' entry"
+            okay "User has unique LDAP '${field}' entry"
         fi
 
 	## Has 'wyntonProject'
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^wyntonProject:")
+	field="wyntonProject"
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP 'wyntonProject' entries: [n=${#res[@]}] ${res[*]}"
+            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
         elif [[ ${#res[@]} -eq 0 ]]; then
-            fail "User lacks LDAP 'wyntonProject' entry"
+            fail "User lacks LDAP '${field}' entry"
         else
-            okay "User has unique LDAP 'wyntonProject' entry"
+            okay "User has unique LDAP '${field}' entry"
         fi
 
 	## SGE
