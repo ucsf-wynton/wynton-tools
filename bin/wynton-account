@@ -606,6 +606,8 @@ if [[ $action == "validate" ]]; then
         mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^wyntonAccess:")
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User has multiple LDAP 'wyntonAccess' entries: [n=${#res[@]}] ${res[*]}"
+        elif [[ ${#res[@]} -eq 0 ]]; then
+            fail "User lacks LDAP 'wyntonAccess' entry"
         else
             okay "User has unique LDAP 'wyntonAccess' entry"
         fi
@@ -614,10 +616,23 @@ if [[ $action == "validate" ]]; then
         mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^protectedAccess:")
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User has multiple LDAP 'protectedAccess' entries: [n=${#res[@]}] ${res[*]}"
+        elif [[ ${#res[@]} -eq 0 ]]; then
+            fail "User lacks LDAP 'protectedAccess' entry"
         else
             okay "User has unique LDAP 'protectedAccess' entry"
         fi
-    
+
+	## Has 'wyntonProject'
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^wyntonProject:")
+        if [[ ${#res[@]} -gt 1 ]]; then
+            fail "User has multiple LDAP 'wyntonProject' entries: [n=${#res[@]}] ${res[*]}"
+        elif [[ ${#res[@]} -eq 0 ]]; then
+            fail "User lacks LDAP 'wyntonProject' entry"
+        else
+            okay "User has unique LDAP 'wyntonProject' entry"
+        fi
+
+	## SGE
         if ${in_sge}; then
             okay "User is in SGE"
 

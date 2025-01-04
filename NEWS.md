@@ -1,6 +1,12 @@
 # Version (development version)
 
- * ...
+## New Features
+
+ * `wynton account --check` verifies LDAP field `wyntonProject`.
+
+ * `wynton account --check` verifies that LDAP fields
+   `protectedAccess`, `wyntonAccess`, and `wyntonProject` have one and
+   exactly one value.
 
 
 # Version 0.12.0 (2025-01-03)
