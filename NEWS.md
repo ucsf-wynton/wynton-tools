@@ -1,4 +1,4 @@
-# Version 0.12.0 (2025-01-06)
+# Version 0.13.0 (2025-01-06)
 
 ## New Features
 
