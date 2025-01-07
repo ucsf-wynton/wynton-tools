@@ -1,6 +1,12 @@
-# Version 0.13.0-9000 (2025-01-06)
+# Version 0.13.0-9001 (2025-01-06)
 
- * ...
+## New Features
+
+ * Add `wynton watchdog-ps --user-width=n`.
+
+## Bug Fixes
+
+ * `wynton watchdog-ps --hosttype=type` did not work.
  
 
 # Version 0.13.0 (2025-01-06)

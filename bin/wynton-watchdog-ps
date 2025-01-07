@@ -55,6 +55,7 @@ hosttype=
 
 ## Options
 debug=false
+user_width=12
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -69,14 +70,16 @@ while [[ $# -gt 0 ]]; do
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
         key=${1//--}
         key=${key//=*}
-        value=${1//--[[:alpha:]]*=}
+        value=${1//--[[:alpha:]-]*=}
         mdebug "Key-value option '$1' parsed to key='${key}', value='${value}'"
         if [[ -z ${value} ]]; then
             error "Option '--${key}' must not be empty"
         fi
         if [[ "${key}" == "hosttype" ]]; then
-            shift
-            hosttype=$1
+            hosttype=${value}
+        elif [[ "${key}" == "user-width" ]]; then
+	    assert_integer "${value}"
+            user_width=${value}
         else
             error "Unknown option: $1"
         fi
@@ -90,6 +93,7 @@ if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
     mdebug "hosttype: $hosttype"
+    mdebug "user_width: $user_width"
 fi
 
 if [[ $action == "version" ]]; then
@@ -106,7 +110,7 @@ reject_cmds() {
 }
 
 if [[ $action == "list" ]]; then
-    mapfile -t ps_info < <(ps -e -o "uid,user,pid,pcpu,start_time,comm,cmd")
+    mapfile -t ps_info < <(ps -e -o "uid,user:${user_width},pid,pcpu,start_time,comm,cmd")
     header="${ps_info[0]}"
     
     ## Ignore system UIDs (uid < 1000)
@@ -157,7 +161,7 @@ if [[ $action == "list" ]]; then
 
     ## Trim
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | grep -v -E "^$")
-    
+
     ## Display column headers
     if [[ "${#ps_info[@]}" -gt 0 ]]; then
 	mapfile -t users < <(printf "%s\n" "${ps_info[@]}" | awk '{ print $2 }' | sort | uniq)
