@@ -307,7 +307,6 @@ if [[ $action == "validate" ]]; then
     echo
     echo "## Overview"
     echo
-    echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* User: ${user} (${uid:-N/A})"
     echo "* Primary group: ${group:-N/A} (${gid:-N/A})"
     if [[ ${#groups[@]} -gt 0 ]]; then
@@ -319,6 +318,7 @@ if [[ $action == "validate" ]]; then
         groups_info=("N/A")
     fi
     echo "* Secondary groups: ${groups_info[*]}"
+    echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Faculty sponsor: ${faculty_sponsor:-N/A}"
