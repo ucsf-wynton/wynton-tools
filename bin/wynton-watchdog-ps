@@ -131,7 +131,7 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim)$/')
 
     ## Allowed file-related tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|df|du|find|gzip|ls|ln|mv|rm|rsync|scp|sftp|sftp-server|stat|tar|touch|zip)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|gzip|ls|ln|mv|rm|rsync|scp|sftp|sftp-server|stat|tar|touch|wget|zip)$/')
 
     ## Allowed file processing tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|grep|head|less|more|sort|tail|uniq)$/')

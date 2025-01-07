@@ -307,7 +307,6 @@ if [[ $action == "validate" ]]; then
     echo
     echo "## Overview"
     echo
-    echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* User: ${user} (${uid:-N/A})"
     echo "* Primary group: ${group:-N/A} (${gid:-N/A})"
     if [[ ${#groups[@]} -gt 0 ]]; then
@@ -319,6 +318,7 @@ if [[ $action == "validate" ]]; then
         groups_info=("N/A")
     fi
     echo "* Secondary groups: ${groups_info[*]}"
+    echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Faculty sponsor: ${faculty_sponsor:-N/A}"
@@ -603,21 +603,39 @@ if [[ $action == "validate" ]]; then
         fi
         
         # No mixed 'wyntonAccess'
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^wyntonAccess:")
+	field="wyntonAccess"
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP 'wyntonAccess' entries: [n=${#res[@]}] ${res[*]}"
+            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
+        elif [[ ${#res[@]} -eq 0 ]]; then
+            fail "User lacks LDAP '${field}' entry"
         else
-            okay "User has unique LDAP 'wyntonAccess' entry"
+            okay "User has unique LDAP '${field}' entry"
         fi
     
         # No mixed 'protectedAccess'
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^protectedAccess:")
+	field="protectedAccess"
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP 'protectedAccess' entries: [n=${#res[@]}] ${res[*]}"
+            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
+        elif [[ ${#res[@]} -eq 0 ]]; then
+            fail "User lacks LDAP '${field}' entry"
         else
-            okay "User has unique LDAP 'protectedAccess' entry"
+            okay "User has unique LDAP '${field}' entry"
         fi
-    
+
+	## Has 'wyntonProject'
+	field="wyntonProject"
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
+        if [[ ${#res[@]} -gt 1 ]]; then
+            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
+        elif [[ ${#res[@]} -eq 0 ]]; then
+            fail "User lacks LDAP '${field}' entry"
+        else
+            okay "User has unique LDAP '${field}' entry"
+        fi
+
+	## SGE
         if ${in_sge}; then
             okay "User is in SGE"
 
