@@ -120,7 +120,7 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$2 !~ /^hb-test$/')
     
     ## Ignore allowed commands ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|dbus-daemon|dshbak|flock|htop|pdsh|ps|sleep|ssh|ssh-agent|sshd|systemd|top|watch|xargs)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|btop|dbus-daemon|dshbak|flock|htop|pdsh|ps|sleep|ssh|ssh-agent|sshd|systemd|top|watch|xargs)$/')
 
     ## Allow SGE tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(qacct|qalter|qconf|qhold|qhost|qmod|qrls|qstat|qsub)$/')
@@ -135,7 +135,7 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim)$/')
 
     ## Allowed file-related tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|gzip|ls|ln|mv|rm|rsync|scp|sftp|sftp-server|stat|tar|touch|wget|zip)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|mv|rm|rsync|scp|sftp|sftp-server|stat|tar|touch|wget|zip)$/')
 
     ## Allowed file processing tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|grep|head|less|more|sort|tail|uniq)$/')
