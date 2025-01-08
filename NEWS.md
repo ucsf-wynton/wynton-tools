@@ -7,6 +7,9 @@
 ## Bug Fixes
 
  * `wynton watchdog-ps --hosttype=type` did not work.
+
+ * `wynton account` would list also primary group among the secondary
+   groups.
  
 
 # Version 0.13.0 (2025-01-06)

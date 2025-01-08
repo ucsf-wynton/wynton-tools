@@ -309,12 +309,12 @@ if [[ $action == "validate" ]]; then
     echo
     echo "* User: ${user} (${uid:-N/A})"
     echo "* Primary group: ${group:-N/A} (${gid:-N/A})"
-    if [[ ${#groups[@]} -gt 0 ]]; then
-	groups_info=()
-	for kk in $(seq "${#groups[@]}"); do
-	    groups_info+=("${groups[$((kk-1))]} (${gids[$((kk-1))]})")
-        done
-    else
+    groups_info=()
+    for kk in $(seq "${#groups[@]}"); do
+	if [[ ${kk} -eq 1 ]]; then continue; fi
+        groups_info+=("${groups[$((kk-1))]} (${gids[$((kk-1))]})")
+    done
+    if [[ ${#groups_info[@]} -eq 0 ]]; then
         groups_info=("N/A")
     fi
     echo "* Secondary groups: ${groups_info[*]}"
