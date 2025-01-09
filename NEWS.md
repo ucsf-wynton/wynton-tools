@@ -10,7 +10,11 @@
 
  * `wynton account` would list also primary group among the secondary
    groups.
- 
+
+ * `wynton account --check` warnings and errors on HOME folder quota
+   would report on twice the available amount, because it did not
+   account for it being buddy-mirrored in BeeGFS.
+
 
 # Version 0.13.0 (2025-01-06)
 
