@@ -7,6 +7,9 @@
    disaster-recovery backed up, which depends on it being below the
    chunk threshold or not.
 
+ * `wynton job` reports on "Total memory requested", which is a
+   function of `-l mem_free` and the number of parallel slots.
+
 ## Bug Fixes
 
  * `wynton account` reported on group disk quota as it is buddy
