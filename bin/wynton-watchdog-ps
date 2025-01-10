@@ -169,6 +169,10 @@ if [[ $action == "list" ]]; then
 
 	## Download tools for EMBL EBI's EGA (European Genome-phenome Archive)
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(pyega3)$/')
+
+	## Download tools for Illumina
+	## https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bs)$/')
     fi
 
     ## Trim
