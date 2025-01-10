@@ -330,7 +330,7 @@ if [[ $action == "validate" ]]; then
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Faculty sponsor: ${faculty_sponsor:-N/A}"
     echo "* HOME: ${home:-N/A}"
-    echo "* HOME disk quota: $(( beegfs_home_quota[0] / 1024**3 / 2 )) GiB (${beegfs_home_quota[3]}%) used out of $(( beegfs_home_quota[1] / 1024**3 / 2 )) GiB"
+    echo "* HOME disk quota: $(pretty_int "$(( beegfs_home_quota[0] / 1024**3 / 2 ))") GiB (${beegfs_home_quota[3]}%) used out of $(pretty_int "$(( beegfs_home_quota[1] / 1024**3 / 2 ))") GiB"
     for kk in $(seq "${#groups[@]}"); do
 	group_kk=${groups[$((kk-1))]}
 	if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
@@ -344,7 +344,7 @@ if [[ $action == "validate" ]]; then
         if [[ ${quota[1]} -le 1 ]]; then
             echo "  - '${group_kk}': N/A"
         else
-            echo "  - '${group_kk}': $(( quota[0] / 1024**3 / 2 )) GiB (${quota[3]}%) used out of $(( quota[1] / 1024**3 / 2 )) GiB"
+            echo "  - '${group_kk}': $(pretty_int "$(( quota[0] / 1024**3 / 2 ))") GiB (${quota[3]}%) used out of $(pretty_int "$(( quota[1] / 1024**3 / 2 ))") GiB"
 	fi
     done
     echo "* HOME file chunks: $(pretty_int "${beegfs_home_quota[4]}")"
