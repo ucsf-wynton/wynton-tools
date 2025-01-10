@@ -491,7 +491,7 @@ if [[ $action == "job" ]]; then
             echo "[ $ok ] Number of parallel slots: ${value:-<none>}"
 	    mem_per_slot=$(printf "%.0f" "${mem_free[SIZES_MiB]}")
 	    mem_total=$(( nslots * mem_per_slot / 1024 ))
-            echo "[ $ok ] Total memory requested: ${mem_total:-<none>} GiB"
+            echo "[ $ok ] Total memory requested: ${mem_total:-<none>} GiB (= ${nslots}*${mem_free[SIZES_GiB]} GiB)"
 	fi
 	
         # shellcheck disable=2154
