@@ -7,7 +7,12 @@
    disaster-recovery backed up, which depends on it being below the
    chunk threshold or not.
 
+## Bug Fixes
 
+ * `wynton account` reported on group disk quota as it is buddy
+   mirrored, which it is not in most cases (yet).
+ 
+ 
 # Version 0.14.0 (2025-01-09)
 
 ## New Features
