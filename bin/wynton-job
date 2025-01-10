@@ -524,15 +524,16 @@ if [[ $action == "job" ]]; then
         info=""
 	if [[ -z "${value}" ]]; then
             status="[$warn]"
-            info=" ${yellow}WARNING: 'qstat -j <job id>' does not have a 'cwd' variable${reset}"
+            info=" ${yellow}WARNING: The job does not specify a working directory ('cwd')${reset}"
         elif ! ${is_owner}; then
             status="[$warn]"
         elif [[ ! -w "${value}" ]]; then
             # shellcheck disable=2154
             info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$warn]"
+	else
+            info="$(dir_info "${value}" "${is_owner}")${info}"
         fi
-        info="$(dir_info "${value}" "${is_owner}")${info}"
         echo "${status} Working directory: ${info}"
 
         # shellcheck disable=2154
