@@ -339,7 +339,7 @@ if [[ $action == "validate" ]]; then
 	gid_kk=${gids[$((kk-1))]}
         mapfile -t quota < <(beegfs_group_quota "${gid_kk}")
 	if [[ ${kk} -eq 1 ]]; then
-            echo "* Group disk quotas:"
+            echo "* Group disk quotas (assuming no buddy mirroring):"
 	fi
         if [[ ${quota[1]} -le 1 ]]; then
             echo "  - '${group_kk}': N/A"
