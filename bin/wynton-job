@@ -56,6 +56,26 @@ reformat_date() {
     sed -E "s,([[:digit:]]{2})/([[:digit:]]{2})/([[:digit:]]{4}),\3-\1-\2,g"
 }
 
+
+footnotes=()
+footnote() {
+    local note=${1:?}
+    footnotes+=("${note}")
+}
+
+list_footnotes() {
+    if [[ "${#footnotes[@]}" -le 0 ]]; then
+	return 0
+    fi
+    echo
+    echo "Footnotes:"
+    echo
+    for note in "${footnotes[@]}"; do
+	echo " * ${note}"
+    done
+}    
+
+
 # -------------------------------------------------------------------------
 # SPECIFIC
 # -------------------------------------------------------------------------
@@ -259,9 +279,7 @@ if [[ $action == "job" ]]; then
         bfr2=$(qstat -s az -u "${_THIS_JOB_owner}" | grep -E "^[[:space:]]*\b${_THIS_JOB_job_number}\b[[:space:]]")
 	
         ## Summarize
-        ruler "-"
-        echo "Job Details"
-        ruler "-"
+        echo "# Job Details"
         echo
 
         # shellcheck disable=2154
@@ -358,14 +376,13 @@ if [[ $action == "job" ]]; then
         value=${_THIS_JOB_owner}
         is_owner=true
         status="[ $ok ]"
-        info=""
         if [[ $value != "$USER" ]]; then
             is_owner=false
             status="[$warn]"
-            info=" ${yellow}WARNING: You ($USER) are not the owner of this job${reset}"
+            footnote "${yellow}WARNING: You ($USER) are not the owner of this job; some checks might not work${reset}"
         fi
         # shellcheck disable=2154
-        echo "$status Job owner: ${value} (${_THIS_JOB_uid}) of group ${_THIS_JOB_group} (${_THIS_JOB_gid}) ${info}"
+        echo "$status Job owner: ${value} (${_THIS_JOB_uid}) of group ${_THIS_JOB_group} (${_THIS_JOB_gid})"
 
         # shellcheck disable=2154
         value=${_THIS_JOB_submission_time}
@@ -488,7 +505,7 @@ if [[ $action == "job" ]]; then
 	    nslots=$(sed -E "s/${pattern}/\1/" <<< "${_THIS_JOB_parallel_environment}")
 	fi
 	if [[ ${nslots} -gt 0 ]]; then
-            echo "[ $ok ] Number of parallel slots: ${value:-<none>}"
+            echo "[ $ok ] Number of parallel slots: ${nslots:-<none>}"
 	    mem_per_slot=$(printf "%.0f" "${mem_free[SIZES_MiB]}")
 	    mem_total=$(( nslots * mem_per_slot / 1024 ))
             echo "[ $ok ] Total memory requested: ${mem_total:-<none>} GiB (= ${nslots}*${mem_free[SIZES_GiB]} GiB)"
@@ -524,12 +541,12 @@ if [[ $action == "job" ]]; then
         info=""
 	if [[ -z "${value}" ]]; then
             status="[$warn]"
-            info=" ${yellow}WARNING: The job does not specify a working directory ('cwd')${reset}"
+            info="${yellow}WARNING: The job does not specify a working directory ('cwd')${reset}"
         elif ! ${is_owner}; then
             status="[$warn]"
         elif [[ ! -w "${value}" ]]; then
             # shellcheck disable=2154
-            info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
+            info="${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$warn]"
 	else
             info="$(dir_info "${value}" "${is_owner}")${info}"
@@ -563,6 +580,9 @@ if [[ $action == "job" ]]; then
 #        job_id=$(grep -E "^job_number:" <<< "${bfr}" | sed 's/^[^ ]*[ ]*//')
 #        submit_time=$(grep -E "^submission_time:" <<< "${bfr}" | sed 's/^[^ ]*[ ]*//')
 #	echo "$bfr"
+
+	list_footnotes
+	
 	exit 0
     fi
 
