@@ -1,6 +1,11 @@
 # Version 0.14.0-9000 (2025-01-09)
 
- * ...
+## New Features
+
+ * `wynton account` reports on number of BeeGFS file chunks in HOME
+   folder. With `--check` it reports on whether the HOME folder is
+   disaster-recovery backed up, which depends on it being below the
+   chunk threshold or not.
 
 
 # Version 0.14.0 (2025-01-09)

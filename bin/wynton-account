@@ -100,9 +100,10 @@ function beegfs_user_quota {
     beegfs-ctl --getquota --csv --storagepoolid="${beegfs_storagepool}" --uid "${uid}" | awk -F "," 'NR > 1 {
         used=$3
         max=$4
+        chunks=$5
         if (used ~ /[^0-9]/) used = -1
         if (max ~ /[^0-9]/) max = -1
-        printf "%d\n%d\n%d\n%.1f\n", used, max, max-used, 100*used/max
+        printf "%d\n%d\n%d\n%.1f\n%d\n", used, max, max-used, 100*used/max, chunks
     }'
 }
 
@@ -113,10 +114,16 @@ function beegfs_group_quota {
     beegfs-ctl --getquota --csv --storagepoolid="${beegfs_storagepool}" --gid "${gid}" | awk -F "," 'NR > 1 {
         used=$3
         max=$4
+        chunks=$5
         if (used ~ /[^0-9]/) used = -1
         if (max ~ /[^0-9]/) max = -1
-        printf "%d\n%d\n%d\n%.1f\n", used, max, max-used, 100*used/max
+        printf "%d\n%d\n%d\n%.1f\n%d\n%", used, max, max-used, 100*used/max, chunks
     }'
+}
+
+function pretty_int {
+    local -i value=${1:?}
+    LC_NUMERIC=en_US.UTF-8 printf "%'d\n" "${value}"
 }
 
 
@@ -340,6 +347,7 @@ if [[ $action == "validate" ]]; then
             echo "  - '${group_kk}': $(( quota[0] / 1024**3 / 2 )) GiB (${quota[3]}%) used out of $(( quota[1] / 1024**3 / 2 )) GiB"
 	fi
     done
+    echo "* HOME file chunks: $(pretty_int "${beegfs_home_quota[4]}")"
     echo "* Wynton access: ${access:-N/A}"
     echo "* PHI access: ${phi:-N/A}"
     echo "* IC access: ${ic:-N/A}"
@@ -496,7 +504,17 @@ if [[ $action == "validate" ]]; then
         else
             okay "HOME disk quota has at least 1.0 GiB left"
         fi
-            
+
+        chunks=${beegfs_home_quota[4]}
+	## Threshold is set in https://github.com/ucsf-wynton/sysadmin-tools/blob/main/backups/get_backup_dirs.py#L16,
+	## and it is strictly less than (https://github.com/ucsf-wynton/sysadmin-tools/blob/main/backups/get_backup_dirs.py#L84)
+	max_chunks=$((10 * 1000**2))
+        if [[ ${chunks} -lt ${max_chunks} ]]; then
+            okay "HOME is backed up - less than $(pretty_int "${max_chunks}") chunks"
+	else
+            note "HOME is not backed up - more than $(pretty_int "${max_chunks}") chunks"
+	fi
+	
         for kk in $(seq "${#groups[@]}"); do
     	    group_kk=${groups[$((kk-1))]}
             if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
@@ -518,7 +536,7 @@ if [[ $action == "validate" ]]; then
                 fi
             fi
         done
-            
+	
         # No duplicated email addresses
         mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
         if [[ ${#res[@]} -gt 1 ]]; then
