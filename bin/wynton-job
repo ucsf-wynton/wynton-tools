@@ -38,6 +38,8 @@ source "${incl}/output.sh"
 source "${incl}/system.sh"
 # shellcheck source=incl/sge.sh
 source "${incl}/sge.sh"
+# shellcheck source=incl/ldap.sh
+source "${incl}/ldap.sh"
 
 
 # -------------------------------------------------------------------------
@@ -57,38 +59,9 @@ reformat_date() {
 }
 
 
-footnotes=()
-footnote() {
-    local note=${1:?}
-    footnotes+=("${note}")
-}
-
-list_footnotes() {
-    if [[ "${#footnotes[@]}" -le 0 ]]; then
-	return 0
-    fi
-    echo
-    echo "Footnotes:"
-    echo
-    for note in "${footnotes[@]}"; do
-	echo " * ${note}"
-    done
-}    
-
-
 # -------------------------------------------------------------------------
 # SPECIFIC
 # -------------------------------------------------------------------------
-
-## Enable terminal colors, if supported
-term_colors enable
-
-ok="${green}OK${reset}"
-warn="${yellow}WARN${reset}"
-fail="${red}FAIL${reset}"
-na="${magenta}??${reset}"
-
-
 # Outputs: (bytes, kB, MB, GB, KiB, MiB, GiB)
 # shellcheck disable=2034
 SIZES_INPUT=0

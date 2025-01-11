@@ -231,8 +231,7 @@ if [[ $action == "validate" ]]; then
     same_user=true
     if [[ "${user}" != "${USER}" ]]; then
         same_user=false
-        warn "Running as user '${USER}' != '${user}'"
-        echo >&2
+        footnote "${yellow}WARNING: Running as user '${USER}' != '${user}'${reset}"
     fi
     
     mapfile -t ldap_info < <(ldap_search "uid=${user}" "+" "*" | sort)
@@ -260,8 +259,7 @@ if [[ $action == "validate" ]]; then
         fi
     fi
     if [[ ${running_as_phi} != "${phi}" ]]; then
-        warn "Cannot run all checks on PHI user, because running as a non-PHI user"
-        echo >&2
+        footnote "${yellow}WARNING: Cannot run all checks on PHI user, because running as a non-PHI user${reset}"
     fi
     
     ## Access to Wynton?
@@ -372,9 +370,9 @@ if [[ $action == "validate" ]]; then
     age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
     echo "* Account last-modified on: ${ts} [${age}] (by '${by:-N/A}')"
-    echo
 
     if ${check}; then
+        echo
         echo "## Checks"
         echo
     
@@ -694,11 +692,15 @@ if [[ $action == "validate" ]]; then
         fi
     
         echo
-        echo "Summary: ${n_okay} OK, ${n_note} NOTE, ${n_fail} FAIL, ${n_skip} SKIP"
-    
+        echo "Summary: ${n_okay} OK, ${n_note} NOTE, ${n_fail} FAIL, ${n_skip} SKIP"    
+    fi
+
+    list_footnotes
+
+    if ${check}; then
         if [[ ${n_fail} -gt 0 ]]; then
             echo >&2
             error "Detected ${n_fail} FAIL"
         fi
-    fi
+    fi    
 fi

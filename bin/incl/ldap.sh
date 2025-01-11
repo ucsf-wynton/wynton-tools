@@ -1,5 +1,37 @@
 #!/usr/bin/env bash
 
+
+# -------------------------------------------------------
+# Reporting tools
+# -------------------------------------------------------
+## Enable terminal colors, if supported
+term_colors enable
+
+ok="${green}OK${reset}"
+warn="${yellow}WARN${reset}"
+fail="${red}FAIL${reset}"
+na="${magenta}??${reset}"
+
+
+footnotes=()
+footnote() {
+    local note=${1:?}
+    footnotes+=("${note}")
+}
+
+list_footnotes() {
+    if [[ "${#footnotes[@]}" -le 0 ]]; then
+	return 0
+    fi
+    echo
+    echo "Footnotes:"
+    echo
+    for note in "${footnotes[@]}"; do
+	echo " * ${note}"
+    done
+}    
+
+
 # -------------------------------------------------------
 # Regular expressions
 # -------------------------------------------------------
