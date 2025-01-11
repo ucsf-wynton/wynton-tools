@@ -315,17 +315,16 @@ if [[ $action == "validate" ]]; then
     echo "## Overview"
     echo
     echo "* User: ${user} (${uid:-N/A})"
-    echo "* Primary group: ${group:-N/A} (${gid:-N/A})"
-    if [[ ${#groups[@]} -lt 1 ]]; then
-        echo "* Secondary groups: N/A"
-    else
-        echo "* Secondary groups: ${#groups[@]}"
-        for kk in $(seq "${#groups[@]}"); do
-	    if [[ ${kk} -eq 1 ]]; then continue; fi
-	    n_members=$(ldapsearch -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "cn=${groups[$((kk-1))]}" | grep -c -E "^member:")
-            echo "  - '${groups[$((kk-1))]}' (${gids[$((kk-1))]}; ${n_members} members)"
-        done
-    fi
+    echo "* Groups: [n=${#groups[@]}]"
+    for kk in $(seq "${#groups[@]}"); do
+        n_members=$(ldapsearch -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "cn=${groups[$((kk-1))]}" | grep -c -E "^member:")	
+        if [[ ${kk} -eq 1 ]]; then
+	    type="primary"
+	else
+	    type="secondary"
+	fi
+        echo "  - '${groups[$((kk-1))]}' (${type}; ${gids[$((kk-1))]}; ${n_members} members)"
+    done
     echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
