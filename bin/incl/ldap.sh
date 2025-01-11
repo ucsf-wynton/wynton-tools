@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+pwd=${BASH_SOURCE%/*}
+
+# shellcheck source=incl/output.sh
+source "${pwd}"/output.sh
+
 
 # -------------------------------------------------------
 # Reporting tools
@@ -7,9 +12,13 @@
 ## Enable terminal colors, if supported
 term_colors enable
 
+#shellcheck disable=SC2034
 ok="${green}OK${reset}"
+#shellcheck disable=SC2034
 warn="${yellow}WARN${reset}"
+#shellcheck disable=SC2034
 fail="${red}FAIL${reset}"
+#shellcheck disable=SC2034
 na="${magenta}??${reset}"
 
 
