@@ -316,15 +316,16 @@ if [[ $action == "validate" ]]; then
     echo
     echo "* User: ${user} (${uid:-N/A})"
     echo "* Primary group: ${group:-N/A} (${gid:-N/A})"
-    groups_info=()
-    for kk in $(seq "${#groups[@]}"); do
-	if [[ ${kk} -eq 1 ]]; then continue; fi
-        groups_info+=("${groups[$((kk-1))]} (${gids[$((kk-1))]})")
-    done
-    if [[ ${#groups_info[@]} -eq 0 ]]; then
-        groups_info=("N/A")
+    if [[ ${#groups[@]} -lt 1 ]]; then
+        echo "* Secondary groups: N/A"
+    else
+        echo "* Secondary groups: ${#groups[@]}"
+        for kk in $(seq "${#groups[@]}"); do
+	    if [[ ${kk} -eq 1 ]]; then continue; fi
+	    n_members=$(ldapsearch -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "cn=${groups[$((kk-1))]}" | grep -c -E "^member:")
+            echo "  - '${groups[$((kk-1))]}' (${gids[$((kk-1))]}; ${n_members} members)"
+        done
     fi
-    echo "* Secondary groups: ${groups_info[*]}"
     echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
