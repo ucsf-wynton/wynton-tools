@@ -22,9 +22,7 @@
 #'  wynton account --user=1000
 #'  wynton account --user=alice@bobsonlab.org
 #'
-#' Version: 0.2.0
-#' Copyright: Henrik Bengtsson (2024-2025)
-#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' License: See 'wynton --help'
 call="$0 $*"
 
 this="${BASH_SOURCE%/}"

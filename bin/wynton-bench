@@ -24,9 +24,7 @@
 #' Requirements:
 #' * spark: https://github.com/holman/spark
 #'
-#' Version: 0.0.4
-#' Copyright: Henrik Bengtsson (2020-2024)
-#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' License: See 'wynton --help'
 call="$0 $*"
 
 this="${BASH_SOURCE%/}"

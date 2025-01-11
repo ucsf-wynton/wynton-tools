@@ -19,9 +19,7 @@
 #'  wynton accounting --tail=100000 --failed=~"^(19|25)"
 #'  wynton accounting --tail=100000 --user="$USER"
 #'
-#' Version: 0.0.0-9001
-#' Copyright: Henrik Bengtsson (2023-2024)
-#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' License: See 'wynton --help'
 call="$0 $*"
 
 this="${BASH_SOURCE%/}"

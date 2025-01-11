@@ -18,9 +18,7 @@
 #'  wynton trash ~/a-large-folder/ 
 #'  wynton trash a-huge-file ~/a-large-folder/ 
 #'
-#' Version: 0.0.1
-#' Copyright: Henrik Bengtsson (2024)
-#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' License: See 'wynton --help'
 call="$0 $*"
 
 this="${BASH_SOURCE%/}"

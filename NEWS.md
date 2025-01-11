@@ -12,6 +12,8 @@
  * `wynton job` reports on "Total memory requested", which is a
    function of `-l mem_free` and the number of parallel slots.
 
+ * Now `wynton <tool> --version` is the same as `wynton --version`.
+
 ## Bug Fixes
 
  * `wynton account` reported on group disk quota as it is buddy
