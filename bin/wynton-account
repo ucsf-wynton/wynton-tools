@@ -360,7 +360,13 @@ if [[ $action == "validate" ]]; then
     echo "* Plato access: ${plato:-N/A}"
     echo "* Locked account: ${locked:-N/A}"
     echo "* Login shell: ${shell:-N/A}"
-    echo "* Wynton project: ${wynton_project:-N/A}"
+    if [[ -z "${wynton_project}" ]]; then
+        echo "* wynton_project: N/A"
+    else
+	n_members=$(ldapsearch -LLL -x "wyntonProject=${wynton_project}" | grep -c -E "^uid:")
+        echo "* Wynton project: ${wynton_project} (${n_members} members)"
+    fi
+   
     echo "* SGE project: ${sge_project:-N/A}"
     
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")

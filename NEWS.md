@@ -4,7 +4,10 @@
 
  * `wynton account` reports on number of sponsees that the faculty
    sponsor have.
- 
+
+ * `wynton account` reports on number of members in the same Wynton
+   project.
+
 
 # Version 0.15.0 (2025-01-13)
 
