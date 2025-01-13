@@ -392,11 +392,11 @@ if [[ $action == "validate" ]]; then
             okay "User ID (UID) is unique"
         fi
     
-        # UIDs within [1023,65535]
-        if [[ ${uid} -lt 1023 ]] || [[ ${uid} -gt 65535 ]]; then
-            fail "User ID (UID) is out of range [1023,65535]"
+        # UIDs within [1000,65535]
+        if [[ ${uid} -lt 1000 ]] || [[ ${uid} -gt 65535 ]]; then
+            fail "User ID (UID) is out of range [1000,65535]"
         else
-            okay "User ID (UID) is within [1023,65535]"
+            okay "User ID (UID) is within [1000,65535]"
         fi
     
         # GIDs within [455,65535]
