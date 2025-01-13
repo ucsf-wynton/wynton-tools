@@ -1,6 +1,9 @@
 # Version 0.15.0-9000 (2025-01-13)
 
- * ...
+## New Features
+
+ * `wynton account` reports on number of sponsees that the faculty
+   sponsor have.
  
 
 # Version 0.15.0 (2025-01-13)

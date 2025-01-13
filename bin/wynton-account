@@ -324,7 +324,12 @@ if [[ $action == "validate" ]]; then
     echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
-    echo "* Faculty sponsor: ${faculty_sponsor:-N/A}"
+    if [[ -z "${faculty_sponsor}" ]]; then
+        echo "* Faculty sponsor: N/A"
+    else
+	n_members=$(ldapsearch -LLL -x "FacultySponsor=${faculty_sponsor}" | grep -c -E "^uid:")
+        echo "* Faculty sponsor: ${faculty_sponsor} (${n_members} sponsees)"
+    fi
     echo "* HOME: ${home:-N/A}"
     echo "* HOME disk quota: $(pretty_int "$(( beegfs_home_quota[0] / 1024**3 / 2 ))") GiB (${beegfs_home_quota[3]}%) used out of $(pretty_int "$(( beegfs_home_quota[1] / 1024**3 / 2 ))") GiB (buddy mirrored)"
     for kk in $(seq "${#groups[@]}"); do
