@@ -1,5 +1,46 @@
 #!/usr/bin/env bash
 
+pwd=${BASH_SOURCE%/*}
+
+# shellcheck source=incl/output.sh
+source "${pwd}"/output.sh
+
+
+# -------------------------------------------------------
+# Reporting tools
+# -------------------------------------------------------
+## Enable terminal colors, if supported
+term_colors enable
+
+#shellcheck disable=SC2034
+ok="${green}OK${reset}"
+#shellcheck disable=SC2034
+warn="${yellow}WARN${reset}"
+#shellcheck disable=SC2034
+fail="${red}FAIL${reset}"
+#shellcheck disable=SC2034
+na="${magenta}??${reset}"
+
+
+footnotes=()
+footnote() {
+    local note=${1:?}
+    footnotes+=("${note}")
+}
+
+list_footnotes() {
+    if [[ "${#footnotes[@]}" -le 0 ]]; then
+	return 0
+    fi
+    echo
+    echo "Footnotes:"
+    echo
+    for note in "${footnotes[@]}"; do
+	echo " * ${note}"
+    done
+}    
+
+
 # -------------------------------------------------------
 # Regular expressions
 # -------------------------------------------------------

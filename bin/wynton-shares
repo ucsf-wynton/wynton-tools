@@ -23,9 +23,7 @@
 #'  wynton shares total --fshares
 #'  wynton shares tsv
 #'
-#' Version: 0.1.0
-#' Copyright: Henrik Bengtsson (2019-2022)
-#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' License: See 'wynton --help'
 call="$0 $*"
 
 this="${BASH_SOURCE%/}"

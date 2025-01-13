@@ -14,8 +14,7 @@
 #' Examples:
 #' wynton watchdog-ps --hosttype=log
 #'
-#' Author: Henrik Bengtsson (2024)
-#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' License: See 'wynton --help'
 call="$0 $*"
 
 this="${BASH_SOURCE%/}"
@@ -143,11 +142,6 @@ if [[ $action == "list" ]]; then
     ## Allowed misc. tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc)$/')
     
-    ## Allowed commands ('comm') on dt nodes
-    if [[ ${HOSTNAME} == dt* ]] || [[ ${HOSTNAME} == pdt* ]]; then
-      mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ftp|lftp|globus-gridftp-.*|rsync)$/')
-    fi
-
     ## Allow AWS ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(aws)$/')
 
@@ -158,6 +152,30 @@ if [[ $action == "list" ]]; then
     ## Allow VS Code extension 'mypy', 'lsp_server' ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
+    
+    ## --------------------------------------------------------------------
+    ## Allowed on login hosts only
+    ## --------------------------------------------------------------------
+    if [[ ${HOSTNAME} == *log* ]]; then
+	true
+    fi
+
+    ## --------------------------------------------------------------------
+    ## Allowed on data-transfer hosts only
+    ## --------------------------------------------------------------------
+    if [[ ${HOSTNAME} == *dt* ]]; then
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ftp|lftp|globus-gridftp-.*|rsync)$/')
+
+	## Download tools for EMBL EBI's EGA (European Genome-phenome Archive)
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(pyega3)$/')
+
+        ## Tools for NIMH Data Archive (NDA)
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(vtcmd)$/')
+	
+	## Download tools for Illumina
+	## https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bs)$/')
+    fi
 
     ## Trim
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | grep -v -E "^$")

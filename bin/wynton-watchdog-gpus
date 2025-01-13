@@ -19,8 +19,7 @@
 #' * Bash
 #' * nvidia-smi
 #'
-#' Author: Henrik Bengtsson (2024)
-#' License: MIT
+#' License: See 'wynton --help'
 
 # shellcheck disable=2034
 call="$0 $*"

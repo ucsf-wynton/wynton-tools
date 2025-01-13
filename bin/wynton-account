@@ -22,9 +22,7 @@
 #'  wynton account --user=1000
 #'  wynton account --user=alice@bobsonlab.org
 #'
-#' Version: 0.2.0
-#' Copyright: Henrik Bengtsson (2024-2025)
-#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' License: See 'wynton --help'
 call="$0 $*"
 
 this="${BASH_SOURCE%/}"
@@ -100,9 +98,10 @@ function beegfs_user_quota {
     beegfs-ctl --getquota --csv --storagepoolid="${beegfs_storagepool}" --uid "${uid}" | awk -F "," 'NR > 1 {
         used=$3
         max=$4
+        chunks=$5
         if (used ~ /[^0-9]/) used = -1
         if (max ~ /[^0-9]/) max = -1
-        printf "%d\n%d\n%d\n%.1f\n", used, max, max-used, 100*used/max
+        printf "%d\n%d\n%d\n%.1f\n%d\n", used, max, max-used, 100*used/max, chunks
     }'
 }
 
@@ -113,10 +112,16 @@ function beegfs_group_quota {
     beegfs-ctl --getquota --csv --storagepoolid="${beegfs_storagepool}" --gid "${gid}" | awk -F "," 'NR > 1 {
         used=$3
         max=$4
+        chunks=$5
         if (used ~ /[^0-9]/) used = -1
         if (max ~ /[^0-9]/) max = -1
-        printf "%d\n%d\n%d\n%.1f\n", used, max, max-used, 100*used/max
+        printf "%d\n%d\n%d\n%.1f\n%d\n%", used, max, max-used, 100*used/max, chunks
     }'
+}
+
+function pretty_int {
+    local -i value=${1:?}
+    LC_NUMERIC=en_US.UTF-8 printf "%'d\n" "${value}"
 }
 
 
@@ -224,8 +229,7 @@ if [[ $action == "validate" ]]; then
     same_user=true
     if [[ "${user}" != "${USER}" ]]; then
         same_user=false
-        warn "Running as user '${USER}' != '${user}'"
-        echo >&2
+        footnote "${yellow}WARNING: Running as user '${USER}' != '${user}'${reset}"
     fi
     
     mapfile -t ldap_info < <(ldap_search "uid=${user}" "+" "*" | sort)
@@ -253,8 +257,7 @@ if [[ $action == "validate" ]]; then
         fi
     fi
     if [[ ${running_as_phi} != "${phi}" ]]; then
-        warn "Cannot run all checks on PHI user, because running as a non-PHI user"
-        echo >&2
+        footnote "${yellow}WARNING: Cannot run all checks on PHI user, because running as a non-PHI user${reset}"
     fi
     
     ## Access to Wynton?
@@ -308,22 +311,22 @@ if [[ $action == "validate" ]]; then
     echo "## Overview"
     echo
     echo "* User: ${user} (${uid:-N/A})"
-    echo "* Primary group: ${group:-N/A} (${gid:-N/A})"
-    groups_info=()
+    echo "* Groups: [n=${#groups[@]}]"
     for kk in $(seq "${#groups[@]}"); do
-	if [[ ${kk} -eq 1 ]]; then continue; fi
-        groups_info+=("${groups[$((kk-1))]} (${gids[$((kk-1))]})")
+        n_members=$(ldapsearch -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "cn=${groups[$((kk-1))]}" | grep -c -E "^member:")	
+        if [[ ${kk} -eq 1 ]]; then
+	    type="primary"
+	else
+	    type="secondary"
+	fi
+        echo "  - '${groups[$((kk-1))]}' (${type}; ${gids[$((kk-1))]}; ${n_members} members)"
     done
-    if [[ ${#groups_info[@]} -eq 0 ]]; then
-        groups_info=("N/A")
-    fi
-    echo "* Secondary groups: ${groups_info[*]}"
     echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     echo "* Faculty sponsor: ${faculty_sponsor:-N/A}"
     echo "* HOME: ${home:-N/A}"
-    echo "* HOME disk quota: $(( beegfs_home_quota[0] / 1024**3 / 2 )) GiB (${beegfs_home_quota[3]}%) used out of $(( beegfs_home_quota[1] / 1024**3 / 2 )) GiB"
+    echo "* HOME disk quota: $(pretty_int "$(( beegfs_home_quota[0] / 1024**3 / 2 ))") GiB (${beegfs_home_quota[3]}%) used out of $(pretty_int "$(( beegfs_home_quota[1] / 1024**3 / 2 ))") GiB (buddy mirrored)"
     for kk in $(seq "${#groups[@]}"); do
 	group_kk=${groups[$((kk-1))]}
 	if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
@@ -332,14 +335,20 @@ if [[ $action == "validate" ]]; then
 	gid_kk=${gids[$((kk-1))]}
         mapfile -t quota < <(beegfs_group_quota "${gid_kk}")
 	if [[ ${kk} -eq 1 ]]; then
-            echo "* Group disk quotas:"
+            echo "* Group disk quotas (assuming no buddy mirroring):"
 	fi
         if [[ ${quota[1]} -le 1 ]]; then
             echo "  - '${group_kk}': N/A"
         else
-            echo "  - '${group_kk}': $(( quota[0] / 1024**3 / 2 )) GiB (${quota[3]}%) used out of $(( quota[1] / 1024**3 / 2 )) GiB"
-	fi
+	    buddy_mirrored=false
+	    if ${buddy_mirrored}; then
+                echo "  - '${group_kk}': $(pretty_int "$(( quota[0] / 1024**3 /2 ))") GiB (${quota[3]}%) used out of $(pretty_int "$(( quota[1] / 1024**3 / 2 ))") GiB (buddy mirrored)"
+            else
+                echo "  - '${group_kk}': $(pretty_int "$(( quota[0] / 1024**3 ))") GiB (${quota[3]}%) used out of $(pretty_int "$(( quota[1] / 1024**3 ))") GiB"
+	    fi
+       fi
     done
+    echo "* HOME file chunks: $(pretty_int "${beegfs_home_quota[4]}")"
     echo "* Wynton access: ${access:-N/A}"
     echo "* PHI access: ${phi:-N/A}"
     echo "* IC access: ${ic:-N/A}"
@@ -359,9 +368,9 @@ if [[ $action == "validate" ]]; then
     age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
     echo "* Account last-modified on: ${ts} [${age}] (by '${by:-N/A}')"
-    echo
 
     if ${check}; then
+        echo
         echo "## Checks"
         echo
     
@@ -383,11 +392,11 @@ if [[ $action == "validate" ]]; then
             okay "User ID (UID) is unique"
         fi
     
-        # UIDs within [1023,65535]
-        if [[ ${uid} -lt 1023 ]] || [[ ${uid} -gt 65535 ]]; then
-            fail "User ID (UID) is out of range [1023,65535]"
+        # UIDs within [1000,65535]
+        if [[ ${uid} -lt 1000 ]] || [[ ${uid} -gt 65535 ]]; then
+            fail "User ID (UID) is out of range [1000,65535]"
         else
-            okay "User ID (UID) is within [1023,65535]"
+            okay "User ID (UID) is within [1000,65535]"
         fi
     
         # GIDs within [455,65535]
@@ -496,7 +505,17 @@ if [[ $action == "validate" ]]; then
         else
             okay "HOME disk quota has at least 1.0 GiB left"
         fi
-            
+
+        chunks=${beegfs_home_quota[4]}
+	## Threshold is set in https://github.com/ucsf-wynton/sysadmin-tools/blob/main/backups/get_backup_dirs.py#L16,
+	## and it is strictly less than (https://github.com/ucsf-wynton/sysadmin-tools/blob/main/backups/get_backup_dirs.py#L84)
+	max_chunks=$((10 * 1000**2))
+        if [[ ${chunks} -lt ${max_chunks} ]]; then
+            okay "HOME is backed up - less than $(pretty_int "${max_chunks}") chunks"
+	else
+            note "HOME is not backed up - more than $(pretty_int "${max_chunks}") chunks"
+	fi
+	
         for kk in $(seq "${#groups[@]}"); do
     	    group_kk=${groups[$((kk-1))]}
             if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
@@ -518,7 +537,7 @@ if [[ $action == "validate" ]]; then
                 fi
             fi
         done
-            
+	
         # No duplicated email addresses
         mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
         if [[ ${#res[@]} -gt 1 ]]; then
@@ -671,11 +690,15 @@ if [[ $action == "validate" ]]; then
         fi
     
         echo
-        echo "Summary: ${n_okay} OK, ${n_note} NOTE, ${n_fail} FAIL, ${n_skip} SKIP"
-    
+        echo "Summary: ${n_okay} OK, ${n_note} NOTE, ${n_fail} FAIL, ${n_skip} SKIP"    
+    fi
+
+    list_footnotes
+
+    if ${check}; then
         if [[ ${n_fail} -gt 0 ]]; then
             echo >&2
             error "Detected ${n_fail} FAIL"
         fi
-    fi
+    fi    
 fi

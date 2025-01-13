@@ -1,3 +1,28 @@
+# Version 0.15.0 (2025-01-13)
+
+## New Features
+
+ * `wynton account` reports on number of BeeGFS file chunks in HOME
+   folder. With `--check` it reports on whether the HOME folder is
+   disaster-recovery backed up, which depends on it being below the
+   chunk threshold or not.
+
+ * `wynton account` reports on number of group members.
+
+ * `wynton job` reports on "Total memory requested", which is a
+   function of `-l mem_free` and the number of parallel slots.
+
+ * Now `wynton <tool> --version` is the same as `wynton --version`.
+
+## Bug Fixes
+
+ * `wynton account` reported on group disk quota as it is buddy
+   mirrored, which it is not in most cases (yet).
+ 
+ * `wynton account --check` required UID:s to be within
+   `[1023,65535]`, whereas it should be `[1000,65535]`.
+
+
 # Version 0.14.0 (2025-01-09)
 
 ## New Features

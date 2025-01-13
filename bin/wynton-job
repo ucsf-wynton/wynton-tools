@@ -13,9 +13,7 @@
 #'  wynton job --list-finished
 #'  wynton job 4214696
 #'
-#' Version: 0.1.2
-#' Copyright: Henrik Bengtsson (2020-2024)
-#' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
+#' License: See 'wynton --help'
 call="$0 $*"
 
 this="${BASH_SOURCE%/}"
@@ -38,6 +36,8 @@ source "${incl}/output.sh"
 source "${incl}/system.sh"
 # shellcheck source=incl/sge.sh
 source "${incl}/sge.sh"
+# shellcheck source=incl/ldap.sh
+source "${incl}/ldap.sh"
 
 
 # -------------------------------------------------------------------------
@@ -56,19 +56,10 @@ reformat_date() {
     sed -E "s,([[:digit:]]{2})/([[:digit:]]{2})/([[:digit:]]{4}),\3-\1-\2,g"
 }
 
+
 # -------------------------------------------------------------------------
 # SPECIFIC
 # -------------------------------------------------------------------------
-
-## Enable terminal colors, if supported
-term_colors enable
-
-ok="${green}OK${reset}"
-warn="${yellow}WARN${reset}"
-fail="${red}FAIL${reset}"
-na="${magenta}??${reset}"
-
-
 # Outputs: (bytes, kB, MB, GB, KiB, MiB, GiB)
 # shellcheck disable=2034
 SIZES_INPUT=0
@@ -259,9 +250,7 @@ if [[ $action == "job" ]]; then
         bfr2=$(qstat -s az -u "${_THIS_JOB_owner}" | grep -E "^[[:space:]]*\b${_THIS_JOB_job_number}\b[[:space:]]")
 	
         ## Summarize
-        ruler "-"
-        echo "Job Details"
-        ruler "-"
+        echo "# Job Details"
         echo
 
         # shellcheck disable=2154
@@ -358,14 +347,13 @@ if [[ $action == "job" ]]; then
         value=${_THIS_JOB_owner}
         is_owner=true
         status="[ $ok ]"
-        info=""
         if [[ $value != "$USER" ]]; then
             is_owner=false
             status="[$warn]"
-            info=" ${yellow}WARNING: You ($USER) are not the owner of this job${reset}"
+            footnote "${yellow}WARNING: You ($USER) are not the owner of this job; some checks might not work${reset}"
         fi
         # shellcheck disable=2154
-        echo "$status Job owner: ${value} (${_THIS_JOB_uid}) of group ${_THIS_JOB_group} (${_THIS_JOB_gid}) ${info}"
+        echo "$status Job owner: ${value} (${_THIS_JOB_uid}) of group ${_THIS_JOB_group} (${_THIS_JOB_gid})"
 
         # shellcheck disable=2154
         value=${_THIS_JOB_submission_time}
@@ -426,10 +414,11 @@ if [[ $action == "job" ]]; then
 
         pattern_size="[[:digit:]]+([.][[:digit:]]*)?[[:alpha:]]?"
 	key="mem_free"
+	mem_free=(-1 -1 -1 -1 -1 -1 -1)
         if grep -q -F "${key}" <<< "${value}"; then
             value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,.*)/\1/" <<< "${value}")
-	    mapfile -t sizes < <(parse_size_spec "${value2}")
-            echo "       - ${key}=${value2} => $(printf "%'.1f" "${sizes[SIZES_MiB]}") MiB = $(printf "%'.1f" "${sizes[SIZES_GiB]}") GiB"
+	    mapfile -t mem_free < <(parse_size_spec "${value2}")
+            echo "       - ${key}=${value2} => $(printf "%'.1f" "${mem_free[SIZES_MiB]}") MiB = $(printf "%'.1f" "${mem_free[SIZES_GiB]}") GiB"
         fi
 
 	key="h_vmem"
@@ -480,6 +469,19 @@ if [[ $action == "job" ]]; then
         value=${_THIS_JOB_parallel_environment}
         echo "[ $ok ] Parallel environment: ${value:-<none>}"
 
+	## Number of parallel slots
+	pattern="smp range: ([[:digit:]]+)"
+	nslots=-1
+        if grep -q -E "${pattern}" <<< "${_THIS_JOB_parallel_environment}"; then
+	    nslots=$(sed -E "s/${pattern}/\1/" <<< "${_THIS_JOB_parallel_environment}")
+	fi
+	if [[ ${nslots} -gt 0 ]]; then
+            echo "[ $ok ] Number of parallel slots: ${nslots:-<none>}"
+	    mem_per_slot=$(printf "%.0f" "${mem_free[SIZES_MiB]}")
+	    mem_total=$(( nslots * mem_per_slot / 1024 ))
+            echo "[ $ok ] Total memory requested: ${mem_total:-<none>} GiB (= ${nslots}*${mem_free[SIZES_GiB]} GiB)"
+	fi
+	
         # shellcheck disable=2154
         value=${_THIS_JOB_job_array_tasks}
         echo "[ $ok ] Job array tasks: ${value:-<none>}"
@@ -510,15 +512,16 @@ if [[ $action == "job" ]]; then
         info=""
 	if [[ -z "${value}" ]]; then
             status="[$warn]"
-            info=" ${yellow}WARNING: 'qstat -j <job id>' does not have a 'cwd' variable${reset}"
+            info="${yellow}WARNING: The job does not specify a working directory ('cwd')${reset}"
         elif ! ${is_owner}; then
             status="[$warn]"
         elif [[ ! -w "${value}" ]]; then
             # shellcheck disable=2154
-            info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
+            info="${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$warn]"
+	else
+            info="$(dir_info "${value}" "${is_owner}")${info}"
         fi
-        info="$(dir_info "${value}" "${is_owner}")${info}"
         echo "${status} Working directory: ${info}"
 
         # shellcheck disable=2154
@@ -548,6 +551,9 @@ if [[ $action == "job" ]]; then
 #        job_id=$(grep -E "^job_number:" <<< "${bfr}" | sed 's/^[^ ]*[ ]*//')
 #        submit_time=$(grep -E "^submission_time:" <<< "${bfr}" | sed 's/^[^ ]*[ ]*//')
 #	echo "$bfr"
+
+	list_footnotes
+	
 	exit 0
     fi
 
