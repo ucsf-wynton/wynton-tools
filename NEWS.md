@@ -8,6 +8,8 @@
  * `wynton account` reports on number of members in the same Wynton
    project.
 
+ * Add `wynton stray-processes`.
+
 
 # Version 0.15.0 (2025-01-13)
 

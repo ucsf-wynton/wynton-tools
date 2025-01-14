@@ -1,0 +1,158 @@
+#! /usr/bin/env bash
+#' Watchdog for Stray Processes Running on Hosts
+#'
+#' Usage:
+#'  wynton-watchdog-strays [options]
+#' 
+#' Flags:
+#'  --help             Display this help
+#'  --version          Display version
+#'  --what=<value>     What to scan for
+#'
+#' rsession:
+#'   Scans for RStudio Server 'rsession' processes that do not
+#'   have an 'rserver' process among their parent processes.
+#'
+#' Examples:
+#'  wynton watchdog-strays --what="rsession"
+#'  wynton watchdog-strays --what="rsession" --full
+#'
+#' License: See 'wynton --help'
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+utils="$(dirname "${this}")/utils"
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+# shellcheck source=incl/ldap.sh
+source "${incl}/ldap.sh"
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+stray_rsession_pids() {
+    local -i pid
+    for pid in $(pgrep rsession); do
+        if ! pstree -s -p "${pid}" | grep -q -F "rserver("; then
+            echo "${pid}"
+        fi
+    done
+}
+
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action=list
+
+## Options
+debug=false
+full=false
+user_width=12
+what=
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+        
+    elif test "$1" == "--full"; then
+        full=true
+
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]-]*=}
+        mdebug "Key-value option '$1' parsed to key='${key}', value='${value}'"
+        if [[ -z ${value} ]]; then
+            error "Option '--${key}' must not be empty"
+        fi
+        if [[ "${key}" == "user-width" ]]; then
+            assert_integer "${value}"
+            user_width=${value}
+        elif [[ "${key}" == "what" ]]; then
+            what="${value}"
+        else
+            error "Unknown option: $1"
+        fi
+     else
+        extras="$extras $1"
+    fi
+    shift
+done
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help ""
+    exit 0
+fi
+
+
+
+if [[ $action == "list" ]]; then
+    pids=()
+
+    if [[ -z ${what} ]]; then
+        error "Argument --what=<value> is missing"
+    fi
+
+    if [[ ${what} == *rsession* ]]; then
+        if ${full}; then
+            printf "%s ..." "Scanning"
+            t0=$(date "+%s")
+            ## Scan for stray 'rsession' processes
+            mapfile -t pids_t < <(stray_rsession_pids)
+            t1=$(date "+%s")
+            dt=$((t1 - t0))
+            printf " done [%d seconds]\n" "${dt}"
+            pids+=("${pids_t[@]}")
+	fi
+    else
+        error "Uknown --what=<value>: '${what}'"
+    fi
+    
+    if [[ "${#pids[@]}" -gt 0 ]]; then
+        if ${full}; then
+            echo "# Suspicious processes"
+            echo
+            echo
+            echo "* Number of processes: ${#pids[@]}"
+            echo
+            pids_seq=$( IFS=','; echo "${pids[*]}" )
+            ps -o "pid,state,user:${user_width},etime,lstart,%cpu,%mem,cmd" -p "${pids_seq}"
+        else
+            printf "%s\n" "${pids[@]}"
+        fi
+    fi
+fi
