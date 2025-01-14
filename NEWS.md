@@ -1,4 +1,4 @@
-# Version 0.15.0-9000 (2025-01-13)
+# Version 0.15.0-9000 (2025-01-14)
 
 ## New Features
 
@@ -9,6 +9,11 @@
    project.
 
  * Add `wynton stray-processes`.
+
+## Bug Fixes
+
+ * `wynton account` would produce errors on `ldap_sasl_bind(SIMPLE):
+   Can't contact LDAP server (-1)` when called from development nodes.
 
 
 # Version 0.15.0 (2025-01-13)
