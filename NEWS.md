@@ -20,6 +20,9 @@
  * `wynton account` would produce errors on `ldap_sasl_bind(SIMPLE):
    Can't contact LDAP server (-1)` when called from development nodes.
 
+ * `wynton-account --check` would skip the validation of SGE certs
+   that are generated prior to 2022-06-29.
+
 
 # Version 0.15.0 (2025-01-13)
 

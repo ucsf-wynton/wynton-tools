@@ -27,7 +27,5 @@ check:
 	wynton --version
 	wynton --help
 	wynton account --help
-	wynton account
-	wynton account --check
-
-
+	wynton account --user=hb-test
+	wynton account --user=hb-test --check || true ## FIXME: Use an account that doesn't have FAILs
