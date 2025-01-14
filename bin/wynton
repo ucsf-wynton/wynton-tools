@@ -10,7 +10,7 @@
 #' Example:
 #'  wynton --help
 #'
-#' Version: 0.15.0-9007
+#' Version: 0.15.0-9008
 #' Copyright: Henrik Bengtsson (2019-2025)
 #' License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 #' Source: https://github.com/ucsf-wynton/wynton-tools
@@ -97,23 +97,23 @@ main() {
         exit 1
     elif [ "$1" == "--help" ]; then
         help ""
-        exit 1
+        exit 0
     elif [ "$1" == "--version" ]; then
         version
-        exit 1
+        exit 0
     elif [ "$1" == "--tools" ]; then
         list_tools
-        exit 1
+        exit 0
     elif [ "$2" == "--whatis" ]; then
         whatis "$1"
-        exit 1
+        exit 0
     fi
     
     SUBCOMMAND="$1"; shift
     SUBCMD=$UCSF_WYNTON_DIR/wynton-$SUBCOMMAND
     if [ ! -e "$SUBCMD" ]; then
         usage
-        exit 1
+        exit 0
     fi
 
     $SUBCMD "$@"

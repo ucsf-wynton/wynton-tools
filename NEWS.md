@@ -1,5 +1,10 @@
 # Version 0.15.0-9000 (2025-01-14)
 
+## Significant Changes
+
+ * `wynton --version`, `wynton --help`, etc. return exit code 0. It
+   used to return exit code 1.
+ 
 ## New Features
 
  * `wynton account` reports on number of sponsees that the faculty

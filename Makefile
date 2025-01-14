@@ -1,6 +1,7 @@
 SHELL=/bin/bash
+PATH:=./bin:${PATH}
 
-all: shellcheck
+all: shellcheck check
 
 README.md: bin/wynton
 #	@bfr=`cat $<`; 
@@ -21,4 +22,8 @@ shellcheck:
 	   shellcheck --shell=bash --external-sources -- utils/*.sh; \
 	   find . -mindepth 1 -maxdepth 1 -type f ! -name '*~' -exec shellcheck --external-sources {} \; \
 	)
+
+check:
+	wynton --version
+	wynton --help
 
