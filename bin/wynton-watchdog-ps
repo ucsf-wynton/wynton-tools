@@ -171,6 +171,9 @@ if [[ $action == "list" ]]; then
 
         ## Tools for NIMH Data Archive (NDA)
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(vtcmd)$/')
+
+	## Sage Bionetworks' Synapse (https://www.synapse.org/)
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(synapse)$/')
 	
 	## Download tools for Illumina
 	## https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview
