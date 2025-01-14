@@ -164,7 +164,7 @@ if [[ $action == "list" ]]; then
     ## Allowed on data-transfer hosts only
     ## --------------------------------------------------------------------
     if [[ ${HOSTNAME} == *dt* ]]; then
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ftp|lftp|globus-gridftp-.*|rsync)$/')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ftp|lftp|globus-gridftp-.*|rclone|rsync)$/')
 
 	## Download tools for EMBL EBI's EGA (European Genome-phenome Archive)
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(pyega3)$/')
