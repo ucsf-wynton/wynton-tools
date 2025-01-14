@@ -684,7 +684,7 @@ if [[ $action == "validate" ]]; then
     
             pathname="/wynton/home${SGE_ROOT}/common/sgeCA/usercerts/${user}/cert.pem"
             if [[ -f "${pathname}" ]]; then
-                if check_user_cert "${user}"; then
+                if check_user_cert "${user}" > /dev/null; then
                     okay "Has a valid, non-expired SGE certificate"
                 else
                     fail "Has an SGE certificate that is either invalid or expired"
