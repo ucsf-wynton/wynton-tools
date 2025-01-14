@@ -26,4 +26,8 @@ shellcheck:
 check:
 	wynton --version
 	wynton --help
+	wynton account --help
+	wynton account
+	wynton account --check
+
 

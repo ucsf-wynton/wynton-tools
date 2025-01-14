@@ -363,7 +363,7 @@ if [[ $action == "validate" ]]; then
     if [[ -z "${wynton_project}" ]]; then
         echo "* wynton_project: N/A"
     else
-	n_members=$(ldapsearch "wyntonProject=${wynton_project}" | grep -c -E "^uid:")
+	n_members=$(ldap_search "wyntonProject=${wynton_project}" | grep -c -E "^uid:")
         echo "* Wynton project: ${wynton_project} (${n_members} members)"
     fi
    
