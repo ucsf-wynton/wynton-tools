@@ -1,6 +1,7 @@
 SHELL=/bin/bash
+PATH:=./bin:${PATH}
 
-all: shellcheck
+all: shellcheck check
 
 README.md: bin/wynton
 #	@bfr=`cat $<`; 
@@ -22,3 +23,9 @@ shellcheck:
 	   find . -mindepth 1 -maxdepth 1 -type f ! -name '*~' -exec shellcheck --external-sources {} \; \
 	)
 
+check:
+	wynton --version
+	wynton --help
+	wynton account --help
+	wynton account --user=hb-test
+	wynton account --user=hb-test --check || true ## FIXME: Use an account that doesn't have FAILs

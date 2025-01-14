@@ -1,3 +1,29 @@
+# Version 0.16.0 (2025-01-14)
+
+## Significant Changes
+
+ * `wynton --version`, `wynton --help`, etc. return exit code 0. It
+   used to return exit code 1.
+ 
+## New Features
+
+ * `wynton account` reports on number of sponsees that the faculty
+   sponsor have.
+
+ * `wynton account` reports on number of members in the same Wynton
+   project.
+
+ * Add `wynton stray-processes`.
+
+## Bug Fixes
+
+ * `wynton account` would produce errors on `ldap_sasl_bind(SIMPLE):
+   Can't contact LDAP server (-1)` when called from development nodes.
+
+ * `wynton-account --check` would skip the validation of SGE certs
+   that are generated prior to 2022-06-29.
+
+
 # Version 0.15.0 (2025-01-13)
 
 ## New Features

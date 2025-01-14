@@ -1,0 +1,172 @@
+#! /usr/bin/env bash
+#' Watchdog for Stray Processes Running on Hosts
+#'
+#' Usage:
+#'  wynton-stray-processes [options]
+#' 
+#' Flags:
+#'  --help             Display this help
+#'  --version          Display version
+#'  --full             Display process table, otherwise process IDs
+#'  --progress         Show progress
+#'  --what=<value>     What to scan for
+#'
+#' rsession:
+#'   Scans for RStudio Server 'rsession' processes that do not
+#'   have an 'rserver' process among their parent processes.
+#'
+#' Examples:
+#'  wynton stray-processes --what="rsession" --progress
+#'  wynton stray-processes --what="rsession" --full
+#'
+#' License: See 'wynton --help'
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+utils="$(dirname "${this}")/utils"
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+# shellcheck source=incl/ldap.sh
+source "${incl}/ldap.sh"
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+stray_rsession_pids() {
+    local -i pid
+    local -i -a pids
+
+    mapfile -t pids < <(pgrep rsession)
+    if ${progress}; then
+        t0=$(date "+%s")
+    fi
+
+    for kk in $(seq "${#pids[@]}"); do
+	pid=${pids[kk - 1]}
+        if ${progress}; then
+            t1=$(date "+%s")
+            dt=$((t1 - t0))
+            msg=$(printf "[%ds] %d/%d Finding stray 'rsession' processes" "${dt}" "${kk}" "${#pids[@]}")
+            >&2 printf "%s" "${msg}"
+	fi
+        if ! pstree -s -p "${pid}" | grep -q -F "rserver("; then
+            echo "${pid}"
+        fi
+        if ${progress}; then
+            >&2 printf "\r%*s\r" "${#msg}" " "
+	fi
+    done
+}
+
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action=list
+
+## Options
+debug=false
+progress=false
+full=false
+user_width=16
+what=
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+        
+    elif test "$1" == "--full"; then
+        full=true
+    elif test "$1" == "--progress"; then
+        progress=true
+
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]-]*=}
+        mdebug "Key-value option '$1' parsed to key='${key}', value='${value}'"
+        if [[ -z ${value} ]]; then
+            error "Option '--${key}' must not be empty"
+        fi
+        if [[ "${key}" == "user-width" ]]; then
+            assert_integer "${value}"
+            user_width=${value}
+        elif [[ "${key}" == "what" ]]; then
+            what="${value}"
+        else
+            error "Unknown option: $1"
+        fi
+     else
+        extras="$extras $1"
+    fi
+    shift
+done
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help ""
+    exit 0
+fi
+
+
+
+if [[ $action == "list" ]]; then
+    pids=()
+
+    if [[ -z ${what} ]]; then
+        error "Argument --what=<value> is missing"
+    fi
+
+    if [[ ${what} == *rsession* ]]; then
+        ## Scan for stray 'rsession' processes
+        mapfile -t pids_t < <(stray_rsession_pids)
+        pids+=("${pids_t[@]}")
+    else
+        error "Unknown --what=<value>: '${what}'"
+    fi
+    
+    if [[ "${#pids[@]}" -gt 0 ]]; then
+        if ${full}; then
+            echo "# Stray processes"
+            echo
+            echo "* Number of processes: ${#pids[@]}"
+            echo
+            pids_seq=$( IFS=','; echo "${pids[*]}" )
+            ps -o "pid,state,user:${user_width},etime,lstart,%cpu,%mem,cmd" -p "${pids_seq}"
+        else
+            printf "%s\n" "${pids[@]}"
+        fi
+    fi
+fi
