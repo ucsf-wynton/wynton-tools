@@ -373,12 +373,12 @@ if [[ $action == "validate" ]]; then
     ts=$(ldap_as_timestamp "${ts}")
     age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account created on: ${ts} [${age}] (by '${by:-N/A}')"
+    echo "* Account created on: ${ts} [${age} by '${by:-N/A}']"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
     ts=$(ldap_as_timestamp "${ts}")
     age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account last-modified on: ${ts} [${age}] (by '${by:-N/A}')"
+    echo "* Account last-modified on: ${ts} [${age} by '${by:-N/A}']"
 
     if ${check}; then
         echo
