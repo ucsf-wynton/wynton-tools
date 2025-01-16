@@ -501,18 +501,18 @@ if [[ $action == "validate" ]]; then
         if [[ ${avail} -le 0 ]]; then
 	    overuse=-${avail}
             if [[ ${overuse} -gt $(( 10 * 1024**3 )) ]]; then
-                fail "HOME disk quota is full ($(( overuse / 1024**3 )) GiB overuse)"
+                fail "HOME disk quota is full ($(pretty_int "$(( overuse / 1024**3 ))") GiB overuse)"
             elif [[ ${overuse} -gt $(( 10 * 1024**2 )) ]]; then
-                fail "HOME disk quota is full ($(( overuse / 1024**2 )) MiB overuse)"
+                fail "HOME disk quota is full ($(pretty_int "$(( overuse / 1024**2 ))") MiB overuse)"
             elif [[ ${overuse} -gt $(( 10 * 1024 )) ]]; then
-                fail "HOME disk quota is full ($(( overuse / 1024 )) KiB overuse)"
+                fail "HOME disk quota is full ($(pretty_int "$(( overuse / 1024 ))") KiB overuse)"
             else
                 fail "HOME disk quota is full (${overuse} bytes overuse)"
 	    fi
         elif [[ ${avail} -lt $(( 10 * 1024**2 )) ]]; then
-            fail "HOME disk quota has less than 10 MiB left ($(( avail / 1024 )) KiB available)"
+            fail "HOME disk quota has less than 10 MiB left ($(pretty_int "$(( avail / 1024 ))") KiB available)"
         elif [[ ${avail} -lt $(( 1 * 1024 ** 3 )) ]]; then
-            note "HOME disk quota has less than 1.0 GiB left ($(( avail / 1024**2 )) MiB available)"
+            note "HOME disk quota has less than 1.0 GiB left ($(pretty_int "$(( avail / 1024**2 ))") MiB available)"
         else
             okay "HOME disk quota has at least 1.0 GiB left"
         fi
