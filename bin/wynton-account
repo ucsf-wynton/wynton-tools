@@ -538,11 +538,11 @@ if [[ $action == "validate" ]]; then
                 okay "Group '${group_kk}' disk quota not available"
             else
                 if [[ ${quota[2]} -le 0 ]]; then
-                    fail "Group '${group_kk}' disk quota is full (${quota[2]} bytes available)"
+                    fail "Group '${group_kk}' disk quota is full ($(pretty_int "${quota[2]}") bytes available)"
                 elif [[ ${quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
-                    fail "Group '${group_kk}' disk quota has less than 1.0 GiB left ($(( quota[2] / 1024**2 )) MiB available)"
+                    fail "Group '${group_kk}' disk quota has less than 1.0 GiB left ($(pretty_int "$(( quota[2] / 1024**2 ))") MiB available)"
                 elif [[ ${quota[2]} -lt $(( 100 * 1024 ** 3 )) ]]; then
-                    note "Group '${group_kk}' disk quota has less than 100 GiB left ($(( quota[2] / 1024**3 )) GiB available)"
+                    note "Group '${group_kk}' disk quota has less than 100 GiB left ($(pretty_int "$(( quota[2] / 1024**3 ))") GiB available)"
                 else
                     okay "Group '${group_kk}' disk quota has at least 100 GiB left"
                 fi
