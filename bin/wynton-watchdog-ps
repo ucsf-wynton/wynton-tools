@@ -121,6 +121,9 @@ if [[ $action == "list" ]]; then
     ## Ignore allowed commands ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|btop|dbus-daemon|dshbak|flock|htop|pdsh|ps|sleep|ssh|ssh-agent|sshd|systemd|top|watch|xargs)$/')
 
+    ## Allow BeeGFS tools ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(beegfs-ctl\/Main)$/')
+
     ## Allow SGE tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(qacct|qalter|qconf|qhold|qhost|qmod|qrls|qstat|qsub)$/')
 
