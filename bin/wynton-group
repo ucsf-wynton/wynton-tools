@@ -1,0 +1,284 @@
+#! /usr/bin/env bash
+#' Wynton Group Information
+#'
+#' Looks up a Wynton groups, outputs a summary, and,
+#' optionally, checks its settings.
+#'
+#' Usage:
+#'  wynton-group [options]
+#'
+#' Flags:
+#'  --help           Display this help
+#'  --version        Display version
+#'  --check          Checks the group settings
+#'
+#' Options:
+#'  --group=<group>  Group to query
+#'                   (default: id --group --name)
+#'
+#' Examples:
+#'  wynton group
+#'  wynton group --group=boblab
+#'  wynton group --group=boblab --check
+#'  wynton group --group=1000
+#'
+#' License: See 'wynton --help'
+call="$0 $*"
+
+this="${BASH_SOURCE%/}"
+[[ -L "${this}" ]] && this=$(readlink "${this}")
+
+utils="$(dirname "${this}")/utils"
+
+## Import bash utility functions
+incl="$(dirname "${this}")/incl"
+
+# shellcheck source=incl/asserts.sh
+source "${incl}/asserts.sh"
+# shellcheck source=incl/cli.sh
+source "${incl}/cli.sh"
+# shellcheck source=incl/conditions.sh
+source "${incl}/conditions.sh"
+# shellcheck source=incl/files.sh
+source "${incl}/files.sh"
+# shellcheck source=incl/output.sh
+source "${incl}/output.sh"
+# shellcheck source=incl/system.sh
+source "${incl}/system.sh"
+# shellcheck source=incl/ldap.sh
+source "${incl}/ldap.sh"
+
+
+# -------------------------------------------------------------------------
+# SPECIFIC
+# -------------------------------------------------------------------------
+function outcome {
+    local state=${1:?}
+    local -i color=${2:?}
+    
+    printf "%s" "["
+    _tput setaf "${color}"
+    printf "%s" "${state}"
+    _tput sgr0    ## reset
+    printf "%s" "]"
+    shift
+    shift
+    echo " $*"
+}    
+
+n_okay=0
+function okay {
+    outcome " OK " 2 "$@" ## green
+    n_okay=$((n_okay + 1))
+}
+
+n_fail=0
+function fail {
+    outcome "FAIL" 1 "$@" ## red
+    n_fail=$((n_fail + 1))
+}
+
+n_note=0
+function note {
+    outcome "NOTE" 3 "$@" ## yellow
+    n_note=$((n_note + 1))
+}
+
+n_skip=0
+function skip {
+    outcome "SKIP" 8 "$@" ## gray
+    n_skip=$((n_skip + 1))
+}
+
+
+function beegfs_group_quota {
+    local -i gid=${1:?}
+    local -i beegfs_storagepool=12
+
+    beegfs-ctl --getquota --csv --storagepoolid="${beegfs_storagepool}" --gid "${gid}" | awk -F "," 'NR > 1 {
+        used=$3
+        max=$4
+        chunks=$5
+        if (used ~ /[^0-9]/) used = -1
+        if (max ~ /[^0-9]/) max = -1
+        printf "%d\n%d\n%d\n%.1f\n%d\n%", used, max, max-used, 100*used/max, chunks
+    }'
+}
+
+function pretty_int {
+    local -i value=${1:?}
+    LC_NUMERIC=en_US.UTF-8 printf "%'d\n" "${value}"
+}
+
+
+# -------------------------------------------------------------------------
+# MAIN
+# -------------------------------------------------------------------------
+## Actions
+action=validate
+
+## Options
+check=false
+debug=false
+gid=$(id --group)
+
+# Parse command-line options
+while [[ $# -gt 0 ]]; do
+    if test "$1" == "--help"; then
+        action=help
+    elif test "$1" == "--version"; then
+        action=version
+    elif test "$1" == "--debug"; then
+        debug=true
+    elif test "$1" == "--check"; then
+        check=true
+
+    ## Options (--key=value):
+    elif [[ "$1" =~ ^--.*=.*$ ]]; then
+        key=${1//--}
+        key=${key//=*}
+        value=${1//--[[:alpha:]]*=}
+        mdebug "Key-value option '$1' parsed to key='${key}', value='${value}'"
+        if [[ -z ${value} ]]; then
+            error "Option '--${key}' must not be empty"
+        fi
+        if [[ "${key}" == "group" ]]; then
+            gid=${value}
+            if ! is_integer "${value}"; then
+                gid=$(group_to_gid "${value}")
+                if [[ -z "${gid}" ]]; then
+                    error "Unknown group name: '${value}'"
+		fi
+            fi
+        else
+            error "Unknown option: $1"
+        fi
+     else
+        extras="$extras $1"
+    fi
+    shift
+done
+
+## Assert that group exists
+getent group "${gid}" &> /dev/null || error "No such group ID: ${gid}"
+group=$(gid_to_group "${gid}")
+
+if $debug; then
+    mdebug "call: $call"
+    mdebug "action: $action"
+    mdebug "check: $check"
+    mdebug "group: $group"
+    mdebug "gid: $gid"
+fi
+
+if [[ $action == "version" ]]; then
+    version
+    exit 0
+elif [[ $action == "help" ]]; then
+    help ""
+    exit 0
+fi
+
+if [[ $action == "validate" ]]; then
+    n_okay=0
+    n_note=0
+    n_fail=0
+    n_skip=0
+
+    mapfile -t ldap_info < <(ldap_search "cn=${group}" "+" "*" | sort)
+    #    printf "%s\n" "${ldap_info[@]}"
+    
+    description=$(ldap_get_field "description" "${ldap_info[@]}")
+    pi_full=$(ldap_get_field "PrincipalInvestigator" "${ldap_info[@]}")
+    pi=$(echo "${pi_full}" | sed -E 's/^uid=//' | sed 's/,ou=Accounts,dc=cgl,dc=ucsf,dc=edu//')
+
+    mapfile -t members < <(ldap_get_field "member" "${ldap_info[@]}" | sed -E 's/^uid=//' | sed 's/,ou=Accounts,dc=cgl,dc=ucsf,dc=edu//' | sort)
+#    printf "%s\n" "${members[@]}"
+
+    ## SGE information
+#    if qconf -suserl | grep -q -E "^${user}$"; then
+#        in_sge=true
+#        mapfile -t sge_info < <(qconf -suser "${user}" | sort)
+#        sge_project=$(printf "%s\n" "${sge_info[@]}" | grep -E "^default_project" | sed -E 's/^default_project[[:space:]]+//')
+#    else
+#        in_sge=false
+#        sge_info=()
+#        sge_project=
+#    fi
+
+    echo "# Group Information"
+    echo
+    echo "## Overview"
+    echo
+    echo "* Group: ${group} (${gid:-N/A})"
+    echo "* Description: ${description}"
+    if [[ -z "${pi}" ]]; then
+        echo "* Principal investigator: N/A"
+    else
+	mapfile -t pi_groups < <(ldap_search "PrincipalInvestigator=${pi_full}" | grep -E "^cn:" | sed -E 's/^cn:[[:space:]]+//')
+        echo "* Principal investigator: ${pi} (${#pi_groups[@]} groups)"
+	printf "  - %s\n" "${pi_groups[@]}"
+    fi
+
+    echo "* Members: [n=${#members[@]}] ${members[*]}"
+
+    purchased_storage=$(ldap_get_field "purchasedStorage" "${ldap_info[@]}")
+    allocated_storage=$(ldap_get_field "allocatedStorage" "${ldap_info[@]}")
+
+    echo "* Purchased storage: $(pretty_int "${purchased_storage}") TiB = $(pretty_int "$(( 1024 * purchased_storage ))") GiB"
+    echo "* Allocated storage: $(pretty_int "${allocated_storage}") GiB"
+
+    printf "* Group disk quota (assuming no buddy mirroring): "
+    mapfile -t quota < <(beegfs_group_quota "${gid}")
+    if [[ ${quota[1]} -le 1 ]]; then
+        echo "N/A"
+    else
+        buddy_mirrored=false
+        if ${buddy_mirrored}; then
+            echo "$(pretty_int "$(( quota[0] / 1024**3 / 2 ))") GiB (${quota[3]}%) used out of $(pretty_int "$(( quota[1] / 1024**3 / 2 ))") GiB (buddy mirrored)"
+        else
+            echo "$(pretty_int "$(( quota[0] / 1024**3 ))") GiB (${quota[3]}%) used out of $(pretty_int "$(( quota[1] / 1024**3 ))") GiB"
+        fi
+    fi
+    
+    ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
+    ts=$(ldap_as_timestamp "${ts}")
+    age=$(ldap_timestamp_age "${ts}")
+    by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
+    echo "* Created on: ${ts} [${age} by '${by:-N/A}']"
+    ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
+    ts=$(ldap_as_timestamp "${ts}")
+    age=$(ldap_timestamp_age "${ts}")
+    by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
+    echo "* Last-modified on: ${ts} [${age} by '${by:-N/A}']"
+
+    if ${check}; then
+        echo
+        echo "## Checks"
+        echo
+    
+        okay "Group name is unique"  ## validated above
+        
+        # GIDs within [455,65535]
+        if [[ ${gid} -lt 455 ]] || [[ ${gid} -gt 65535 ]]; then
+            fail "Group ID (GID) is out of range [455,65535]"
+        else
+            okay "Group ID (GID) is within [415,65535]"
+        fi
+    
+
+	## SGE
+    
+        echo
+        echo "Summary: ${n_okay} OK, ${n_note} NOTE, ${n_fail} FAIL, ${n_skip} SKIP"    
+    fi
+
+    list_footnotes
+
+    if ${check}; then
+        if [[ ${n_fail} -gt 0 ]]; then
+            echo >&2
+            error "Detected ${n_fail} FAIL"
+        fi
+    fi    
+fi

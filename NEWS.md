@@ -1,6 +1,8 @@
 # Version 0.16.0-9000 (2025-01-15)
 
- * ...
+## New Features
+
+ * Add a rudimentary version of `wynton group`.
  
 
 # Version 0.16.0 (2025-01-14)
