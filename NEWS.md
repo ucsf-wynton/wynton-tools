@@ -6,8 +6,7 @@
 
  * `wynton account --check` asserts that all GIDs exist.
 
- * `wynton account --check` asserts that BeeGFS group quota are not
-   unlimited.
+ * `wynton account --check` warns when BeeGFS group quota are unlimited.
 
 
 # Version 0.16.0 (2025-01-14)
