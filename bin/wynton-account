@@ -193,11 +193,11 @@ else
     home=$(getent passwd "$user" | cut -d: -f6)
 fi
 
-uid=$(id --user "$user")
-gid=$(id --group "$user")
-group=$(id --group --name "$user")
-mapfile -t groups < <(id --groups --name "${user}" | tr ' ' $'\n')
-mapfile -t gids < <(getent group "${groups[@]}" | awk -F ':' '{ print $3 }')
+uid=$(id --user "$user" 2> /dev/null)
+gid=$(id --group "$user" 2> /dev/null)
+group=$(id --group --name "$user" 2> /dev/null)
+mapfile -t gids < <(id --groups "${user}" 2> /dev/null | tr ' ' $'\n')
+mapfile -t groups < <(id --groups --name "${user}" 2> /dev/null | tr ' ' $'\n')
 
 if $debug; then
     mdebug "call: $call"
