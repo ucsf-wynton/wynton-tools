@@ -342,8 +342,10 @@ if [[ $action == "validate" ]]; then
 	if [[ ${kk} -eq 1 ]]; then
             echo "* Group disk quotas (assuming no buddy mirroring):"
 	fi
-        if [[ ${quota[1]} -le 1 ]]; then
-            echo "  - '${group_kk}': N/A"
+        if [[ ${quota[1]} -le 0 ]]; then
+            echo "  - '${group_kk}': unlimited"
+        elif [[ ${quota[1]} -le 1 ]]; then
+            echo "  - '${group_kk}': not available"
         else
 	    buddy_mirrored=false
 	    if ${buddy_mirrored}; then
@@ -554,7 +556,10 @@ if [[ $action == "validate" ]]; then
 	    fi
     	    gid_kk=${gids[$((kk-1))]}
             mapfile -t quota < <(beegfs_group_quota "${gid_kk}")
-            if [[ ${quota[1]} -le 1 ]]; then
+            if [[ ${quota[1]} -le 0 ]]; then
+                fail "Group '${group_kk}' disk quota is unlimited"
+		footnote "Group '${group_kk}' disk quota is set to 0 bytes (= unlimited); should be 1 byte"
+            elif [[ ${quota[1]} -eq 1 ]]; then
                 okay "Group '${group_kk}' disk quota not available"
             else
                 if [[ ${quota[2]} -le 0 ]]; then
