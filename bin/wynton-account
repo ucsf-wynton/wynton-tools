@@ -416,7 +416,27 @@ if [[ $action == "validate" ]]; then
         else
             okay "Group ID (GID) is within [415,65535]"
         fi
-    
+
+        # GIDs exist
+        if [[ ${gid} -lt 455 ]] || [[ ${gid} -gt 65535 ]]; then
+            fail "Group ID (GID) is out of range [455,65535]"
+        else
+            okay "Group ID (GID) is within [415,65535]"
+        fi
+
+	invalid=()
+        for kk in $(seq "${#gids[@]}"); do
+    	    gid_kk=${gids[$((kk-1))]}
+            if ! getent group "${gid_kk}" > /dev/null; then
+		invalid+=("${gid_kk}")
+	    fi
+        done
+	if [[ ${#invalid[@]} -eq 0 ]]; then
+            okay "All GIDs exist"
+	else
+            fail "All GIDs exist"
+	fi
+
         # IC access => PHI access
         if ${ic}; then
             if ${phi}; then

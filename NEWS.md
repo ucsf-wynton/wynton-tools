@@ -3,6 +3,8 @@
 ## New Features
 
  * Add a rudimentary version of `wynton group`.
+
+ * `wynton account --check` asserts that all GIDs exist.
  
 
 # Version 0.16.0 (2025-01-14)
