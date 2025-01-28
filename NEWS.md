@@ -1,3 +1,16 @@
+# Version 0.17.0 (2025-01-28)
+
+## New Features
+
+ * Add a rudimentary version of `wynton group`.
+
+ * `wynton account --check` asserts that all GIDs exist.
+
+ * `wynton account --check` warns when BeeGFS group quota are unlimited.
+
+ * `wynton watchdog-ps` allows for a few more tools.
+ 
+
 # Version 0.16.0 (2025-01-14)
 
 ## Significant Changes

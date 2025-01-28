@@ -193,11 +193,11 @@ else
     home=$(getent passwd "$user" | cut -d: -f6)
 fi
 
-uid=$(id --user "$user")
-gid=$(id --group "$user")
-group=$(id --group --name "$user")
-mapfile -t groups < <(id --groups --name "${user}" | tr ' ' $'\n')
-mapfile -t gids < <(getent group "${groups[@]}" | awk -F ':' '{ print $3 }')
+uid=$(id --user "$user" 2> /dev/null)
+gid=$(id --group "$user" 2> /dev/null)
+group=$(id --group --name "$user" 2> /dev/null)
+mapfile -t gids < <(id --groups "${user}" 2> /dev/null | tr ' ' $'\n')
+mapfile -t groups < <(id --groups --name "${user}" 2> /dev/null | tr ' ' $'\n')
 
 if $debug; then
     mdebug "call: $call"
@@ -313,12 +313,12 @@ if [[ $action == "validate" ]]; then
     echo "* User: ${user} (${uid:-N/A})"
     echo "* Groups: [n=${#groups[@]}]"
     for kk in $(seq "${#groups[@]}"); do
-        n_members=$(ldap_search -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "cn=${groups[$((kk-1))]}" | grep -c -E "^member:")	
+        n_members=$(ldap_search -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "cn=${groups[$((kk-1))]}" | grep -c -E "^member:")        
         if [[ ${kk} -eq 1 ]]; then
-	    type="primary"
-	else
-	    type="secondary"
-	fi
+            type="primary"
+        else
+            type="secondary"
+        fi
         echo "  - '${groups[$((kk-1))]}' (${type}; ${gids[$((kk-1))]}; ${n_members} members)"
     done
     echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
@@ -327,30 +327,32 @@ if [[ $action == "validate" ]]; then
     if [[ -z "${faculty_sponsor}" ]]; then
         echo "* Faculty sponsor: N/A"
     else
-	n_members=$(ldap_search "FacultySponsor=${faculty_sponsor}" | grep -c -E "^uid:")
+        n_members=$(ldap_search "FacultySponsor=${faculty_sponsor}" | grep -c -E "^uid:")
         echo "* Faculty sponsor: ${faculty_sponsor} (${n_members} sponsees)"
     fi
     echo "* HOME: ${home:-N/A}"
     echo "* HOME disk quota: $(pretty_int "$(( beegfs_home_quota[0] / 1024**3 / 2 ))") GiB (${beegfs_home_quota[3]}%) used out of $(pretty_int "$(( beegfs_home_quota[1] / 1024**3 / 2 ))") GiB (buddy mirrored)"
     for kk in $(seq "${#groups[@]}"); do
-	group_kk=${groups[$((kk-1))]}
-	if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
-	    continue
-	fi
-	gid_kk=${gids[$((kk-1))]}
+        group_kk=${groups[$((kk-1))]}
+        if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
+            continue
+        fi
+        gid_kk=${gids[$((kk-1))]}
         mapfile -t quota < <(beegfs_group_quota "${gid_kk}")
-	if [[ ${kk} -eq 1 ]]; then
+        if [[ ${kk} -eq 1 ]]; then
             echo "* Group disk quotas (assuming no buddy mirroring):"
-	fi
-        if [[ ${quota[1]} -le 1 ]]; then
-            echo "  - '${group_kk}': N/A"
+        fi
+        if [[ ${quota[1]} -le 0 ]]; then
+            echo "  - '${group_kk}': unlimited"
+        elif [[ ${quota[1]} -le 1 ]]; then
+            echo "  - '${group_kk}': not available"
         else
-	    buddy_mirrored=false
-	    if ${buddy_mirrored}; then
+            buddy_mirrored=false
+            if ${buddy_mirrored}; then
                 echo "  - '${group_kk}': $(pretty_int "$(( quota[0] / 1024**3 /2 ))") GiB (${quota[3]}%) used out of $(pretty_int "$(( quota[1] / 1024**3 / 2 ))") GiB (buddy mirrored)"
             else
                 echo "  - '${group_kk}': $(pretty_int "$(( quota[0] / 1024**3 ))") GiB (${quota[3]}%) used out of $(pretty_int "$(( quota[1] / 1024**3 ))") GiB"
-	    fi
+            fi
        fi
     done
     echo "* HOME file chunks: $(pretty_int "${beegfs_home_quota[4]}")"
@@ -363,7 +365,7 @@ if [[ $action == "validate" ]]; then
     if [[ -z "${wynton_project}" ]]; then
         echo "* wynton_project: N/A"
     else
-	n_members=$(ldap_search "wyntonProject=${wynton_project}" | grep -c -E "^uid:")
+        n_members=$(ldap_search "wyntonProject=${wynton_project}" | grep -c -E "^uid:")
         echo "* Wynton project: ${wynton_project} (${n_members} members)"
     fi
    
@@ -373,12 +375,12 @@ if [[ $action == "validate" ]]; then
     ts=$(ldap_as_timestamp "${ts}")
     age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account created on: ${ts} [${age}] (by '${by:-N/A}')"
+    echo "* Account created on: ${ts} [${age} by '${by:-N/A}']"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
     ts=$(ldap_as_timestamp "${ts}")
     age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account last-modified on: ${ts} [${age}] (by '${by:-N/A}')"
+    echo "* Account last-modified on: ${ts} [${age} by '${by:-N/A}']"
 
     if ${check}; then
         echo
@@ -416,7 +418,27 @@ if [[ $action == "validate" ]]; then
         else
             okay "Group ID (GID) is within [415,65535]"
         fi
-    
+
+        # GIDs exist
+        if [[ ${gid} -lt 455 ]] || [[ ${gid} -gt 65535 ]]; then
+            fail "Group ID (GID) is out of range [455,65535]"
+        else
+            okay "Group ID (GID) is within [415,65535]"
+        fi
+
+        invalid=()
+        for kk in $(seq "${#gids[@]}"); do
+                gid_kk=${gids[$((kk-1))]}
+            if ! getent group "${gid_kk}" > /dev/null; then
+                invalid+=("${gid_kk}")
+            fi
+        done
+        if [[ ${#invalid[@]} -eq 0 ]]; then
+            okay "All GIDs exist"
+        else
+            fail "All GIDs exist"
+        fi
+
         # IC access => PHI access
         if ${ic}; then
             if ${phi}; then
@@ -438,7 +460,7 @@ if [[ $action == "validate" ]]; then
         else
             okay "Not a Plato user"
         fi
-	
+        
         # PHI user is in 'wynton-phi', otherwise not
         if ${phi}; then
             if id "${user}" | grep -q -F "(wynton-phi)"; then
@@ -494,61 +516,67 @@ if [[ $action == "validate" ]]; then
             else
                 fail "HOME folder does not exist"
                 skip "HOME folder is owned by user"
-	    fi
+            fi
         fi
 
         avail=$(( beegfs_home_quota[2] / 2 ))
         if [[ ${avail} -le 0 ]]; then
-	    overuse=-${avail}
+            overuse=-${avail}
             if [[ ${overuse} -gt $(( 10 * 1024**3 )) ]]; then
-                fail "HOME disk quota is full ($(( overuse / 1024**3 )) GiB overuse)"
+                fail "HOME disk quota is full ($(pretty_int "$(( overuse / 1024**3 ))") GiB overuse)"
             elif [[ ${overuse} -gt $(( 10 * 1024**2 )) ]]; then
-                fail "HOME disk quota is full ($(( overuse / 1024**2 )) MiB overuse)"
+                fail "HOME disk quota is full ($(pretty_int "$(( overuse / 1024**2 ))") MiB overuse)"
             elif [[ ${overuse} -gt $(( 10 * 1024 )) ]]; then
-                fail "HOME disk quota is full ($(( overuse / 1024 )) KiB overuse)"
+                fail "HOME disk quota is full ($(pretty_int "$(( overuse / 1024 ))") KiB overuse)"
             else
                 fail "HOME disk quota is full (${overuse} bytes overuse)"
-	    fi
+            fi
         elif [[ ${avail} -lt $(( 10 * 1024**2 )) ]]; then
-            fail "HOME disk quota has less than 10 MiB left ($(( avail / 1024 )) KiB available)"
+            fail "HOME disk quota has less than 10 MiB left ($(pretty_int "$(( avail / 1024 ))") KiB available)"
         elif [[ ${avail} -lt $(( 1 * 1024 ** 3 )) ]]; then
-            note "HOME disk quota has less than 1.0 GiB left ($(( avail / 1024**2 )) MiB available)"
+            note "HOME disk quota has less than 1.0 GiB left ($(pretty_int "$(( avail / 1024**2 ))") MiB available)"
         else
             okay "HOME disk quota has at least 1.0 GiB left"
         fi
 
         chunks=${beegfs_home_quota[4]}
-	## Threshold is set in https://github.com/ucsf-wynton/sysadmin-tools/blob/main/backups/get_backup_dirs.py#L16,
-	## and it is strictly less than (https://github.com/ucsf-wynton/sysadmin-tools/blob/main/backups/get_backup_dirs.py#L84)
-	max_chunks=$((10 * 1000**2))
+        ## Threshold is set in https://github.com/ucsf-wynton/sysadmin-tools/blob/main/backups/get_backup_dirs.py#L16,
+        ## and it is strictly less than (https://github.com/ucsf-wynton/sysadmin-tools/blob/main/backups/get_backup_dirs.py#L84)
+        max_chunks=$((10 * 1000**2))
         if [[ ${chunks} -lt ${max_chunks} ]]; then
             okay "HOME is backed up - less than $(pretty_int "${max_chunks}") chunks"
-	else
+        else
             note "HOME is not backed up - more than $(pretty_int "${max_chunks}") chunks"
-	fi
-	
+        fi
+        
         for kk in $(seq "${#groups[@]}"); do
-    	    group_kk=${groups[$((kk-1))]}
+                group_kk=${groups[$((kk-1))]}
             if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
-	        continue
-	    fi
-    	    gid_kk=${gids[$((kk-1))]}
+                continue
+            fi
+                gid_kk=${gids[$((kk-1))]}
             mapfile -t quota < <(beegfs_group_quota "${gid_kk}")
-            if [[ ${quota[1]} -le 1 ]]; then
+            if [[ ${quota[1]} -le 0 ]]; then
+                ## FIXME: RVBI groups should have unlimited quotas per
+                ## https://github.com/ucsf-wynton/support/issues/1426, so
+                ## for now we can only give a warning /HB 2025-01-23
+                warn "Group '${group_kk}' disk quota is unlimited"
+                footnote "${yellow}WARNING: Group '${group_kk}' disk quota is set to 0 bytes (= unlimited); should it be 1 byte?${reset}"
+            elif [[ ${quota[1]} -eq 1 ]]; then
                 okay "Group '${group_kk}' disk quota not available"
             else
                 if [[ ${quota[2]} -le 0 ]]; then
-                    fail "Group '${group_kk}' disk quota is full (${quota[2]} bytes available)"
+                    fail "Group '${group_kk}' disk quota is full ($(pretty_int "${quota[2]}") bytes available)"
                 elif [[ ${quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
-                    fail "Group '${group_kk}' disk quota has less than 1.0 GiB left ($(( quota[2] / 1024**2 )) MiB available)"
+                    fail "Group '${group_kk}' disk quota has less than 1.0 GiB left ($(pretty_int "$(( quota[2] / 1024**2 ))") MiB available)"
                 elif [[ ${quota[2]} -lt $(( 100 * 1024 ** 3 )) ]]; then
-                    note "Group '${group_kk}' disk quota has less than 100 GiB left ($(( quota[2] / 1024**3 )) GiB available)"
+                    note "Group '${group_kk}' disk quota has less than 100 GiB left ($(pretty_int "$(( quota[2] / 1024**3 ))") GiB available)"
                 else
                     okay "Group '${group_kk}' disk quota has at least 100 GiB left"
                 fi
             fi
         done
-	
+        
         # No duplicated email addresses
         mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
         if [[ ${#res[@]} -gt 1 ]]; then
@@ -634,7 +662,7 @@ if [[ $action == "validate" ]]; then
         fi
         
         # No mixed 'wyntonAccess'
-	field="wyntonAccess"
+        field="wyntonAccess"
         mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
@@ -645,7 +673,7 @@ if [[ $action == "validate" ]]; then
         fi
     
         # No mixed 'protectedAccess'
-	field="protectedAccess"
+        field="protectedAccess"
         mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
@@ -655,8 +683,8 @@ if [[ $action == "validate" ]]; then
             okay "User has unique LDAP '${field}' entry"
         fi
 
-	## Has 'wyntonProject'
-	field="wyntonProject"
+        ## Has 'wyntonProject'
+        field="wyntonProject"
         mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
@@ -666,16 +694,16 @@ if [[ $action == "validate" ]]; then
             okay "User has unique LDAP '${field}' entry"
         fi
 
-	## SGE
+        ## SGE
         if ${in_sge}; then
             okay "User is in SGE"
 
-	    if qconf -su "${sge_project}" | sed ':a;N;$!ba;s/\\\n/ /g' | grep -E "^entries " | grep -q -E "\b${user}\b"; then
+            if qconf -su "${sge_project}" | sed ':a;N;$!ba;s/\\\n/ /g' | grep -E "^entries " | grep -q -E "\b${user}\b"; then
                 okay "User is member of SGE project"
-	    else
+            else
                 fail "User is not member of SGE project"
-	    fi	
-	    
+            fi        
+    
             if [[ ${wynton_project} == "${sge_project}" ]]; then
                 okay "SGE 'default_project' and LDAP 'wyntonProject' agree"
             else

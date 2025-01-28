@@ -80,6 +80,18 @@ valid_ucsf_id() {
 # -------------------------------------------------------
 # Unix
 # -------------------------------------------------------
+gid_to_group() {
+    local -i gid
+    gid=${1:?}
+    getent group "${gid}" | cut -d ':' -f 1
+}
+
+group_to_gid() {
+    local group
+    group=${1:?}
+    getent group "${group}" | cut -d ':' -f 3
+}
+
 uid_to_user() {
     local -i uid
     uid=${1:?}
