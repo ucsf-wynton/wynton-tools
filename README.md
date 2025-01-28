@@ -14,6 +14,7 @@ Installed tools:
  bench           Disk IO Benchmark Summary
  downtime        Wynton Downtime Schedule
  gpushares       Wynton HPC GPU Shares on the Job Scheduler
+ group           Wynton Group Information
  job             Wynton HPC Job Details
  node            Wynton HPC Status
  queues          Wynton HPC Queues
@@ -31,7 +32,7 @@ Installed tools:
 Example:
  wynton --help
 
-Version: 0.16.0
+Version: 0.17.0
 Copyright: Henrik Bengtsson (2019-2025)
 License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 Source: https://github.com/ucsf-wynton/wynton-tools
