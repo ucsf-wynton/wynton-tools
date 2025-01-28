@@ -1,4 +1,4 @@
-# Version 0.16.0-9000 (2025-01-15)
+# Version 0.16.0-9000 (2025-01-28)
 
 ## New Features
 
@@ -8,6 +8,8 @@
 
  * `wynton account --check` warns when BeeGFS group quota are unlimited.
 
+ * `wynton watchdog-ps` allows for a few more tools.
+ 
 
 # Version 0.16.0 (2025-01-14)
 
