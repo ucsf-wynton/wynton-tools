@@ -119,6 +119,10 @@ function beegfs_group_quota {
     }'
 }
 
+function skip_group_quota {
+    grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-rotation|wynton-phi)$" <<< "${1:?}"
+}
+
 function pretty_int {
     local -i value=${1:?}
     LC_NUMERIC=en_US.UTF-8 printf "%'d\n" "${value}"
@@ -334,7 +338,7 @@ if [[ $action == "validate" ]]; then
     echo "* HOME disk quota: $(pretty_int "$(( beegfs_home_quota[0] / 1024**3 / 2 ))") GiB (${beegfs_home_quota[3]}%) used out of $(pretty_int "$(( beegfs_home_quota[1] / 1024**3 / 2 ))") GiB (buddy mirrored)"
     for kk in $(seq "${#groups[@]}"); do
         group_kk=${groups[$((kk-1))]}
-        if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
+        if skip_group_quota "${group_kk}"; then
             continue
         fi
         gid_kk=${gids[$((kk-1))]}
@@ -548,10 +552,10 @@ if [[ $action == "validate" ]]; then
         else
             note "HOME is not backed up - more than $(pretty_int "${max_chunks}") chunks"
         fi
-        
+
         for kk in $(seq "${#groups[@]}"); do
                 group_kk=${groups[$((kk-1))]}
-            if grep -q -E "^(icusers|lsd|qb3|quotagroup|sbgrid|vglusers|wynton-phi)$" <<< "${group_kk}"; then
+            if skip_group_quota "${group_kk}"; then
                 continue
             fi
                 gid_kk=${gids[$((kk-1))]}
