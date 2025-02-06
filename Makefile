@@ -1,16 +1,17 @@
 SHELL=/bin/bash
 PATH:=./bin:${PATH}
 
-all: shellcheck check
+all: README.md shellcheck check
 
 README.md: bin/wynton
-#	@bfr=`cat $<`; 
-	@printf "# UCSF Wynton HPC Tools\n\n" > $@
-	@printf "[![Build Status](https://travis-ci.org/UCSF-HPC/wynton-tools.svg?branch=master)](https://travis-ci.org/UCSF-HPC/wynton-tools)\n\n" >> $@
-	@help=$$(bin/wynton --help); \
-	echo '```' >> $@; \
-	echo "$${help}" >> $@; \
-	echo '```' >> $@
+	help=$$(bin/wynton --help); \
+	{ \
+	   printf "# UCSF Wynton HPC Tools\n\n"; \
+	   echo '```'; \
+	   echo '$$ wynton --help'; \
+	   echo "$${help}"; \
+	   echo '```'; \
+	} >> $@
 	@echo "README.md"
 
 
