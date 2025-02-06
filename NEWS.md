@@ -5,6 +5,9 @@
  * Add support for `wynton account <user>`, which superseeds `wynton
    account --user=<user>`.
 
+ * Add support for `wynton group <group>`, which superseeds `wynton
+   group --group=<group>`.
+
 ## Bug Fixes
 
  * Remove stray warnings from `wynton account --check`; already using

@@ -5,22 +5,22 @@
 #' optionally, checks its settings.
 #'
 #' Usage:
-#'  wynton-group [options]
+#'  wynton-group [options] <group>
 #'
 #' Flags:
-#'  --help           Display this help
-#'  --version        Display version
-#'  --check          Checks the group settings
+#'  --help      Display this help
+#'  --version   Display version
+#'  --check     Checks the group settings
 #'
-#' Options:
-#'  --group=<group>  Group to query
-#'                   (default: id --group --name)
+#' Arguments:
+#'  <group>     Group to query
+#'              (default: id --group --name)
 #'
 #' Examples:
 #'  wynton group
-#'  wynton group --group=boblab
-#'  wynton group --group=boblab --check
-#'  wynton group --group=1000
+#'  wynton group boblab
+#'  wynton group 1000
+#'  wynton group boblab --check
 #'
 #' License: See 'wynton --help'
 call="$0 $*"
@@ -120,7 +120,7 @@ action=validate
 ## Options
 check=false
 debug=false
-gid=$(id --group)
+gid=
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -143,21 +143,27 @@ while [[ $# -gt 0 ]]; do
             error "Option '--${key}' must not be empty"
         fi
         if [[ "${key}" == "group" ]]; then
-            gid=${value}
-            if ! is_integer "${value}"; then
-                gid=$(group_to_gid "${value}")
-                if [[ -z "${gid}" ]]; then
-                    error "Unknown group name: '${value}'"
-		fi
-            fi
+            eval "gid=\$(as_gid '${value}')"
         else
             error "Unknown option: $1"
         fi
-     else
-        extras="$extras $1"
+	
+    elif [[ "$1" =~ ^--.*$ ]]; then
+        error "Unknown option: $1"
+	
+    else
+        if [[ -n "${gid}" ]]; then
+            error "Argument <group> is already specified: $1"
+	fi
+        eval "gid=\$(as_gid '$1')"
     fi
     shift
 done
+
+## Default GID?
+if [[ -z "${gid}" ]]; then
+    gid=$(id --group)
+fi
 
 ## Assert that group exists
 getent group "${gid}" &> /dev/null || error "No such group ID: ${gid}"

@@ -117,7 +117,7 @@ reserved_usernames() {
 }
 
 
-function as_user {
+as_user() {
     local -a users
     local user
 
@@ -135,6 +135,21 @@ function as_user {
     fi
 
     echo "${user}"
+}
+
+
+as_gid() {
+    local gid
+    gid=${1:?}
+
+    if ! is_integer "${gid}"; then
+        gid=$(group_to_gid "${gid}")
+        if [[ -z "${gid}" ]]; then
+            error "Unknown group name: '${gid}'"
+	fi
+    fi
+    
+    echo "${gid}"
 }
 
 
