@@ -1,5 +1,10 @@
 # Version 0.17.0-9000 (2025-01-28)
 
+## New Features
+
+ * Add support for `wynton account <user>`, which superseeds `wynton
+   account --user=<user>`.
+
 ## Bug Fixes
 
  * Remove stray warnings from `wynton account --check`; already using

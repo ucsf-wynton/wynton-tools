@@ -5,22 +5,22 @@
 #' optionally, checks its settings.
 #'
 #' Usage:
-#'  wynton-account [options]
+#'  wynton-account [options] <user>
 #'
 #' Flags:
 #'  --help           Display this help
 #'  --version        Display version
 #'  --check          Checks the account settings
 #'
-#' Options:
-#'  --user=<user>    User to query (default: $USER)
+#' Arguments:
+#'  <user>           User to query (default: $USER)
 #'
 #' Examples:
 #'  wynton account
-#'  wynton account --user=alice
-#'  wynton account --user=alice --check
-#'  wynton account --user=1000
-#'  wynton account --user=alice@bobsonlab.org
+#'  wynton account alice
+#'  wynton account alice --check
+#'  wynton account 1000
+#'  wynton account alice@bobsonlab.org
 #'
 #' License: See 'wynton --help'
 call="$0 $*"
@@ -138,7 +138,7 @@ action=validate
 ## Options
 check=false
 debug=false
-user=${USER}
+user=
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -151,12 +151,6 @@ while [[ $# -gt 0 ]]; do
     elif test "$1" == "--check"; then
         check=true
 
-    ## Deprecated
-    elif test "$1" == "--user"; then
-        shift
-        user=$1
-        mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
-        
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
         key=${1//--}
@@ -176,11 +170,18 @@ while [[ $# -gt 0 ]]; do
         error "Unknown option: $1"
 	
     else
-	user="$1"
-        extras="$extras $1"
+        if [[ -n "${user}" ]]; then
+            error "Argument <user> is already specified: $1"
+	fi
+        eval "user=\$(as_user '$1')"
     fi
+    
     shift
 done
+
+if [[ -z "${user}" ]]; then
+    user=${USER}
+fi
 
 ## Assert that user exists
 id --user "$user" &> /dev/null || error "No such user: $user"
