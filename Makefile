@@ -11,7 +11,7 @@ README.md: bin/wynton
 	   echo '$$ wynton --help'; \
 	   echo "$${help}"; \
 	   echo '```'; \
-	} >> $@
+	} > $@
 	@echo "README.md"
 
 
