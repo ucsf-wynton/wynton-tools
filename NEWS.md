@@ -1,6 +1,9 @@
 # Version 0.17.0-9000 (2025-01-28)
 
- * ...
+## Bug Fixes
+
+ * Remove stray warnings from `wynton account --check`; already using
+   footnote warnings.
  
 
 # Version 0.17.0 (2025-01-28)

@@ -564,7 +564,6 @@ if [[ $action == "validate" ]]; then
                 ## FIXME: RVBI groups should have unlimited quotas per
                 ## https://github.com/ucsf-wynton/support/issues/1426, so
                 ## for now we can only give a warning /HB 2025-01-23
-                warn "Group '${group_kk}' disk quota is unlimited"
                 footnote "${yellow}WARNING: Group '${group_kk}' disk quota is set to 0 bytes (= unlimited); should it be 1 byte?${reset}"
             elif [[ ${quota[1]} -eq 1 ]]; then
                 okay "Group '${group_kk}' disk quota not available"
