@@ -265,6 +265,12 @@ if [[ $action == "validate" ]]; then
         access=true
     fi
 
+    ## Wynton admin account?
+    admin=false
+    if [[  $(ldap_get_field "wyntonAdmin" "${ldap_info[@]}") == "TRUE" ]]; then
+        admin=true
+    fi
+    
     ## Is account locked?
     locked=false
     if [[  $(ldap_get_field "isLocked" "${ldap_info[@]}") == "TRUE" ]]; then
@@ -359,6 +365,7 @@ if [[ $action == "validate" ]]; then
     echo "* PHI access: ${phi:-N/A}"
     echo "* IC access: ${ic:-N/A}"
     echo "* Plato access: ${plato:-N/A}"
+    echo "* Wynton admin: ${admin:-N/A}"
     echo "* Locked account: ${locked:-N/A}"
     echo "* Login shell: ${shell:-N/A}"
     if [[ -z "${wynton_project}" ]]; then
@@ -452,7 +459,11 @@ if [[ $action == "validate" ]]; then
         # Plato access => no PHI access
         if ${plato}; then
             if ${phi}; then
-                fail "Plato user has PHI access"
+		if ${admin}; then
+                    skip "Plato user has PHI access; ignoring because admin"
+		else
+                    fail "Plato user has PHI access"
+		fi
             else
                 okay "Plato user without PHI access"
             fi
@@ -475,6 +486,21 @@ if [[ $action == "validate" ]]; then
             fi
         fi
         
+        # Admin user is in 'wynton-admins', otherwise not
+        if ${admin}; then
+            if id "${user}" | grep -q -F "(wynton-admins)"; then
+                okay "Admin user is in 'wynton-admins' group"
+            else
+                fail "Admin user is not in 'wynton-admins' group"
+            fi
+        else
+            if id "${user}" | grep -q -F "(wynton-admins)"; then
+                fail "Non-admin user is in 'wynton-admins' group"
+            else
+                okay "Non-admin user is not in 'wynton-admins' group"
+            fi
+        fi
+        
         # No duplicated home directories
         mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory")
         if [[ ${#res[@]} -gt 1 ]]; then
@@ -493,7 +519,11 @@ if [[ $action == "validate" ]]; then
         if grep -q -E "^${pattern}" <<< "${home}"; then
             okay "HOME folder is under ${expected}"
         else
-            fail "HOME folder is not under ${expected}"
+	    if ${admin}; then
+                skip "HOME folder is not under ${expected}; ignoring because admin"
+	    else
+                fail "HOME folder is not under ${expected}"
+	    fi
         fi
     
         if [[ ${EUID} -ne 0 ]] && ${phi} && ! ${running_as_phi}; then

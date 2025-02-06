@@ -8,6 +8,9 @@
  * Add support for `wynton group <group>`, which superseeds `wynton
    group --group=<group>`.
 
+ * `wynton account` reports on admin status and adjusts some checks
+   accordingly.
+
 ## Bug Fixes
 
  * Remove stray warnings from `wynton account --check`; already using
