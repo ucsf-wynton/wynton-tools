@@ -117,6 +117,27 @@ reserved_usernames() {
 }
 
 
+function as_user {
+    local -a users
+    local user
+
+    user=${1:?}
+    if is_integer "${user}"; then
+        user="$(uid_to_user "${user}")"
+    elif is_email "${user}"; then
+        mapfile -t users < <(email_to_user "${user}")
+        if [[ ${#users[@]} -eq 0 ]]; then
+            error "There is no user with email address ${email}"
+        elif [[ ${#users[@]} -gt 1 ]]; then
+            error "There are more than one user with email address ${user}: [n=${#users[@]}] ${users[*]}"
+        fi
+        user="${users[0]}"
+    fi
+
+    echo "${user}"
+}
+
+
 # -------------------------------------------------------
 # LDAP
 # -------------------------------------------------------

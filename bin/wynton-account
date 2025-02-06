@@ -167,22 +167,16 @@ while [[ $# -gt 0 ]]; do
             error "Option '--${key}' must not be empty"
         fi
         if [[ "${key}" == "user" ]]; then
-            user=${value}
-            if is_integer "${value}"; then
-                user=$(uid_to_user "${value}")
-            elif is_email "${value}"; then
-                mapfile -t users < <(email_to_user "${value}")
-                if [[ ${#users[@]} -eq 0 ]]; then
-                        error "There is no user with email address ${email}"
-                elif [[ ${#users[@]} -gt 1 ]]; then
-                        error "There are more than one user with email address ${value}: [n=${#users[@]}] ${users[*]}"
-                fi
-                user=${users[0]}
-            fi
+            eval "user=\$(as_user '${value}')"
         else
             error "Unknown option: $1"
         fi
-     else
+	
+    elif [[ "$1" =~ ^--.*$ ]]; then
+        error "Unknown option: $1"
+	
+    else
+	user="$1"
         extras="$extras $1"
     fi
     shift
