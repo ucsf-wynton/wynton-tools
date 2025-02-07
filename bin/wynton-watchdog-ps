@@ -185,6 +185,9 @@ if [[ $action == "list" ]]; then
 	## IBM Aspera High-Speed Transfer Endpoint
 	## https://www.ibm.com/docs/en/ahte
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ascp)$/')
+
+	## SRAToolkit
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(prefetch)$/' | awk '{ split($7, a, " "); n=split(a[1], b, "/"); if (b[n] != "prefetch") print $0 }')
     fi
 
     ## Trim
