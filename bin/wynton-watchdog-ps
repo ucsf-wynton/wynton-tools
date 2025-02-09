@@ -77,7 +77,7 @@ while [[ $# -gt 0 ]]; do
         if [[ "${key}" == "hosttype" ]]; then
             hosttype=${value}
         elif [[ "${key}" == "user-width" ]]; then
-	    assert_integer "${value}"
+            assert_integer "${value}"
             user_width=${value}
         else
             error "Unknown option: $1"
@@ -104,10 +104,6 @@ elif [[ $action == "help" ]]; then
 fi
 
 
-reject_cmds() {
-    echo "jupyter"
-}
-
 if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(ps -e -o "uid,user:${user_width},pid,pcpu,start_time,comm,cmd")
     header="${ps_info[0]}"
@@ -117,7 +113,11 @@ if [[ $action == "list" ]]; then
 
     ## Ignore known users
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$2 !~ /^hb-test$/')
+
     
+    ## --------------------------------------------------------------------
+    ## Any host type
+    ## --------------------------------------------------------------------
     ## Ignore allowed commands ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|btop|dbus-daemon|dshbak|flock|htop|pdsh|ps|sleep|ssh|ssh-agent|sshd|systemd|top|watch|xargs)$/')
 
@@ -135,19 +135,16 @@ if [[ $action == "list" ]]; then
 
     ## Allowed editors ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim)$/')
-
-    ## Allowed file-related tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|mv|rm|rsync|scp|sftp|sftp-server|stat|tar|touch|wget|zip)$/')
-
+    
     ## Allowed file processing tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|grep|head|less|lesspipe.sh|more|sed|sort|tail|uniq)$/')
     
     ## Allowed misc. tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc)$/')
+        
+    ## Allowed file-related tools ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|mv|rm|rsync|stat|tar|touch|wget|zip)$/')
     
-    ## Allow AWS ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(aws)$/')
-
     ## Allow VS Code ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(code-insiders-.+)$/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$7 !~ /([/][.]vscode-server[/])/')
@@ -155,52 +152,65 @@ if [[ $action == "list" ]]; then
     ## Allow VS Code extension 'mypy', 'lsp_server' ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
+        
     
     ## --------------------------------------------------------------------
-    ## Allowed on login hosts only
+    ## Login or data-transfer hosts?
     ## --------------------------------------------------------------------
-    if [[ ${HOSTNAME} == *log* ]]; then
-	true
+    if [[ ${HOSTNAME} == *log* ]] || [[ ${HOSTNAME} == *dt* ]]; then
+        ## Allowed file-related tools ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(scp|sftp|sftp-server)$/')
+    
+        ## Allow AWS ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(aws)$/')
+    
+        ## --------------------------------------------------------------------
+        ## Allowed on login hosts only
+        ## --------------------------------------------------------------------
+        if [[ ${HOSTNAME} == *log* ]]; then
+            true
+        fi
+    
+        ## --------------------------------------------------------------------
+        ## Allowed on data-transfer hosts only
+        ## --------------------------------------------------------------------
+        if [[ ${HOSTNAME} == *dt* ]]; then
+            mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ftp|lftp|globus-gridftp-.*|rclone|rsync)$/')
+    
+            ## Download tools for EMBL EBI's EGA (European Genome-phenome Archive)
+            mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(pyega3)$/')
+    
+            ## Tools for NIMH Data Archive (NDA)
+            mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(vtcmd)$/')
+    
+            ## Sage Bionetworks' Synapse (https://www.synapse.org/)
+            mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(synapse)$/')
+            
+            ## Download tools for Illumina
+            ## https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview
+            mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bs)$/')
+    
+            ## IBM Aspera High-Speed Transfer Endpoint
+            ## https://www.ibm.com/docs/en/ahte
+            mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ascp)$/')
+    
+            ## SRAToolkit
+            mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(prefetch)$/' | awk '{ split($7, a, " "); n=split(a[1], b, "/"); if (b[n] != "prefetch") print $0 }')
+       fi
     fi
 
-    ## --------------------------------------------------------------------
-    ## Allowed on data-transfer hosts only
-    ## --------------------------------------------------------------------
-    if [[ ${HOSTNAME} == *dt* ]]; then
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ftp|lftp|globus-gridftp-.*|rclone|rsync)$/')
-
-	## Download tools for EMBL EBI's EGA (European Genome-phenome Archive)
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(pyega3)$/')
-
-        ## Tools for NIMH Data Archive (NDA)
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(vtcmd)$/')
-
-	## Sage Bionetworks' Synapse (https://www.synapse.org/)
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(synapse)$/')
-	
-	## Download tools for Illumina
-	## https://developer.basespace.illumina.com/docs/content/documentation/cli/cli-overview
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bs)$/')
-
-	## IBM Aspera High-Speed Transfer Endpoint
-	## https://www.ibm.com/docs/en/ahte
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(ascp)$/')
-
-	## SRAToolkit
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(prefetch)$/' | awk '{ split($7, a, " "); n=split(a[1], b, "/"); if (b[n] != "prefetch") print $0 }')
-    fi
-
+    
     ## Trim
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | grep -v -E "^$")
 
     ## Display column headers
     if [[ "${#ps_info[@]}" -gt 0 ]]; then
-	mapfile -t users < <(printf "%s\n" "${ps_info[@]}" | awk '{ print $2 }' | sort | uniq)
-	echo "# Suspicious processes"
-	echo
-	echo "* Users: [n=${#users[@]}] ${users[*]}"
-	echo "* Number of processes: ${#ps_info[@]}"
-	echo
+        mapfile -t users < <(printf "%s\n" "${ps_info[@]}" | awk '{ print $2 }' | sort | uniq)
+        echo "# Suspicious processes"
+        echo
+        echo "* Users: [n=${#users[@]}] ${users[*]}"
+        echo "* Number of processes: ${#ps_info[@]}"
+        echo
         printf "%s\n" "${header}"
         printf "%s\n" "${ps_info[@]}"
     fi
