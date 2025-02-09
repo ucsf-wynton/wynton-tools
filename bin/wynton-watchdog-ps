@@ -206,7 +206,19 @@ if [[ $action == "list" ]]; then
     ## --------------------------------------------------------------------
     elif [[ ${HOSTNAME} == *dev* ]]; then
         ## Allowed X11- and X2Go-related tools ('comm')
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(x2goagent|x2goruncommand|mate-session|mate-settings-d.*|polkit-mate-aut.*|gnome-keyring-d.*|dconf-service|dbus-kill-proce.*|dbus-run-sessio.*|at-spi-bus-laun.*|at-spi2-registr.*|gio|gvfsd|gvfs-udisks2-vo.*|gvfsd-trash|gvfsd-metadata|caja|agent|starter-suid)$/')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(x2goagent|x2goruncommand|x2goresume-sess.*|mate-panel|mate-session|mate-settings-d.*|mate-terminal)$/')
+
+        ## Allowed misc. ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(marco|polkit-mate-aut.*|gnome-keyring-d.*|dconf-service|dbus-kill-proce.*|dbus-run-sessio.*|at-spi-bus-laun.*|at-spi2-registr.*|gio|caja|agent|starter-suid)$/')
+
+        ## Allowed GVFSD(?) tools ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(gvfsd|gvfsd-dnssd|gvfsd-network|gvfs-udisks2-vo.*|gvfsd-computer|gvfsd-http|gvfsd-trash|gvfsd-metadata)$/')
+
+        ## Allowed Apptainer tools ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(squashfuse_ll)$/')
+	
+        ## Allowed Firefox tools ('comm') ## FIXME
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(firefox|Socket Process|Utility Process|WebExtensions|Isolated Web Co.*|Privileged Cont.*)$/')
     fi
 
     
