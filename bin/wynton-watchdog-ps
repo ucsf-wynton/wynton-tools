@@ -140,7 +140,7 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|grep|head|less|lesspipe.sh|more|sed|sort|tail|uniq)$/')
     
     ## Allowed misc. tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc|time|timeout)$/')
         
     ## Allowed file-related tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|mv|rm|rsync|stat|tar|touch|wget|zip)$/')
@@ -153,7 +153,10 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
         
-    
+
+    ## Allowed CBI stack tools ('comm')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bat|htop)$/')
+
     ## --------------------------------------------------------------------
     ## Login or data-transfer hosts?
     ## --------------------------------------------------------------------
@@ -196,7 +199,14 @@ if [[ $action == "list" ]]; then
     
             ## SRAToolkit
             mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(prefetch)$/' | awk '{ split($7, a, " "); n=split(a[1], b, "/"); if (b[n] != "prefetch") print $0 }')
-       fi
+	fi
+	
+    ## --------------------------------------------------------------------
+    ## Development hosts?
+    ## --------------------------------------------------------------------
+    elif [[ ${HOSTNAME} == *dev* ]]; then
+        ## Allowed X11- and X2Go-related tools ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(x2goagent|x2goruncommand|mate-session|mate-settings-d.*|polkit-mate-aut.*|gnome-keyring-d.*|dconf-service|dbus-kill-proce.*|dbus-run-sessio.*|at-spi-bus-laun.*|at-spi2-registr.*|gio|gvfsd|gvfs-udisks2-vo.*|gvfsd-trash|gvfsd-metadata|caja|agent|starter-suid)$/')
     fi
 
     
