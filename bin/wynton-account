@@ -282,6 +282,7 @@ if [[ $action == "validate" ]]; then
     shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
     faculty_sponsor=$(ldap_get_field "FacultySponsor" "${ldap_info[@]}")
     wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}")
+    wynton_project_shares=$(qconf -sprj "${wynton_project}" | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
 
     ## Access to Information Commons, i.e. an "IC user"?
     if id "${user}" | grep -q -F "(icusers)"; then
@@ -301,7 +302,10 @@ if [[ $action == "validate" ]]; then
         in_sge=true
         mapfile -t sge_info < <(qconf -suser "${user}" | sort)
         sge_project=$(printf "%s\n" "${sge_info[@]}" | grep -E "^default_project" | sed -E 's/^default_project[[:space:]]+//')
-	sge_project_shares=$(qconf -sprj "${sge_project}" | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
+	sge_project_shares=${wynton_project_shares}
+	if [[ "${sge_project}" != "${wynton_project}" ]]; then
+            sge_project_shares=$(qconf -sprj "${sge_project}" | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
+	fi
     else
         in_sge=false
         sge_info=()
@@ -381,7 +385,7 @@ if [[ $action == "validate" ]]; then
         echo "* wynton_project: N/A"
     else
         n_members=$(ldap_search "wyntonProject=${wynton_project}" | grep -c -E "^uid:")
-        echo "* Wynton project: ${wynton_project} (${n_members} members)"
+        echo "* Wynton project: ${wynton_project} (${n_members} members; ${wynton_project_shares:-N/A} fshares)"
     fi
    
     echo "* SGE project: ${sge_project:-N/A} (${sge_project_shares:-N/A} fshares)"
