@@ -317,14 +317,21 @@ if [[ $action == "validate" ]]; then
     echo
     echo "* User: ${user} (${uid:-N/A})"
     echo "* Groups: [n=${#groups[@]}]"
+    deprecated_groups=()
     for kk in $(seq "${#groups[@]}"); do
-        n_members=$(ldap_search -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "cn=${groups[$((kk-1))]}" | grep -c -E "^member:")        
+	group_kk="${groups[$((kk-1))]}"
+        mapfile -t info < <(ldap_search -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "cn=${group_kk}")
+        description=$(printf "%s\n" "${info[@]}" | grep -E "^description:" | sed 's/^description:[[:blank:]]*//')
+	if grep -q -i -E "deprecate" <<< "${description}"; then
+	    deprecated_groups+=("${group_kk}")
+	fi
+        n_members=$(printf "%s\n" "${info[@]}" | grep -c -E "^member:")
         if [[ ${kk} -eq 1 ]]; then
             type="primary"
         else
             type="secondary"
         fi
-        echo "  - '${groups[$((kk-1))]}' (${type}; ${gids[$((kk-1))]}; ${n_members} members)"
+        echo "  - '${group_kk}' (${type}; ${gids[$((kk-1))]}; ${n_members} members; '${description}')"
     done
     echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
     echo "* Email address: ${email:-N/A}"
@@ -337,6 +344,7 @@ if [[ $action == "validate" ]]; then
     fi
     echo "* HOME: ${home:-N/A}"
     echo "* HOME disk quota: $(pretty_int "$(( beegfs_home_quota[0] / 1024**3 / 2 ))") GiB (${beegfs_home_quota[3]}%) used out of $(pretty_int "$(( beegfs_home_quota[1] / 1024**3 / 2 ))") GiB (buddy mirrored)"
+    echo "* HOME file chunks: $(pretty_int "${beegfs_home_quota[4]}")"
     for kk in $(seq "${#groups[@]}"); do
         group_kk=${groups[$((kk-1))]}
         if skip_group_quota "${group_kk}"; then
@@ -360,7 +368,6 @@ if [[ $action == "validate" ]]; then
             fi
        fi
     done
-    echo "* HOME file chunks: $(pretty_int "${beegfs_home_quota[4]}")"
     echo "* Wynton access: ${access:-N/A}"
     echo "* PHI access: ${phi:-N/A}"
     echo "* IC access: ${ic:-N/A}"
@@ -604,7 +611,13 @@ if [[ $action == "validate" ]]; then
                 fi
             fi
         done
-        
+
+        if [[ ${#deprecated_groups[@]} -eq 0 ]]; then
+            okay "No deprecated groups"
+	else
+            note "Deprecated groups"
+	fi
+
         # No duplicated email addresses
         mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
         if [[ ${#res[@]} -gt 1 ]]; then
