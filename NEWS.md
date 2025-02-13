@@ -2,6 +2,13 @@
 
 ## New Features
 
+ * `wynton account` reports on SGE functional shares.
+
+ * `wynton account` reports on group descriptions.
+
+ * `wynton account --check` and `wynton group --check` reports on
+   deprecated groups.
+
  * `wynton watchdog-ps` allows for a few more tools.
 
 

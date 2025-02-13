@@ -301,10 +301,12 @@ if [[ $action == "validate" ]]; then
         in_sge=true
         mapfile -t sge_info < <(qconf -suser "${user}" | sort)
         sge_project=$(printf "%s\n" "${sge_info[@]}" | grep -E "^default_project" | sed -E 's/^default_project[[:space:]]+//')
+	sge_project_shares=$(qconf -sprj "${sge_project}" | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
     else
         in_sge=false
         sge_info=()
         sge_project=
+	sge_project_shares=
     fi
 
 
@@ -382,7 +384,7 @@ if [[ $action == "validate" ]]; then
         echo "* Wynton project: ${wynton_project} (${n_members} members)"
     fi
    
-    echo "* SGE project: ${sge_project:-N/A}"
+    echo "* SGE project: ${sge_project:-N/A} (${sge_project_shares:-N/A} fshares)"
     
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
     ts=$(ldap_as_timestamp "${ts}")
