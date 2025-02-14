@@ -1,3 +1,17 @@
+# Version 0.19.0 (2025-02-14)
+
+## New Features
+
+ * `wynton account` reports on SGE functional shares.
+
+ * `wynton account` reports on group descriptions.
+
+ * `wynton account --check` and `wynton group --check` reports on
+   deprecated groups.
+
+ * `wynton watchdog-ps` allows for a few more tools.
+
+
 # Version 0.18.0 (2025-02-06)
 
 ## New Features

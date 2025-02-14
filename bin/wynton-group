@@ -272,6 +272,11 @@ if [[ $action == "validate" ]]; then
             okay "Group ID (GID) is within [415,65535]"
         fi
     
+	if grep -q -i -E "deprecate" <<< "${description}"; then
+            note "Group is deprecated"
+	else
+            okay "Group is not deprecated"
+	fi
 
 	## SGE
     
