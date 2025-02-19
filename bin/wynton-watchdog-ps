@@ -128,7 +128,7 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(qacct|qalter|qconf|qhold|qhost|qmod|qrls|qstat|qsub)$/')
 
     ## Allow shells ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bash|csh|sh|tcsh)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bash|csh|sh|tcsh|zsh)$/')
 
     ## Allow shell environments ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(byobu|byobu-status|screen|tmux|tmux:)$/')

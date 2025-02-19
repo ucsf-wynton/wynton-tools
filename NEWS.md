@@ -1,6 +1,8 @@
 # Version 0.19.0-9000 (2025-02-14)
 
- * ...
+## New Features
+
+ * `wynton watchdog-ps` allows for a few more tools.
  
 
 # Version 0.19.0 (2025-02-14)
