@@ -128,6 +128,18 @@ function pretty_int {
     LC_NUMERIC=en_US.UTF-8 printf "%'d\n" "${value}"
 }
 
+function account_enabled_or_not {
+    if [[ -z ${1:?} ]]; then
+	echo "<N/A>"
+    elif [[ $1 == "true" ]]; then
+	echo "enabled"
+    elif [[ $1 == "false" ]]; then
+	echo "disabled"
+    else
+	echo "<unknown='$1'>"
+    fi
+}    
+
 
 # -------------------------------------------------------------------------
 # MAIN
@@ -265,16 +277,16 @@ if [[ $action == "validate" ]]; then
         access=true
     fi
 
-    ## Wynton admin account?
-    admin=false
-    if [[  $(ldap_get_field "wyntonAdmin" "${ldap_info[@]}") == "TRUE" ]]; then
-        admin=true
-    fi
-    
     ## Is account locked?
     locked=false
     if [[  $(ldap_get_field "isLocked" "${ldap_info[@]}") == "TRUE" ]]; then
         locked=true
+    fi
+    
+    ## Wynton admin account?
+    admin=false
+    if [[  $(ldap_get_field "wyntonAdmin" "${ldap_info[@]}") == "TRUE" ]]; then
+        admin=true
     fi
     
     email=$(ldap_get_field "mail" "${ldap_info[@]}")
@@ -374,10 +386,10 @@ if [[ $action == "validate" ]]; then
             fi
        fi
     done
-    echo "* Wynton access: ${access:-N/A}"
+    echo "* Wynton account: $(account_enabled_or_not "${access}")"
+    echo "* IC account: $(account_enabled_or_not "${ic}")"
+    echo "* Plato account: $(account_enabled_or_not "${plato}")"
     echo "* PHI access: ${phi:-N/A}"
-    echo "* IC access: ${ic:-N/A}"
-    echo "* Plato access: ${plato:-N/A}"
     echo "* Wynton admin: ${admin:-N/A}"
     echo "* Locked account: ${locked:-N/A}"
     echo "* Login shell: ${shell:-N/A}"
