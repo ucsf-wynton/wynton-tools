@@ -130,7 +130,7 @@ function pretty_int {
 
 function account_enabled_or_not {
     if [[ -z ${1:?} ]]; then
-	echo "<N/A>"
+	echo "N/A"
     elif [[ $1 == "true" ]]; then
 	echo "enabled"
     elif [[ $1 == "false" ]]; then
@@ -394,7 +394,7 @@ if [[ $action == "validate" ]]; then
     echo "* Locked account: ${locked:-N/A}"
     echo "* Login shell: ${shell:-N/A}"
     if [[ -z "${wynton_project}" ]]; then
-        echo "* wynton_project: N/A"
+        echo "* Wynton project: N/A"
     else
         n_members=$(ldap_search "wyntonProject=${wynton_project}" | grep -c -E "^uid:")
         echo "* Wynton project: ${wynton_project} (${n_members} members; ${wynton_project_shares:-N/A} fshares)"
