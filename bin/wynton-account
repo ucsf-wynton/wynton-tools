@@ -294,7 +294,7 @@ if [[ $action == "validate" ]]; then
     shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
     faculty_sponsor=$(ldap_get_field "FacultySponsor" "${ldap_info[@]}")
     wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}")
-    wynton_project_shares=$(qconf -sprj "${wynton_project}" | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
+    wynton_project_shares=$(qconf -sprj "${wynton_project}" 2> /dev/null | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
 
     ## Access to Information Commons, i.e. an "IC user"?
     if id "${user}" | grep -q -F "(icusers)"; then
