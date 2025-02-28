@@ -665,9 +665,10 @@ if [[ $action == "validate" ]]; then
         # No locked account has access
         if ${locked}; then
             if ${access}; then
-                note "Locked account still have access"
+                note "Locked account is still enabled"
+                footnote "When a password expires, the account is locked, but remains enabled for 30 days"
             else
-                okay "Locked account does not have access"
+                okay "Locked account is disabled"
             fi
         else
              okay "Account is not locked"
