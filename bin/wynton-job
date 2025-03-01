@@ -261,17 +261,36 @@ if [[ $action == "job" ]]; then
     if [[ -n ${bfr} ]]; then
         ## Keep key: value lines
         vars=$(grep -E "^[^:]+:.*" <<< "$bfr")
+	
+#	## Skip 'env_list' because it's hard to parse
+#        vars=$(grep -v -E "^env_list:.*" <<< "$bfr")
+	
         ## Fix keys
         vars=$(sed ':loop; s/^\([^:]*\) \+\([^:]*:\)/\1_\2/; t loop' <<< "$vars" | sed ':loop; s/^\([^:]*\)-\+\([^:]*:\)/\1_\2/; t loop' | sed -E 's/__+/_/g')
+
         ## Turn into _THIS_JOB_keys="value"
         vars=$(sed -E 's/^([^:]+):[[:space:]]*(.*)/_THIS_JOB_\1="\2"/' <<< "$vars")
 
         ## Parse as environment variables
-        while IFS= read -r line; do
-            eval "export $line"
+	tf=$(mktemp)
+        while IFS= read -r expr; do
+	    # Is it a valid Bash expression?
+	    if bash -n <<< "${expr}" 2> /dev/null; then
+                if ! eval "export ${expr}" 2> "${tf}"; then
+                    if $debug; then
+                        mdebug "Invalid Bash expression: ${expr}"
+		    fi
+		fi
+	    else
+                if $debug; then
+		    mdebug "Skipping incomplete or invalid Bash expression: ${expr}"
+		fi
+	    fi
         done <<< "$vars"
+	rm "${tf}"
 	if $debug; then
-            env | grep -F "_THIS_JOB_" | sort
+            mapfile -t lines < <(env | grep -F "_THIS_JOB_" | sort)
+	    mdebug "${lines[@]}"
 	fi
 
         ## Get additional info on the job
