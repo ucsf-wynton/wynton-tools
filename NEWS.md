@@ -1,3 +1,13 @@
+# Version 0.20.1 (2025-03-01)
+
+## Bug Fixes
+
+ * `wynton job` could output stray messages such as 'unexpected EOF
+   while looking for matching "' and 'syntax error: unexpected end of
+   file', which happened during parsing of the `qstat` job
+   information.
+ 
+
 # Version 0.20.0 (2025-03-01)
 
 ## New Features

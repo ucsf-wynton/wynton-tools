@@ -20,10 +20,11 @@ function mdebug {
     fi
     {
         _tput setaf 8 ## gray
-        echo "DEBUG: $*"
+        printf "DEBUG: %s\n" "${@}"
         _tput sgr0    ## reset
     } 1>&2
 }
+
 function mdebug0 {
     if ! $debug; then
         return
