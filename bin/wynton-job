@@ -587,7 +587,7 @@ if [[ $action == "job" ]]; then
             info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$fail]"
         fi           
-        echo "${status} Log directory: $(dir_info "${value}" "${is_owner}")${info}"
+        echo "${status} Job working directory: $(dir_info "${value}" "${is_owner}")${info}"
 
         # shellcheck disable=2154
         job_script=${_THIS_JOB_script_file}
