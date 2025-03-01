@@ -5,8 +5,8 @@
 #'  wynton-job [options] <job_id>
 #'
 #' Flags:
-#'  --help           Display this help
-#'  --version        Display version
+#'  --help     Display this help
+#'  --version  Display version
 #'
 #' Examples:
 #'  wynton job --list
@@ -43,14 +43,43 @@ source "${incl}/ldap.sh"
 # -------------------------------------------------------------------------
 # CORE
 # -------------------------------------------------------------------------
-function ok() {
-    echo "[ OK ]"
+function outcome {
+    local state=${1:?}
+    local -i color=${2:?}
+    
+    printf "%s" "["
+    _tput setaf "${color}"
+    printf "%s" "${state}"
+    _tput sgr0    ## reset
+    printf "%s" "]"
+    shift
+    shift
+    echo " $*"
+}    
+
+n_okay=0
+function okay {
+    outcome " OK " 2 "$@" ## green
+    n_okay=$((n_okay + 1))
 }
 
-function fail() {
-    echo "[FAIL]"
+n_fail=0
+function fail {
+    outcome "FAIL" 1 "$@" ## red
+    n_fail=$((n_fail + 1))
 }
 
+n_note=0
+function note {
+    outcome "NOTE" 3 "$@" ## yellow
+    n_note=$((n_note + 1))
+}
+
+n_skip=0
+function skip {
+    outcome "SKIP" 8 "$@" ## gray
+    n_skip=$((n_skip + 1))
+}
 
 reformat_date() {
     sed -E "s,([[:digit:]]{2})/([[:digit:]]{2})/([[:digit:]]{4}),\3-\1-\2,g"
@@ -483,8 +512,8 @@ if [[ $action == "job" ]]; then
 	fi
 	
         # shellcheck disable=2154
-        value=${_THIS_JOB_job_array_tasks}
-        echo "[ $ok ] Job array tasks: ${value:-<none>}"
+        job_array_tasks=${_THIS_JOB_job_array_tasks}
+        echo "[ $ok ] Job array tasks: ${job_array_tasks:-<none>}"
 
         # shellcheck disable=2154
         value=${_THIS_JOB_sge_o_shell}
@@ -515,6 +544,7 @@ if [[ $action == "job" ]]; then
             info="${yellow}WARNING: The job does not specify a working directory ('cwd')${reset}"
         elif ! ${is_owner}; then
             status="[$warn]"
+            info="$(dir_info "${value}" "${is_owner}")${info}"
         elif [[ ! -w "${value}" ]]; then
             # shellcheck disable=2154
             info="${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
@@ -530,6 +560,9 @@ if [[ $action == "job" ]]; then
         info=""
         if ! ${is_owner}; then
             status="[$warn]"
+        elif ! ${is_owner}; then
+            status="[$warn]"
+            info="$(dir_info "${value}" "${is_owner}")${info}"
         elif [[ ! -w "${value}" ]]; then
             # shellcheck disable=2154
             info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
@@ -538,9 +571,47 @@ if [[ $action == "job" ]]; then
         echo "${status} Log directory: $(dir_info "${value}" "${is_owner}")${info}"
 
         # shellcheck disable=2154
+        job_script=${_THIS_JOB_script_file}
+	info=""
+	if [[ -z "${job_script}" ]]; then
+            status="[$fail]"
+            info=" ${red}ERROR: Job does not specify 'script_file'${reset}"
+	else
+            # shellcheck disable=2154
+	    ## Relative path?
+	    if [[ ${job_script} != /* ]]; then
+                info=" (expanded from '${job_script}')"
+                job_script="${_THIS_JOB_sge_o_workdir}/${job_script}"
+	    fi
+            if ! ${is_owner}; then
+                status="[$warn]"
+	    else
+                status="[ $ok ]"
+            fi
+	fi
+        echo "${status} Job script: $(file_info "${job_script}" "${is_owner}")${info}"
+
+        # shellcheck disable=2154
         value=${_THIS_JOB_job_args}
         echo "[ $ok ] Job script arguments: ${value:-<none>}"
 
+	## Assert job arrays uses SGE_TASK_ID in the script
+	status="[ $ok ]"
+	if [[ -z "${job_array_tasks}" ]]; then
+	    okay "Not a job array - nothing to validate"
+	else
+ 	    if [[ -r "${job_script}" ]]; then
+		if grep --quiet --max-count=1 --perl-regexp '^(?!\s*#).*SGE_TASK_ID' "${job_script}"; then
+	            okay "Job array script uses environment variable 'SGE_TASK_ID'"
+		else
+	            fail "Job array script does not use environment variable 'SGE_TASK_ID'"
+                    footnote "${yellow}WARNING: You job script does not make user of environment variable 'SGE_TASK_ID', despite running as an array script (uses SGE declaration '-t <tasks>'). All your job task are running with the exact same code and parameter settings, which is unlikely your intention${reset}"
+		fi
+	    else
+	        skip "A job array, but lacks permissions to check job script for SGE_TASK_ID"
+	    fi
+	fi
+	
         ## Was there a launch error?
         if [[ -n $_THIS_JOB_error_reason_1 ]]; then
             # shellcheck disable=2154
