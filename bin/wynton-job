@@ -515,6 +515,7 @@ if [[ $action == "job" ]]; then
             info="${yellow}WARNING: The job does not specify a working directory ('cwd')${reset}"
         elif ! ${is_owner}; then
             status="[$warn]"
+            info="$(dir_info "${value}" "${is_owner}")${info}"
         elif [[ ! -w "${value}" ]]; then
             # shellcheck disable=2154
             info="${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
