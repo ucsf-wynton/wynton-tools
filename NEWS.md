@@ -2,6 +2,9 @@
 
 ## New Features
 
+ * `wynton job' now asserts that job array scripts use the
+   `SGE_TASK_ID` environment variable.
+
  * `wynton job' reports on job script.
  
  * `wynton watchdog-ps` allows for a few more tools.
