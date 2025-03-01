@@ -531,12 +531,47 @@ if [[ $action == "job" ]]; then
         info=""
         if ! ${is_owner}; then
             status="[$warn]"
+        elif ! ${is_owner}; then
+            status="[$warn]"
+            info="$(dir_info "${value}" "${is_owner}")${info}"
         elif [[ ! -w "${value}" ]]; then
             # shellcheck disable=2154
             info=" ${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$fail]"
         fi           
         echo "${status} Log directory: $(dir_info "${value}" "${is_owner}")${info}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_script_file}
+	if [[ -z "${value}" ]]; then
+            status="[$fail]"
+            info="${red}ERROR: Job does not specify 'script_file'${reset}"
+        elif ! ${is_owner}; then
+            status="[$warn]"
+	else
+            status="[ $ok ]"
+        fi
+        echo "${status} Job script (relative path): ${value:-<none>}"
+
+        # shellcheck disable=2154
+        value=${_THIS_JOB_sge_o_workdir}/${_THIS_JOB_script_file}
+        status="[ $ok ]"
+        info=""
+	if [[ -z "${value}" ]]; then
+            status="[$fail]"
+            info="${red}ERROR: Job does not specify 'script_file'${reset}"
+        elif ! ${is_owner}; then
+            status="[$warn]"
+            info="$(dir_info "${value}" "${is_owner}")${info}"
+        elif [[ ! -r "${value}" ]]; then
+            status="[$fail]"
+            info="$(file_info "${value}" "${is_owner}")${info}"
+	else
+            status="[ $ok ]"
+            info="$(file_info "${value}" "${is_owner}")${info}"
+        fi
+        echo "${status} Job script (absolute path): ${info}"
+	
 
         # shellcheck disable=2154
         value=${_THIS_JOB_job_args}
