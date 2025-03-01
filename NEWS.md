@@ -2,8 +2,22 @@
 
 ## New Features
 
- * `wynton watchdog-ps` allows for a few more tools.
+ * `wynton job' reports on job script.
  
+ * `wynton watchdog-ps` allows for a few more tools.
+
+ * `wynton account` adds more explanatory footnotes, e.g. 'When a
+   password expires, the account is locked, but remains enabled for 30
+   days'.
+
+## Bug Fixes
+
+ * `wynton job' reported on working directory if only ran as the job
+   owner.
+
+ * `wynton account` would output a stray message if the account did
+   not have `wyntonProject` set in LDAP.
+
 
 # Version 0.19.0 (2025-02-14)
 
