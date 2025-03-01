@@ -605,6 +605,7 @@ if [[ $action == "job" ]]; then
 	            okay "Job array script uses environment variable 'SGE_TASK_ID'"
 		else
 	            fail "Job array script does not use environment variable 'SGE_TASK_ID'"
+                    footnote "${yellow}WARNING: You job script does not make user of environment variable 'SGE_TASK_ID', despite running as an array script (uses SGE declaration '-t <tasks>'). All your job task are running with the exact same code and parameter settings, which is unlikely your intention${reset}"
 		fi
 	    else
 	        skip "A job array, but lacks permissions to check job script for SGE_TASK_ID"
