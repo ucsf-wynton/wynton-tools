@@ -43,6 +43,8 @@ source "${incl}/files.sh"
 source "${incl}/output.sh"
 # shellcheck source=incl/system.sh
 source "${incl}/system.sh"
+# shellcheck source=incl/ldap.sh
+source "${incl}/ldap.sh"
 
 
 # -------------------------------------------------------------------------
@@ -83,7 +85,7 @@ while [[ $# -gt 0 ]]; do
             user=${value}
             action=quota-user
         elif [[ "${key}" == "group" ]]; then
-            user=${value}
+            group=${value}
             action=quota-group
         else
             error "Unknown option: $1"
@@ -117,7 +119,7 @@ if [[ ${action} == "quota-user" ]]; then
         echo
 
         # Find all activate or interactive Wynton users in LDAP
-        mapfile -t uids < <(ldapsearch -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "(| (wyntonAccess=TRUE) (wyntonAccess=FALSE) )" "uidNumber" | grep -E "^uidNumber:" | sed -E 's/^uidNumber: *//')
+        mapfile -t uids < <(ldap_search -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "(| (wyntonAccess=TRUE) (wyntonAccess=FALSE) )" "uidNumber" | grep -E "^uidNumber:" | sed -E 's/^uidNumber: *//')
         echo "Number of users: ${#uids[@]}"
         echo
         
@@ -178,11 +180,13 @@ elif [[ ${action} == "quota-group" ]]; then
         echo
         
         # Find all groups in LDAP
-        mapfile -t gids < <(ldapsearch -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "gidNumber" | grep -E "^gidNumber:" | sed -E 's/^gidNumber: *//')
+        mapfile -t gids < <(ldap_search -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "gidNumber" | grep -E "^gidNumber:" | sed -E 's/^gidNumber: *//' | sort -n -u)
         echo "Number of groups: ${#gids[@]}"
         echo
-        for gid in "${gids[@]}"; do
-            beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}" | sed -n '4p'
+        for kk in $(seq "${#gids[@]}"); do
+            gid="${gids[$((kk - 1))]}"
+            bfr=$(beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}" | sed -n '4p')
+	    printf "%4d. %s\n" "${kk}" "${bfr}"
         done
     else
         ## Assert that user exists
