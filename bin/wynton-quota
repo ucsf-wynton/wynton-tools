@@ -119,20 +119,24 @@ if [[ ${action} == "quota-user" ]]; then
         echo
 
         # Find all activate or interactive Wynton users in LDAP
-        mapfile -t uids < <(ldap_search -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "(| (wyntonAccess=TRUE) (wyntonAccess=FALSE) )" "uidNumber" | grep -E "^uidNumber:" | sed -E 's/^uidNumber: *//')
+        mapfile -t uids < <(ldap_search -LLL -x "(| (wyntonAccess=TRUE) (wyntonAccess=FALSE) )" "uidNumber" | grep -E "^uidNumber:" | sed -E 's/^uidNumber: *//' | sort -n -u)
         echo "Number of users: ${#uids[@]}"
         echo
         
         echo "## Home Disk Quota"
         echo
-        for uid in "${uids[@]}"; do
-            beegfs-ctl --getquota --storagepoolid=11 --uid "${uid}" | sed -n '4p'
+        for kk in $(seq "${#uids[@]}"); do
+            uid="${uids[$((kk - 1))]}"
+            bfr=$(beegfs-ctl --getquota --storagepoolid=11 --uid "${uid}" | sed -n '4p')
+	    printf "%4d/%4d. %s\n" "${kk}" "${#uids[@]}" "${bfr}"
         done
         
         echo "## Global Scratch Disk Quota"
         echo
-        for uid in "${uids[@]}"; do
-            beegfs-ctl --getquota --storagepoolid=10 --uid "${uid}" | sed -n '4p'
+        for kk in $(seq "${#uids[@]}"); do
+            uid="${uids[$((kk - 1))]}"
+            bfr=$(beegfs-ctl --getquota --storagepoolid=10 --uid "${uid}" | sed -n '4p')
+	    printf "%4d/%4d. %s\n" "${kk}" "${#uids[@]}" "${bfr}"
         done
     else
         ## Assert that user exists
@@ -186,7 +190,7 @@ elif [[ ${action} == "quota-group" ]]; then
         for kk in $(seq "${#gids[@]}"); do
             gid="${gids[$((kk - 1))]}"
             bfr=$(beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}" | sed -n '4p')
-	    printf "%4d. %s\n" "${kk}" "${bfr}"
+	    printf "%4d/%4d. %s\n" "${kk}" "${#gids[@]}" "${bfr}"
         done
     else
         ## Assert that user exists
