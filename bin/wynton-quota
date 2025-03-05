@@ -82,10 +82,18 @@ while [[ $# -gt 0 ]]; do
             error "Option '--${key}' must not be empty"
         fi
         if [[ "${key}" == "user" ]]; then
-            eval "user=\$(as_user '${value}')"
+	    if [[ ${value} == "*" ]]; then
+                user=${value}
+	    else
+                eval "user=\$(as_user '${value}')"
+	    fi
             action=quota-user
         elif [[ "${key}" == "group" ]]; then
-            eval "gid=\$(as_gid '${value}')"
+	    if [[ ${value} == "*" ]]; then
+                gid=${value}
+	    else
+                eval "gid=\$(as_gid '${value}')"
+	    fi
             action=quota-group
         else
             error "Unknown option: $1"
@@ -179,7 +187,7 @@ if [[ ${action} == "quota-user" ]]; then
     fi
 elif [[ ${action} == "quota-group" ]]; then
     # Report on all groups?
-    if [[ ${group} == "*" ]]; then
+    if [[ ${gid} == "*" ]]; then
         echo "## Group Disk Quotas"
         echo
         
