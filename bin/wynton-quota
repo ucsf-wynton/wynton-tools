@@ -61,7 +61,7 @@ action=quota-user
 ## Options
 debug=false
 user=${USER}
-group=
+gid=
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -82,10 +82,10 @@ while [[ $# -gt 0 ]]; do
             error "Option '--${key}' must not be empty"
         fi
         if [[ "${key}" == "user" ]]; then
-            user=${value}
+            eval "user=\$(as_user '${value}')"
             action=quota-user
         elif [[ "${key}" == "group" ]]; then
-            group=${value}
+            eval "gid=\$(as_gid '${value}')"
             action=quota-group
         else
             error "Unknown option: $1"
@@ -101,7 +101,7 @@ if ${debug}; then
     mdebug "call: ${call}"
     mdebug "action: ${action}"
     mdebug "user: '${user}'"
-    mdebug "group: '${group}'"
+    mdebug "gid: '${gid}'"
 fi
 
 if [[ ${action} == "version" ]]; then
@@ -193,8 +193,7 @@ elif [[ ${action} == "quota-group" ]]; then
 	    printf "%4d/%4d. %s\n" "${kk}" "${#gids[@]}" "${bfr}"
         done
     else
-        ## Assert that user exists
-        gid=$(id --group --name "${group}" &> /dev/null) || error "No such group: ${group}"
+        group=$(ldap_search -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "gidNumber=${gid}" "cn" | grep -E "^cn:" | sed -E 's/^cn: *//' | head -n 1)
 
         echo "# Disk Usage and Quota"
         echo
