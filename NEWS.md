@@ -1,3 +1,18 @@
+# Version 0.20.1-9001 (2025-03-01)
+
+## New Features
+
+ * `wynton quota` can now also list disk quotas for a specific group,
+   in addition to the HOME, global scratch, and group quota for a
+   specific user.
+
+ * Add support for listing HOME and global scratch quotas for all
+   users by calling `wynton quota --user="*"`.
+
+ * Add support for listing quotas for all groups by calling `wynton
+   quota --group="*"`.
+
+
 # Version 0.20.1 (2025-03-01)
 
 ## Bug Fixes
