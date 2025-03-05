@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-#' Wynton HPC Disk Quota and Usage
+#' Wynton Disk Quota and Usage
 #'
 #' Usage:
 #'  wynton-quota [options]
@@ -9,11 +9,18 @@
 #'  --version        Display version
 #'
 #' Options:
-#'  --user=<user>    User to query (default: $USER)
+#'  --user=<user>    List HOME, global scratch, and group quotas
+#'                   for a user (default: ${USER}).
+#'                   If `"*"`, then all users are considered
+#'  --group=<group>  List quota for a group.
+#'                   If `"*"`, then all groups are considered
 #'
 #' Examples:
 #'  wynton quota
 #'  wynton quota --user=alice
+#'  wynton quota --group=boblab
+#'  wynton quota --user="*"
+#'  wynton quota --group="*"
 #'
 #' License: See 'wynton --help'
 call="$0 $*"
@@ -47,12 +54,12 @@ source "${incl}/system.sh"
 # MAIN
 # -------------------------------------------------------------------------
 ## Actions
-action=quota
+action=quota-user
 
 ## Options
 debug=false
-verbose=false
 user=${USER}
+group=
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -62,14 +69,6 @@ while [[ $# -gt 0 ]]; do
         action=version
     elif test "$1" == "--debug"; then
         debug=true
-    elif test "$1" == "--verbose"; then
-        verbose=true
-
-    ## Deprecated
-    elif test "$1" == "--user"; then
-	shift
-        user=$1
-	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
 
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
@@ -82,81 +81,119 @@ while [[ $# -gt 0 ]]; do
         fi
         if [[ "${key}" == "user" ]]; then
             user=${value}
+            action=quota-user
+        elif [[ "${key}" == "group" ]]; then
+            user=${value}
+            action=quota-group
         else
             error "Unknown option: $1"
         fi
     else
-        extras="$extras $1"
+        error "Unknown option: $1"
     fi
     shift
 done
 
-## Assert that user exists
-id --user "$user" &> /dev/null || error "No such user: $user"
 
-
-if [[ $user == "$USER" ]]; then
-    home=$HOME
-else
-    home=$(getent passwd "$user" | cut -d: -f6)
+if ${debug}; then
+    mdebug "call: ${call}"
+    mdebug "action: ${action}"
+    mdebug "user: '${user}'"
+    mdebug "group: '${group}'"
 fi
 
-uid=$(id --user "$user")
-gid=$(id --group "$user")
-group=$(id --group --name "$user")
-
-if $debug; then
-    mdebug "call: $call"
-    mdebug "action: $action"
-    mdebug "verbose: $verbose"
-    mdebug "user: $user"
-    mdebug "group: $group"
-    mdebug "uid: $uid"
-    mdebug "gid: $gid"
-    mdebug "home: $home"
-fi
-
-if [[ $action == "version" ]]; then
+if [[ ${action} == "version" ]]; then
     version
     exit 0
-elif [[ $action == "help" ]]; then
+elif [[ ${action} == "help" ]]; then
     help ""
     exit 0
 fi
 
-if [[ $action == "quota" ]]; then
-    echo "# Disk Usage and Quota"
-    echo
-    echo "* User : $user (uid=$uid)"
-    echo "* Group: $group (gid=$gid)"
-    echo "* HOME : $home"
-    echo
-    echo "## User Disk Quota"
-    
-    ## LEGACY: Does the user have home on /netapp?
-    if [[ $home == */netapp/* ]]; then
+if [[ ${action} == "quota-user" ]]; then
+    # Report on all users?
+    if [[ ${user} == "*" ]]; then
+        echo "# Disk Usage and Quota"
         echo
-	echo "On NetApp (QB3 legacy):"
-	quota --human-readable --no-wrap -f /netapp/home --user "$user"
-    fi
 
-    echo
-    echo "On /wynton/home (mirrored and compressed BeeGFS):"
-    beegfs-ctl --getquota --storagepoolid=11 --uid "$user"
-    echo
-    echo "NOTE: Because /wynton/home storage is mirrored, the disk usage ('used') and the available quota ('hard') are reported at twice of what you would expect for a non-mirrored storage. That is, 'hard' quota of 1000 GiB should be interpreted as 500 GiB worth of storage space. Moreover, the BeeGFS storage is also compressed, meaning a 1.0 GiB file is likely to consume less that 1.0 GiB of storage space - how much a file is compressed varies greatly with file format."
+        # Find all activate or interactive Wynton users in LDAP
+        mapfile -t uids < <(ldapsearch -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "(| (wyntonAccess=TRUE) (wyntonAccess=FALSE) )" "uidNumber" | grep -E "^uidNumber:" | sed -E 's/^uidNumber: *//')
+        echo "Number of users: ${#uids[@]}"
+        echo
+        
+        echo "## Home Disk Quota"
+        echo
+        for uid in "${uids[@]}"; do
+            beegfs-ctl --getquota --storagepoolid=11 --uid "${uid}" | sed -n '4p'
+        done
+        
+        echo "## Global Scratch Disk Quota"
+        echo
+        for uid in "${uids[@]}"; do
+            beegfs-ctl --getquota --storagepoolid=10 --uid "${uid}" | sed -n '4p'
+        done
+    else
+        ## Assert that user exists
+        id --user "${user}" &> /dev/null || error "No such user: ${user}"
+        
+        uid=$(id --user "${user}")
+        gid=$(id --group "${user}")
+        group=$(id --group --name "${user}")
+        if [[ ${user} == "${USER}" ]]; then
+            home=${HOME}
+        else
+            home=$(getent passwd "${user}" | cut -d: -f6)
+        fi
 
-    echo
-    echo "On /wynton/scratch (non-mirrored and compressed BeeGFS):"
-    beegfs-ctl --getquota --storagepoolid=10 --uid "$user"
-    echo
-    echo "NOTE: Files on /wynton/scratch are automatically deleted after 14 days."
-    echo
+        echo "# Disk Usage and Quota"
+        echo
+
+        echo "* User : ${user} (uid=${uid})"
+        echo "* Group: ${group} (gid=${gid})"
+        echo "* HOME : ${home}"
+        echo
+        echo "## Home Disk Quota"
+        echo
+        beegfs-ctl --getquota --storagepoolid=11 --uid "${user}"
+        echo
+        echo "NOTE: Because /wynton/home storage is mirrored, the disk usage ('used') and the available quota ('hard') are reported at twice of what you would expect for a non-mirrored storage. That is, 'hard' quota of 1000 GiB should be interpreted as 500 GiB worth of storage space. Moreover, the BeeGFS storage is also compressed, meaning a 1.0 GiB file is likely to consume less that 1.0 GiB of storage space - how much a file is compressed varies greatly with file format."
     
-    echo "## Group Disk Quota"
-    echo
-    echo "On /wynton/group (non-mirrored and compressed BeeGFS):"
-    beegfs-ctl --getquota --storagepoolid=12 --gid "$gid"
-    echo
-fi
+        echo
+        echo "## Global Scratch Disk Quota"
+        echo
+        beegfs-ctl --getquota --storagepoolid=10 --uid "${user}"
+        echo
+        echo "NOTE: Files on /wynton/scratch are automatically deleted after 14 days."
+        echo
+        
+        echo "## Group Disk Quota"
+        echo
+        beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}"
+        echo
+    fi
+elif [[ ${action} == "quota-group" ]]; then
+    # Report on all groups?
+    if [[ ${group} == "*" ]]; then
+        echo "## Group Disk Quotas"
+        echo
+        
+        # Find all groups in LDAP
+        mapfile -t gids < <(ldapsearch -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "gidNumber" | grep -E "^gidNumber:" | sed -E 's/^gidNumber: *//')
+        echo "Number of groups: ${#gids[@]}"
+        echo
+        for gid in "${gids[@]}"; do
+            beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}" | sed -n '4p'
+        done
+    else
+        ## Assert that user exists
+        gid=$(id --group --name "${group}" &> /dev/null) || error "No such group: ${group}"
 
+        echo "# Disk Usage and Quota"
+        echo
+        echo "* Group: ${group} (gid=${gid})"
+        echo
+        echo "## Group Disk Quota"
+        echo
+        beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}"
+    fi
+fi
