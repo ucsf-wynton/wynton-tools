@@ -2,7 +2,7 @@
 #' Wynton Disk Quota and Usage
 #'
 #' Usage:
-#'  wynton-quota [options]
+#'  wynton-quota [options] [path]
 #'
 #' Flags:
 #'  --help           Display this help
@@ -14,11 +14,22 @@
 #'                   If `"*"`, then all users are considered
 #'  --group=<group>  List quota for a group.
 #'                   If `"*"`, then all groups are considered
+#'  --assert-available=<size>
+#'                   Assert that at least this amount is available
+#'                   in the quota for the specific 'path'
+#'
+#' Arguments:
+#'  path             An optional path
+#'
 #'
 #' Examples:
 #'  wynton quota
 #'  wynton quota --user=alice
 #'  wynton quota --group=boblab
+#'
+#'  wynton quota "$HOME"
+#'  wynton quota /scratch
+#'
 #'  wynton quota --user="*"
 #'  wynton quota --group="*"
 #'
@@ -96,6 +107,12 @@ while [[ $# -gt 0 ]]; do
                 eval "gid=\$(as_gid '${value}')"
 	    fi
             action=quota-group
+        elif [[ "${key}" == "assert-available" ]]; then
+	    amount=${value}
+	    mdebug "amount=${amount}"
+	    amount=$(echo "${amount}" | sed 's/TB$/000GB/' | sed 's/GB$/000MB/' | sed 's/MB$/000kB/' | sed 's/kB$/000/')
+	    mdebug "amount=${amount}"
+	    assert_integer "${amount}"
         else
             error "Unknown option: $1"
         fi
@@ -119,6 +136,7 @@ if ${debug}; then
     mdebug "user: '${user}'"
     mdebug "gid: '${gid}'"
     mdebug "path: '${path}'"
+    mdebug "amount: '${amount}'"
 fi
 
 if [[ ${action} == "version" ]]; then
@@ -134,9 +152,6 @@ if [[ ${action} == "quota-path" ]]; then
     root="/$(echo "${path}" | cut -d '/' -f 2)"
     assert_dir_exists "${root}"
 
-    echo "# Disk Usage and Quota"
-    echo
-    
     ## Is it a BeeGFS path?
     if [[ ${root} == "/wynton" ]]; then
 	## PHI folder?
@@ -154,21 +169,63 @@ if [[ ${action} == "quota-path" ]]; then
 
 	if [[ ${type} == "home" ]]; then
             uid=$(id --user "${user}")
-            echo "## Home Disk Quota"
-            echo
-            beegfs-ctl --getquota --storagepoolid=11 --uid "${uid}"
+	    if [[ -z ${amount} ]]; then
+                echo "# Disk Usage and Quota"
+                echo
+                echo "## Home Disk Quota"
+                echo
+                beegfs-ctl --getquota --storagepoolid=11 --uid "${uid}"
+	    else
+                mapfile -t lines < <(beegfs-ctl --getquota --csv --storagepoolid=11 --uid "${uid}" | tail -n 1 | tr ',' $'\n')
+		max=${lines[3]}
+		if [[ ${max} != "unlimited" ]]; then
+                    used=${lines[2]}
+		    left=$(((max - used) / 2))
+		    if [[ ${left} -lt ${amount} ]]; then
+		        error "Not enough space on ${path2} available to write ${amount} bytes"
+		    fi
+		fi
+	    fi
 	elif [[ ${type} == "scratch" ]]; then
             uid=$(id --user "${user}")
-            echo "## Global Scratch Disk Quota"
-            echo
-            beegfs-ctl --getquota --storagepoolid=10 --uid "${uid}"
+	    if [[ -z ${amount} ]]; then
+                echo "# Disk Usage and Quota"
+                echo
+                echo "## Global Scratch Disk Quota"
+                echo
+                beegfs-ctl --getquota --storagepoolid=10 --uid "${uid}"
+	    else
+                mapfile -t lines < <(beegfs-ctl --getquota --csv --storagepoolid=10 --uid "${uid}" | tail -n 1 | tr ',' $'\n')
+		max=${lines[3]}
+		if [[ ${max} != "unlimited" ]]; then
+                    used=${lines[2]}
+		    left=$((max - used))
+		    if [[ ${left} -lt ${amount} ]]; then
+		        error "Not enough space on ${path2} available to write ${amount} bytes"
+		    fi
+		fi
+	    fi
 	elif [[ ${type} == "group" ]]; then
 	    if [[ -z ${gid} ]]; then
                 gid=$(id --group "${user}")
 	    fi
-            echo "## Group Disk Quota"
-            echo
-            beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}"
+	    if [[ -z ${amount} ]]; then
+                echo "# Disk Usage and Quota"
+                echo
+                echo "## Group Disk Quota"
+                echo
+                beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}"
+	    else
+                mapfile -t lines < <(beegfs-ctl --getquota --csv --storagepoolid=12 --gid "${gid}" | tail -n 1 | tr ',' $'\n')
+		max=${lines[3]}
+		if [[ ${max} != "unlimited" ]]; then
+                    used=${lines[2]}
+		    left=$((max - used))
+		    if [[ ${left} -lt ${amount} ]]; then
+		        error "Not enough space on ${path2} available to write ${amount} bytes"
+		    fi
+		fi
+	    fi
 	else
 	    error "Unknown type: ${path} -> ${path2} -> ${type}"
 	fi

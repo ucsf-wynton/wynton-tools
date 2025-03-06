@@ -13,6 +13,8 @@
    quota --group="*"`.
 
  * Add support `wynton quota <path>`.
+ 
+ * Add support `wynton quota --assert-available=<size> <path>`.
 
 
 # Version 0.20.1 (2025-03-01)
