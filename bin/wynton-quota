@@ -182,7 +182,7 @@ if [[ ${action} == "quota-path" ]]; then
                     used=${lines[2]}
 		    left=$(((max - used) / 2))
 		    if [[ ${left} -lt ${amount} ]]; then
-		        error "Not enough space on ${path2} available to write ${amount} bytes"
+		        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
 		    fi
 		fi
 	    fi
@@ -201,7 +201,7 @@ if [[ ${action} == "quota-path" ]]; then
                     used=${lines[2]}
 		    left=$((max - used))
 		    if [[ ${left} -lt ${amount} ]]; then
-		        error "Not enough space on ${path2} available to write ${amount} bytes"
+		        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
 		    fi
 		fi
 	    fi
@@ -222,7 +222,7 @@ if [[ ${action} == "quota-path" ]]; then
                     used=${lines[2]}
 		    left=$((max - used))
 		    if [[ ${left} -lt ${amount} ]]; then
-		        error "Not enough space on ${path2} available to write ${amount} bytes"
+		        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
 		    fi
 		fi
 	    fi
@@ -230,9 +230,19 @@ if [[ ${action} == "quota-path" ]]; then
 	    error "Unknown type: ${path} -> ${path2} -> ${type}"
 	fi
     elif [[ ${root} == "/scratch" ]] || [[ ${root} == "/tmp" ]]; then
-        echo "Local disk: ${root}"
-        echo
-	df --block-size=1 "${root}"
+	if [[ -z ${amount} ]]; then
+            echo "# Disk Usage and Quota"
+            echo
+            echo "## ${root} Disk Quota"
+            echo
+            
+	else
+            mapfile -t lines < <(df --block-size=1 "${root}" | tail -n 1 | sed -E 's/[[:blank:]]+/,/g' | tr ',' $'\n')
+	    left=${lines[3]}
+            if [[ ${left} -lt ${amount} ]]; then
+                error "Not enough space: ${root} has only ${left} bytes available, which is less than ${amount} bytes"
+	    fi
+	fi
     fi
 fi	
 
