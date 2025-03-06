@@ -62,6 +62,7 @@ action=quota-user
 debug=false
 user=${USER}
 gid=
+path=
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -99,7 +100,14 @@ while [[ $# -gt 0 ]]; do
             error "Unknown option: $1"
         fi
     else
-        error "Unknown option: $1"
+	if [[ -n ${path} ]]; then
+	    error "A path has already been specified: $1"
+	fi
+	path=$1
+	if [[ -f "${path}" ]]; then
+	    path=$(dirname "${path}")
+	fi
+	action="quota-path"
     fi
     shift
 done
@@ -110,6 +118,7 @@ if ${debug}; then
     mdebug "action: ${action}"
     mdebug "user: '${user}'"
     mdebug "gid: '${gid}'"
+    mdebug "path: '${path}'"
 fi
 
 if [[ ${action} == "version" ]]; then
@@ -119,6 +128,57 @@ elif [[ ${action} == "help" ]]; then
     help ""
     exit 0
 fi
+
+if [[ ${action} == "quota-path" ]]; then
+    mdebug "path: '${path}'"
+    root="/$(echo "${path}" | cut -d '/' -f 2)"
+    assert_dir_exists "${root}"
+
+    echo "# Disk Usage and Quota"
+    echo
+    
+    ## Is it a BeeGFS path?
+    if [[ ${root} == "/wynton" ]]; then
+	## PHI folder?
+	if [[ ${path} =~ ^/wynton/protected/ ]]; then
+	    depth=4
+	else
+	    depth=3
+        fi
+
+	## Identify user or group
+        path2=$(echo "${path}" | cut -d '/' -f 1-"${depth}")
+	mdebug "path2=${path2}"
+	type=$(basename "${path2}")
+	mdebug "type=${type}"
+
+	if [[ ${type} == "home" ]]; then
+            uid=$(id --user "${user}")
+            echo "## Home Disk Quota"
+            echo
+            beegfs-ctl --getquota --storagepoolid=11 --uid "${uid}"
+	elif [[ ${type} == "scratch" ]]; then
+            uid=$(id --user "${user}")
+            echo "## Global Scratch Disk Quota"
+            echo
+            beegfs-ctl --getquota --storagepoolid=10 --uid "${uid}"
+	elif [[ ${type} == "group" ]]; then
+	    if [[ -z ${gid} ]]; then
+                gid=$(id --group "${user}")
+	    fi
+            echo "## Group Disk Quota"
+            echo
+            beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}"
+	else
+	    error "Unknown type: ${path} -> ${path2} -> ${type}"
+	fi
+    elif [[ ${root} == "/scratch" ]] || [[ ${root} == "/tmp" ]]; then
+        echo "Local disk: ${root}"
+        echo
+	df --block-size=1 "${root}"
+    fi
+fi	
+
 
 if [[ ${action} == "quota-user" ]]; then
     # Report on all users?
