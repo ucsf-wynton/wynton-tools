@@ -659,16 +659,18 @@ if [[ $action == "validate" ]]; then
         fi
 
         # Valid UCSF ID
-	ucsf_id=NA
         if [[ -n "${ucsf_id}" ]]; then
             if valid_ucsf_id "${ucsf_id}"; then
                 okay "UCSF Employee ID is valid"
             else
-		if [[ ${ucsf_id} =~ ^[Nn][Aa]$ ]]; then
-                    fail "UCSF Employee ID is invalid"
-		    hint_for_admins "Use 'none' instead of '${ucsf_id}'"
-		fi
                 fail "UCSF Employee ID is invalid"
+		if [[ ${ucsf_id} =~ ^[Nn][Aa]$ ]]; then
+		    hint_for_admins "Use 'none' instead of '${ucsf_id}'"
+		elif [[ ! ${ucsf_id} =~ ^02[0-9]{7}$ ]]; then
+		    hint_for_admins "The ID should start with '02' and have exactly nine digits: '${ucsf_id}'"
+		elif [[ ! ${ucsf_id} =~ ^[0-9]{9}$ ]]; then
+		    hint_for_admins "The ID should have exactly nine digits: '${ucsf_id}'"
+		fi
             fi
     
             # No duplicated UCSF ID
