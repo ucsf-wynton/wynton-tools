@@ -585,10 +585,13 @@ if [[ $action == "validate" ]]; then
             else
                 fail "HOME disk quota is full (${overuse} bytes overuse)"
             fi
+            hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
         elif [[ ${avail} -lt $(( 10 * 1024**2 )) ]]; then
             fail "HOME disk quota has less than 10 MiB left ($(pretty_int "$(( avail / 1024 ))") KiB available)"
+            hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
         elif [[ ${avail} -lt $(( 1 * 1024 ** 3 )) ]]; then
             note "HOME disk quota has less than 1.0 GiB left ($(pretty_int "$(( avail / 1024**2 ))") MiB available)"
+            hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
         else
             okay "HOME disk quota has at least 1.0 GiB left"
         fi
@@ -601,6 +604,7 @@ if [[ $action == "validate" ]]; then
             okay "HOME is backed up - less than $(pretty_int "${max_chunks}") chunks"
         else
             note "HOME is not backed up - more than $(pretty_int "${max_chunks}") chunks"
+            hint "Locate directories of yours that have many files and remove unecessary files"
         fi
 
         for kk in $(seq "${#groups[@]}"); do
@@ -620,10 +624,13 @@ if [[ $action == "validate" ]]; then
             else
                 if [[ ${quota[2]} -le 0 ]]; then
                     fail "Group '${group_kk}' disk quota is full ($(pretty_int "${quota[2]}") bytes available)"
+                    hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
                 elif [[ ${quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
                     fail "Group '${group_kk}' disk quota has less than 1.0 GiB left ($(pretty_int "$(( quota[2] / 1024**2 ))") MiB available)"
+                    hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
                 elif [[ ${quota[2]} -lt $(( 100 * 1024 ** 3 )) ]]; then
                     note "Group '${group_kk}' disk quota has less than 100 GiB left ($(pretty_int "$(( quota[2] / 1024**3 ))") GiB available)"
+                    hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
                 else
                     okay "Group '${group_kk}' disk quota has at least 100 GiB left"
                 fi
@@ -652,13 +659,14 @@ if [[ $action == "validate" ]]; then
         fi
 
         # Valid UCSF ID
+	ucsf_id=NA
         if [[ -n "${ucsf_id}" ]]; then
             if valid_ucsf_id "${ucsf_id}"; then
                 okay "UCSF Employee ID is valid"
             else
 		if [[ ${ucsf_id} =~ ^[Nn][Aa]$ ]]; then
                     fail "UCSF Employee ID is invalid"
-		    hint "Use 'none' instead of '${ucsf_id}'"
+		    hint_for_admins "Use 'none' instead of '${ucsf_id}'"
 		fi
                 fail "UCSF Employee ID is invalid"
             fi

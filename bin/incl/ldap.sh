@@ -40,9 +40,14 @@ list_footnotes() {
     done
 }    
 
+hint_for_admins() {
+    local hint=${1:?}
+    echo "       ${magenta}Hint for admins: ${hint}${reset}"
+}
+
 hint() {
     local hint=${1:?}
-    echo "       ${magenta}Hint: ${hint}${reset}"
+    echo "       ${magenta}Hint for user: ${hint}${reset}"
 }
 
 
