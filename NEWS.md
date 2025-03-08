@@ -26,6 +26,10 @@
    file', which happened during parsing of the `qstat` job
    information.
  
+ * `wynton account` gave cluttered output for fields that were
+   expected to be single values, but that incorrectly have multiple
+   values.
+ 
 
 # Version 0.20.0 (2025-03-01)
 

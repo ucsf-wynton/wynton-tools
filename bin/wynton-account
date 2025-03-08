@@ -293,7 +293,7 @@ if [[ $action == "validate" ]]; then
     ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}" | grep -i -v -E "^(none)$")
     shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
     faculty_sponsor=$(ldap_get_field "FacultySponsor" "${ldap_info[@]}")
-    wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}")
+    wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}" | tr $'\n' ',' | sed 's/,$//' | sed 's/,/ /' | sed 's/^/"/' | sed 's/$/"/')
     wynton_project_shares=$(qconf -sprj "${wynton_project}" 2> /dev/null | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
 
     ## Access to Information Commons, i.e. an "IC user"?
@@ -723,7 +723,7 @@ if [[ $action == "validate" ]]; then
         
         # No mixed 'wyntonAccess'
         field="wyntonAccess"
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:" | sed "s/^${field}: *//")
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
         elif [[ ${#res[@]} -eq 0 ]]; then
@@ -734,7 +734,7 @@ if [[ $action == "validate" ]]; then
     
         # No mixed 'protectedAccess'
         field="protectedAccess"
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:" | sed "s/^${field}: *//")
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
         elif [[ ${#res[@]} -eq 0 ]]; then
@@ -743,9 +743,9 @@ if [[ $action == "validate" ]]; then
             okay "User has unique LDAP '${field}' entry"
         fi
 
-        ## Has 'wyntonProject'
+        ## No mixed 'wyntonProject'
         field="wyntonProject"
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
+        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:" | sed "s/^${field}: *//")
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
         elif [[ ${#res[@]} -eq 0 ]]; then
