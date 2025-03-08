@@ -40,6 +40,11 @@ list_footnotes() {
     done
 }    
 
+hint() {
+    local hint=${1:?}
+    echo "       ${magenta}Hint: ${hint}${reset}"
+}
+
 
 # -------------------------------------------------------
 # Regular expressions

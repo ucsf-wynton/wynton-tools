@@ -650,12 +650,16 @@ if [[ $action == "validate" ]]; then
         else
             fail "Email address does not have a valid format"
         fi
-    
+
         # Valid UCSF ID
         if [[ -n "${ucsf_id}" ]]; then
             if valid_ucsf_id "${ucsf_id}"; then
                 okay "UCSF Employee ID is valid"
             else
+		if [[ ${ucsf_id} =~ ^[Nn][Aa]$ ]]; then
+                    fail "UCSF Employee ID is invalid"
+		    hint "Use 'none' instead of '${ucsf_id}'"
+		fi
                 fail "UCSF Employee ID is invalid"
             fi
     

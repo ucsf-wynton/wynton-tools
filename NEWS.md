@@ -16,6 +16,14 @@
  
  * Add support `wynton quota --assert-available=<size> <path>`.
 
+ * `wynton account --check` is now starting to give hints.
+
+## Bug Fixes
+
+ * `wynton account` gave cluttered output for fields that were
+   expected to be single values, but that incorrectly have multiple
+   values.
+   
 
 # Version 0.20.1 (2025-03-01)
 
@@ -25,10 +33,6 @@
    while looking for matching "' and 'syntax error: unexpected end of
    file', which happened during parsing of the `qstat` job
    information.
- 
- * `wynton account` gave cluttered output for fields that were
-   expected to be single values, but that incorrectly have multiple
-   values.
  
 
 # Version 0.20.0 (2025-03-01)
