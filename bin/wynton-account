@@ -180,7 +180,7 @@ while [[ $# -gt 0 ]]; do
         if [[ "${key}" == "user" ]]; then
             eval "user=\$(as_user '${value}')"
         elif [[ "${key}" == "as" ]]; then
-	    IFS=',' read -ra run_as <<< "${value}"
+            IFS=',' read -ra run_as <<< "${value}"
         else
             error "Unknown option: $1"
         fi
@@ -235,11 +235,11 @@ as_admin=false
 as_user=false
 for value in "${run_as[@]}"; do
     if [[ ${value} == "admin" ]]; then
-	as_admin=true
+        as_admin=true
     elif [[ ${value} == "user" ]]; then
-	as_user=true
+        as_user=true
     else
-	error "Unknown value in --as=<roles>: '${value}'"
+        error "Unknown value in --as=<roles>: '${value}'"
     fi
 done
 
@@ -471,6 +471,7 @@ if [[ $action == "validate" ]]; then
         mapfile -t res < <(ldap_search "uidNumber=${uid}" "uid" | ldap_get_field "uid")
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User ID (UID) is not unique: [n=${#res[@]}] ${res[*]}"
+            hint_for_admin "Users with the same UID: [n=${#res[@]}] ${res[*]}"
         else
             okay "User ID (UID) is unique"
         fi
@@ -507,6 +508,7 @@ if [[ $action == "validate" ]]; then
             okay "All GIDs exist"
         else
             fail "All GIDs exist"
+            hint_for_admin "Unknown GIDs: [n=${#invalid[@]}] ${invalid[*]}"
         fi
 
         # IC access => PHI access
@@ -568,7 +570,8 @@ if [[ $action == "validate" ]]; then
         # No duplicated home directories
         mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory")
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "HOME folder is not unique: [n=${#res[@]}] ${res[*]}"
+            fail "HOME folder is not unique"
+            hint_for_admin "Users with the same HOME folder: [n=${#res[@]}] ${res[*]}"
         else
             okay "HOME folder is unique"
         fi
@@ -601,10 +604,12 @@ if [[ $action == "validate" ]]; then
         else
             if [[ -d "${home}" ]]; then
                 okay "HOME folder exists"
-                if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
+                owner=$(stat --format="%u" "${home}")
+                if [[ "${owner}" == "${uid}" ]]; then
                     okay "HOME folder is owned by user"
                 else
                     fail "HOME folder is not owned by user"
+                    hint_for_admin "HOME folder is owned by '${owner}'"
                 fi
             else
                 fail "HOME folder does not exist"
@@ -722,7 +727,7 @@ if [[ $action == "validate" ]]; then
         else
             if is_ucsf_email "${email}"; then
                 fail "UCSF Employee ID is missing"
-		hint_for_admin "Search by email address in the USCF Enterprise Directory Service (EDS) system"
+                hint_for_admin "Search by email address in the USCF Enterprise Directory Service (EDS) system"
             else
                 okay "UCSF Employee ID is not required"
             fi
@@ -749,11 +754,14 @@ if [[ $action == "validate" ]]; then
         # Login shell is valid
         if [[ -z ${shell} ]]; then
             fail "Login shell is not specified"
+            hint_for_admin "LDAP field 'loginShell' is empty"
         else
             if [[ ! -f "${shell}" ]]; then
                 fail "Login shell does not exist"
+                hint_for_admin "LDAP field 'loginShell' specifies a non-existing shell"
             elif [[ ! -x "${shell}" ]]; then
                 fail "Login shell is non-executable"
+                hint_for_admin "LDAP field 'loginShell' specifies a shell that is not executable"
             else
                 okay "Login shell is an executable"
             fi
@@ -762,6 +770,7 @@ if [[ $action == "validate" ]]; then
         # Faculty sponsor is valid
         if [[ -z ${faculty_sponsor} ]]; then
             fail "Faculty sponsor is missing"
+            hint_for_admin "LDAP field 'FacultySponsor' is not set"
         else
             pattern="^([[:alpha:] .'-]+)[[:blank:]]+<([^>]+)>$"
             if grep -q -i -E "${pattern}" <<< "${faculty_sponsor}"; then
@@ -778,41 +787,23 @@ if [[ $action == "validate" ]]; then
                 fi
             else
                 fail "Faculty sponsor does not have a full name and email address"
+                hint_for_admin "LDAP field 'FacultySponsor' should use format 'Full Name <email address>'"
             fi
         fi
         
-        # No mixed 'wyntonAccess'
-        field="wyntonAccess"
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:" | sed "s/^${field}: *//")
-        if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
-        elif [[ ${#res[@]} -eq 0 ]]; then
-            fail "User lacks LDAP '${field}' entry"
-        else
-            okay "User has unique LDAP '${field}' entry"
-        fi
-    
-        # No mixed 'protectedAccess'
-        field="protectedAccess"
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:" | sed "s/^${field}: *//")
-        if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
-        elif [[ ${#res[@]} -eq 0 ]]; then
-            fail "User lacks LDAP '${field}' entry"
-        else
-            okay "User has unique LDAP '${field}' entry"
-        fi
-
-        ## No mixed 'wyntonProject'
-        field="wyntonProject"
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:" | sed "s/^${field}: *//")
-        if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
-        elif [[ ${#res[@]} -eq 0 ]]; then
-            fail "User lacks LDAP '${field}' entry"
-        else
-            okay "User has unique LDAP '${field}' entry"
-        fi
+        # Assert 'wyntonAccess', 'protectedAccess', 'wyntonProject' only exist once
+        for field in "wyntonAccess" "protectedAccess" "wyntonProject"; do
+            mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:" | sed "s/^${field}: *//")
+            if [[ ${#res[@]} -gt 1 ]]; then
+                fail "User has multiple LDAP '${field}' entries"
+                hint_for_admin "There are multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
+            elif [[ ${#res[@]} -eq 0 ]]; then
+                fail "User lacks LDAP '${field}' entry"
+                hint_for_admin "There exist no LDAP '${field}' entry"
+            else
+                okay "User has unique LDAP '${field}' entry"
+            fi
+        done
 
         ## SGE
         if ${in_sge}; then
@@ -828,6 +819,11 @@ if [[ $action == "validate" ]]; then
                 okay "SGE 'default_project' and LDAP 'wyntonProject' agree"
             else
                 fail "SGE 'default_project' and LDAP 'wyntonProject' do not agree"
+                if [[ -z ${wynton_project} ]]; then
+                    hint_for_admin "LDAP field 'wyntonProject' is not set"
+                elif [[ -z ${sge_project} ]]; then
+                    hint_for_admin "There is no 'default_project' in the output of qconf -suser '${user}'"
+                fi
             fi
     
             pathname="/wynton/home${SGE_ROOT}/common/sgeCA/usercerts/${user}/cert.pem"
