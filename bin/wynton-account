@@ -853,29 +853,35 @@ if [[ $action == "validate" ]]; then
 
     ## Create a ServiceNow search URL
     if ${as_admin}; then
-	search_params=(
-	    "assignment_group=80835fcedb7b33c4d380540adc9619d5"
-	    "approval=approved"
-	    "state=3"
+        search_params=(
+            "assignment_group=80835fcedb7b33c4d380540adc9619d5"  ## 'Wynton Admins'
+            "approval=approved"
+            "stateIN3,35"                                        ## 'Closed Complete' or 'Complete.Closed.System'
             "requested_forLIKE${fullname}"
-	)
-	mdebug "ServiceNow search parameters: [n=${#search_params[@]}]"
-	for value in "${search_params[@]}"; do
-	    mdebug " - ${value}"
-	done
-	query=$(
-	    printf "%s^" "${search_params[@]}" |
-		sed 's/ /%20/g'  |   # Escape SPACEs
-		sed 's/</%3C/g'  |   # Escape <
-		sed 's/>/%3E/g'  |   # Escape >
-		sed 's/\^/%5E/g' |   # Escape ^
-		sed 's/^$//'
-	)
-	mdebug "ServiceNow search query: ${query}"
-	echo
-	echo "${magenta}ServiceNow request item (RITM):"
-	echo
-	echo " * https://ucsf.service-now.com/sc_req_item_list.do?sysparm_query=${query}${reset}"
+        )
+        mdebug "ServiceNow search parameters: [n=${#search_params[@]}]"
+        for value in "${search_params[@]}"; do
+            mdebug " - ${value}"
+        done
+        query=$(
+            printf "%s^" "${search_params[@]}" |
+                sed 's/ /%20/g'  |   # Escape SPACEs
+                sed 's/</%3C/g'  |   # Escape <
+                sed 's/>/%3E/g'  |   # Escape >
+                sed 's/\^/%5E/g' |   # Escape ^
+                sed 's/^$//'
+        )
+        mdebug "ServiceNow search query: ${query}"
+        echo
+        echo "${magenta}Search for ServiceNow account request item (RITM):"
+        echo
+        echo "<https://ucsf.service-now.com/sc_req_item_list.do?sysparm_query=${query}${reset}>"
+	
+        since="2021-09-03"
+        if [[ $(date -d "${created_on}" +%s) -lt "$(date -d "${since}" +%s)" ]]; then
+	    echo
+	    warn "This account was created before account requests where made via ServiceNow (since ${since})"
+	fi
     fi
 
     list_footnotes
