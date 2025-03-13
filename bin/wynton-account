@@ -853,11 +853,13 @@ if [[ $action == "validate" ]]; then
 
     ## Create a ServiceNow search URL
     if ${as_admin}; then
+        ## Note, searching ServiceNow field 'Requested for' will work
+	## for UCSF users, but not for external guest accounts
         search_params=(
             "assignment_group=80835fcedb7b33c4d380540adc9619d5"  ## 'Wynton Admins'
             "approval=approved"
             "stateIN3,35"                                        ## 'Closed Complete' or 'Complete.Closed.System'
-            "requested_forLIKE${fullname}"
+	    "GOTO123TEXTQUERY321=${fullname}"
         )
         mdebug "ServiceNow search parameters: [n=${#search_params[@]}]"
         for value in "${search_params[@]}"; do
