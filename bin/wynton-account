@@ -275,10 +275,11 @@ if [[ $action == "validate" ]]; then
     n_fail=0
     n_skip=0
 
-    same_user=true
-    if ! ${as_user} && ! ${as_admin}; then
-        same_user=false
+    if [[ $user == "$USER" ]]; then
+        same_user=true
         footnote "${yellow}WARNING: Running as user '${USER}' != '${user}'${reset}"
+    else
+        same_user=false
     fi
     
     mapfile -t ldap_info < <(ldap_search "uid=${user}" "+" "*" | sort)
@@ -721,7 +722,7 @@ if [[ $action == "validate" ]]; then
         else
             if is_ucsf_email "${email}"; then
                 fail "UCSF Employee ID is missing"
-		hint_for_admin "Look up user in the USCF Enterprise Directory Service (EDS) system"
+		hint_for_admin "Search by email address in the USCF Enterprise Directory Service (EDS) system"
             else
                 okay "UCSF Employee ID is not required"
             fi
