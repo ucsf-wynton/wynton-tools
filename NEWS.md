@@ -2,6 +2,9 @@
 
 ## New Features
 
+ * `wynton account --as=admin` displays a URL with a search query for
+   the user's original ServiceNow request item (RITM).
+
  * `wynton account --check` checks that a non-locked account has
    access to either Wynton or Plato If not, it should be locked.
 

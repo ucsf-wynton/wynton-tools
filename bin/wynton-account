@@ -327,7 +327,8 @@ if [[ $action == "validate" ]]; then
     if [[  $(ldap_get_field "wyntonAdmin" "${ldap_info[@]}") == "TRUE" ]]; then
         admin=true
     fi
-    
+
+    fullname=$(ldap_get_field "cn" "${ldap_info[@]}")
     email=$(ldap_get_field "mail" "${ldap_info[@]}")
     ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}" | grep -i -v -E "^(none)$")
     shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
@@ -390,7 +391,7 @@ if [[ $action == "validate" ]]; then
         fi
         echo "  - '${group_kk}' (${type}; ${gids[$((kk-1))]}; ${n_members} members; '${description}')"
     done
-    echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
+    echo "* Full name: ${fullname}"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     if [[ -z "${faculty_sponsor}" ]]; then
@@ -442,15 +443,16 @@ if [[ $action == "validate" ]]; then
     echo "* SGE project: ${sge_project:-N/A} (${sge_project_shares:-N/A} fshares)"
     
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
-    ts=$(ldap_as_timestamp "${ts}")
+    created_on=$(ldap_as_timestamp "${ts}")
     age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account created on: ${ts} [${age} by '${by:-N/A}']"
+    echo "* Account created on: ${created_on} [${age} by '${by:-N/A}']"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
+    modified_on=$(ldap_as_timestamp "${ts}")
     ts=$(ldap_as_timestamp "${ts}")
     age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account last-modified on: ${ts} [${age} by '${by:-N/A}']"
+    echo "* Account last-modified on: ${modified_on} [${age} by '${by:-N/A}']"
 
     if ${check}; then
         echo
@@ -844,8 +846,35 @@ if [[ $action == "validate" ]]; then
         echo "Summary: ${n_okay} OK, ${n_note} NOTE, ${n_fail} FAIL, ${n_skip} SKIP"    
     fi
 
-    list_footnotes
+    ## Create a ServiceNow search URL
+    if ${as_admin}; then
+	search_params=(
+	    "assignment_group=80835fcedb7b33c4d380540adc9619d5"
+	    "approval=approved"
+	    "state=3"
+            "requested_forLIKE${fullname}"
+	)
+	mdebug "ServiceNow search parameters: [n=${#search_params[@]}]"
+	for value in "${search_params[@]}"; do
+	    mdebug " - ${value}"
+	done
+	query=$(
+	    printf "%s^" "${search_params[@]}" |
+		sed 's/ /%20/g'  |   # Escape SPACEs
+		sed 's/</%3C/g'  |   # Escape <
+		sed 's/>/%3E/g'  |   # Escape >
+		sed 's/\^/%5E/g' |   # Escape ^
+		sed 's/^$//'
+	)
+	mdebug "ServiceNow search query: ${query}"
+	echo
+	echo "${magenta}ServiceNow request item (RITM):"
+	echo
+	echo " * https://ucsf.service-now.com/sc_req_item_list.do?sysparm_query=${query}${reset}"
+    fi
 
+    list_footnotes
+    
     if ${check}; then
         if [[ ${n_fail} -gt 0 ]]; then
             echo >&2
