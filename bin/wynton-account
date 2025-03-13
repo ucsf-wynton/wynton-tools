@@ -333,7 +333,12 @@ if [[ $action == "validate" ]]; then
     ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}" | grep -i -v -E "^(none)$")
     shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
     faculty_sponsor=$(ldap_get_field "FacultySponsor" "${ldap_info[@]}")
-    wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}" | tr $'\n' ',' | sed 's/,$//' | sed 's/,/ /' | sed 's/^/"/' | sed 's/$/"/')
+    mapfile -t values < <(ldap_get_field "wyntonProject" "${ldap_info[@]}")
+    if [[ ${#values[@]} -eq 1 ]]; then
+        wynton_project=${values[0]}
+    else
+	wynton_project=$(printf "'%s'\n" "${values[@]}" | tr $'\n' ',')
+    fi
     wynton_project_shares=$(qconf -sprj "${wynton_project}" 2> /dev/null | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
 
     ## Access to Information Commons, i.e. an "IC user"?
