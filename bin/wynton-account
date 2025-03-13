@@ -697,7 +697,13 @@ if [[ $action == "validate" ]]; then
                 okay "Locked account is disabled"
             fi
         else
-             okay "Account is not locked"
+            if ! ${access} && ! ${plato}; then
+                #  https://github.com/ucsf-wynton/support/issues/1927#issuecomment-2719225665
+                fail "Non-locked account is disabled on both Wynton and Plato"
+                hint_for_admins "This account should be locked"
+            else					   
+                okay "Account is not locked"
+	    fi
         fi
     
         # Login shell is valid

@@ -2,6 +2,11 @@
 
 ## New Features
 
+ * `wynton account --check` checks that a non-locked account has
+   access to either Wynton or Plato If not, it should be locked.
+
+ * `wynton account --check` gives hints.
+
  * `wynton quota` can now also list disk quotas for a specific group,
    in addition to the HOME, global scratch, and group quota for a
    specific user.
@@ -15,8 +20,6 @@
  * Add support `wynton quota <path>`.
  
  * Add support `wynton quota --assert-available=<size> <path>`.
-
- * `wynton account --check` is now starting to give hints.
 
 ## Bug Fixes
 
