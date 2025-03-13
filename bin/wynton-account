@@ -8,9 +8,11 @@
 #'  wynton-account [options] <user>
 #'
 #' Flags:
-#'  --help           Display this help
-#'  --version        Display version
-#'  --check          Checks the account settings
+#'  --help        Display this help
+#'  --version     Display version
+#'  --as=<roles>  Targes hints to 'user' or 'admin', or both.
+#'                (default: inferred from $USER)
+#'  --check       Checks the account settings
 #'
 #' Arguments:
 #'  <user>           User to query (default: $USER)
@@ -21,6 +23,7 @@
 #'  wynton account 1000
 #'  wynton account alice@bobsonlab.org
 #'  wynton account alice --check
+#'  wynton account alice --check --as=user,admin
 #'
 #' License: See 'wynton --help'
 call="$0 $*"
@@ -151,6 +154,8 @@ action=validate
 check=false
 debug=false
 user=
+run_as=()
+
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -174,6 +179,8 @@ while [[ $# -gt 0 ]]; do
         fi
         if [[ "${key}" == "user" ]]; then
             eval "user=\$(as_user '${value}')"
+        elif [[ "${key}" == "as" ]]; then
+	    IFS=',' read -ra run_as <<< "${value}"
         else
             error "Unknown option: $1"
         fi
@@ -210,6 +217,33 @@ group=$(id --group --name "$user" 2> /dev/null)
 mapfile -t gids < <(id --groups "${user}" 2> /dev/null | tr ' ' $'\n')
 mapfile -t groups < <(id --groups --name "${user}" 2> /dev/null | tr ' ' $'\n')
 
+
+## If admin, add to 'run_as'
+if [[ $EUID -eq 0 ]]; then
+    run_as+=("admin")
+elif printf "%s\n" "${groups[@]}" | grep -q --line-regexp "wynton-admins"; then
+    run_as+=("admin")
+fi
+
+## If user itself, add to 'run_as'
+if [[ $user == "$USER" ]]; then
+    run_as+=("user")
+fi
+
+## Infer as_admin and as_user from run_as array
+as_admin=false
+as_user=false
+for value in "${run_as[@]}"; do
+    if [[ ${value} == "admin" ]]; then
+	as_admin=true
+    elif [[ ${value} == "user" ]]; then
+	as_user=true
+    else
+	error "Unknown value in --as=<roles>: '${value}'"
+    fi
+done
+
+
 if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
@@ -221,7 +255,11 @@ if $debug; then
     mdebug "uid: $uid"
     mdebug "gid: $gid"
     mdebug "home: $home"
+    mdebug "run_as: [n=${#run_as[@]}] ${run_as[*]}"
+    mdebug "as_admin: ${as_admin}"
+    mdebug "as_user: ${as_user}"
 fi
+
 
 if [[ $action == "version" ]]; then
     version
@@ -238,7 +276,7 @@ if [[ $action == "validate" ]]; then
     n_skip=0
 
     same_user=true
-    if [[ "${user}" != "${USER}" ]]; then
+    if ! ${as_user} && ! ${as_admin}; then
         same_user=false
         footnote "${yellow}WARNING: Running as user '${USER}' != '${user}'${reset}"
     fi
@@ -585,13 +623,13 @@ if [[ $action == "validate" ]]; then
             else
                 fail "HOME disk quota is full (${overuse} bytes overuse)"
             fi
-            hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
+            hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
         elif [[ ${avail} -lt $(( 10 * 1024**2 )) ]]; then
             fail "HOME disk quota has less than 10 MiB left ($(pretty_int "$(( avail / 1024 ))") KiB available)"
-            hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
+            hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
         elif [[ ${avail} -lt $(( 1 * 1024 ** 3 )) ]]; then
             note "HOME disk quota has less than 1.0 GiB left ($(pretty_int "$(( avail / 1024**2 ))") MiB available)"
-            hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
+            hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
         else
             okay "HOME disk quota has at least 1.0 GiB left"
         fi
@@ -604,7 +642,7 @@ if [[ $action == "validate" ]]; then
             okay "HOME is backed up - less than $(pretty_int "${max_chunks}") chunks"
         else
             note "HOME is not backed up - more than $(pretty_int "${max_chunks}") chunks"
-            hint "Locate directories of yours that have many files and remove unecessary files"
+            hint_for_user "Locate directories of yours that have many files and remove unecessary files"
         fi
 
         for kk in $(seq "${#groups[@]}"); do
@@ -624,13 +662,13 @@ if [[ $action == "validate" ]]; then
             else
                 if [[ ${quota[2]} -le 0 ]]; then
                     fail "Group '${group_kk}' disk quota is full ($(pretty_int "${quota[2]}") bytes available)"
-                    hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
+                    hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
                 elif [[ ${quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
                     fail "Group '${group_kk}' disk quota has less than 1.0 GiB left ($(pretty_int "$(( quota[2] / 1024**2 ))") MiB available)"
-                    hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
+                    hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
                 elif [[ ${quota[2]} -lt $(( 100 * 1024 ** 3 )) ]]; then
                     note "Group '${group_kk}' disk quota has less than 100 GiB left ($(pretty_int "$(( quota[2] / 1024**3 ))") GiB available)"
-                    hint "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
+                    hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
                 else
                     okay "Group '${group_kk}' disk quota has at least 100 GiB left"
                 fi
@@ -665,11 +703,11 @@ if [[ $action == "validate" ]]; then
             else
                 fail "UCSF Employee ID is invalid"
                 if [[ ${ucsf_id} =~ ^[Nn][Aa]$ ]]; then
-                    hint_for_admins "Use 'none' instead of '${ucsf_id}'"
+                    hint_for_admin "Use 'none' instead of '${ucsf_id}'"
                 elif [[ ! ${ucsf_id} =~ ^02[0-9]{7}$ ]]; then
-                    hint_for_admins "The ID should start with '02' and have exactly nine digits: '${ucsf_id}'"
+                    hint_for_admin "The ID should start with '02' and have exactly nine digits: '${ucsf_id}'"
                 elif [[ ! ${ucsf_id} =~ ^[0-9]{9}$ ]]; then
-                    hint_for_admins "The ID should have exactly nine digits: '${ucsf_id}'"
+                    hint_for_admin "The ID should have exactly nine digits: '${ucsf_id}'"
                 fi
             fi
     
@@ -683,6 +721,7 @@ if [[ $action == "validate" ]]; then
         else
             if is_ucsf_email "${email}"; then
                 fail "UCSF Employee ID is missing"
+		hint_for_admin "Look up user in the USCF Enterprise Directory Service (EDS) system"
             else
                 okay "UCSF Employee ID is not required"
             fi
@@ -700,7 +739,7 @@ if [[ $action == "validate" ]]; then
             if ! ${access} && ! ${plato}; then
                 #  https://github.com/ucsf-wynton/support/issues/1927#issuecomment-2719225665
                 fail "Non-locked account is disabled on both Wynton and Plato"
-                hint_for_admins "This account should be locked"
+                hint_for_admin "This account should be locked"
             else                                           
                 okay "Account is not locked"
             fi

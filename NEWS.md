@@ -5,8 +5,12 @@
  * `wynton account --check` checks that a non-locked account has
    access to either Wynton or Plato If not, it should be locked.
 
- * `wynton account --check` gives hints.
+ * `wynton account --check` gives hints to the user, to the admin,
+   or to both.
 
+ * `wynton account --as=<roles>` overrides the defaults for to whom
+   hints are directed.
+ 
  * `wynton quota` can now also list disk quotas for a specific group,
    in addition to the HOME, global scratch, and group quota for a
    specific user.
