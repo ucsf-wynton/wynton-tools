@@ -130,13 +130,13 @@ function pretty_int {
 
 function account_enabled_or_not {
     if [[ -z ${1:?} ]]; then
-	echo "N/A"
+        echo "N/A"
     elif [[ $1 == "true" ]]; then
-	echo "enabled"
+        echo "enabled"
     elif [[ $1 == "false" ]]; then
-	echo "disabled"
+        echo "disabled"
     else
-	echo "<unknown='$1'>"
+        echo "<unknown='$1'>"
     fi
 }    
 
@@ -177,14 +177,14 @@ while [[ $# -gt 0 ]]; do
         else
             error "Unknown option: $1"
         fi
-	
+        
     elif [[ "$1" =~ ^--.*$ ]]; then
         error "Unknown option: $1"
-	
+        
     else
         if [[ -n "${user}" ]]; then
             error "Argument <user> is already specified: $1"
-	fi
+        fi
         eval "user=\$(as_user '$1')"
     fi
     
@@ -314,15 +314,15 @@ if [[ $action == "validate" ]]; then
         in_sge=true
         mapfile -t sge_info < <(qconf -suser "${user}" | sort)
         sge_project=$(printf "%s\n" "${sge_info[@]}" | grep -E "^default_project" | sed -E 's/^default_project[[:space:]]+//')
-	sge_project_shares=${wynton_project_shares}
-	if [[ "${sge_project}" != "${wynton_project}" ]]; then
+        sge_project_shares=${wynton_project_shares}
+        if [[ "${sge_project}" != "${wynton_project}" ]]; then
             sge_project_shares=$(qconf -sprj "${sge_project}" | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
-	fi
+        fi
     else
         in_sge=false
         sge_info=()
         sge_project=
-	sge_project_shares=
+        sge_project_shares=
     fi
 
 
@@ -337,12 +337,12 @@ if [[ $action == "validate" ]]; then
     echo "* Groups: [n=${#groups[@]}]"
     deprecated_groups=()
     for kk in $(seq "${#groups[@]}"); do
-	group_kk="${groups[$((kk-1))]}"
+        group_kk="${groups[$((kk-1))]}"
         mapfile -t info < <(ldap_search -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "cn=${group_kk}")
         description=$(printf "%s\n" "${info[@]}" | grep -E "^description:" | sed 's/^description:[[:blank:]]*//')
-	if grep -q -i -E "deprecate" <<< "${description}"; then
-	    deprecated_groups+=("${group_kk}")
-	fi
+        if grep -q -i -E "deprecate" <<< "${description}"; then
+            deprecated_groups+=("${group_kk}")
+        fi
         n_members=$(printf "%s\n" "${info[@]}" | grep -c -E "^member:")
         if [[ ${kk} -eq 1 ]]; then
             type="primary"
@@ -484,11 +484,11 @@ if [[ $action == "validate" ]]; then
         # Plato access => no PHI access
         if ${plato}; then
             if ${phi}; then
-		if ${admin}; then
+                if ${admin}; then
                     skip "Plato user has PHI access; ignoring because admin"
-		else
+                else
                     fail "Plato user has PHI access"
-		fi
+                fi
             else
                 okay "Plato user without PHI access"
             fi
@@ -544,11 +544,11 @@ if [[ $action == "validate" ]]; then
         if grep -q -E "^${pattern}" <<< "${home}"; then
             okay "HOME folder is under ${expected}"
         else
-	    if ${admin}; then
+            if ${admin}; then
                 skip "HOME folder is not under ${expected}; ignoring because admin"
-	    else
+            else
                 fail "HOME folder is not under ${expected}"
-	    fi
+            fi
         fi
     
         if [[ ${EUID} -ne 0 ]] && ${phi} && ! ${running_as_phi}; then
@@ -639,9 +639,9 @@ if [[ $action == "validate" ]]; then
 
         if [[ ${#deprecated_groups[@]} -eq 0 ]]; then
             okay "No deprecated groups"
-	else
+        else
             note "Deprecated groups"
-	fi
+        fi
 
         # No duplicated email addresses
         mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
@@ -664,13 +664,13 @@ if [[ $action == "validate" ]]; then
                 okay "UCSF Employee ID is valid"
             else
                 fail "UCSF Employee ID is invalid"
-		if [[ ${ucsf_id} =~ ^[Nn][Aa]$ ]]; then
-		    hint_for_admins "Use 'none' instead of '${ucsf_id}'"
-		elif [[ ! ${ucsf_id} =~ ^02[0-9]{7}$ ]]; then
-		    hint_for_admins "The ID should start with '02' and have exactly nine digits: '${ucsf_id}'"
-		elif [[ ! ${ucsf_id} =~ ^[0-9]{9}$ ]]; then
-		    hint_for_admins "The ID should have exactly nine digits: '${ucsf_id}'"
-		fi
+                if [[ ${ucsf_id} =~ ^[Nn][Aa]$ ]]; then
+                    hint_for_admins "Use 'none' instead of '${ucsf_id}'"
+                elif [[ ! ${ucsf_id} =~ ^02[0-9]{7}$ ]]; then
+                    hint_for_admins "The ID should start with '02' and have exactly nine digits: '${ucsf_id}'"
+                elif [[ ! ${ucsf_id} =~ ^[0-9]{9}$ ]]; then
+                    hint_for_admins "The ID should have exactly nine digits: '${ucsf_id}'"
+                fi
             fi
     
             # No duplicated UCSF ID
@@ -701,9 +701,9 @@ if [[ $action == "validate" ]]; then
                 #  https://github.com/ucsf-wynton/support/issues/1927#issuecomment-2719225665
                 fail "Non-locked account is disabled on both Wynton and Plato"
                 hint_for_admins "This account should be locked"
-            else					   
+            else                                           
                 okay "Account is not locked"
-	    fi
+            fi
         fi
     
         # Login shell is valid

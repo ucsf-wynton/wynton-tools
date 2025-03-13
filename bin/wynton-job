@@ -164,13 +164,13 @@ while [[ $# -gt 0 ]]; do
         debug=true
     elif [[ "$1" == "--verbose" ]]; then
         verbose=true
-	
+        
     ## Flags (--flag):
     elif [[ "$1" == "--list" ]]; then
-	action=list
+        action=list
     elif [[ "$1" == "--list-finished" ]]; then
-	action=list-finished
-	
+        action=list-finished
+        
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
         key=${1//--}
@@ -227,19 +227,19 @@ if [[ $action == "list" ]]; then
     mapfile -t lines < <(qstat -s az -u "${user}")
     printf "%s\n" "${lines[@]}" | annotate_qstat | reformat_date
     if grep -q -E "\bE?qw\b" <<< "${lines[*]}"; then
-	echo
+        echo
         E="${red}E${reset}"
         q="${yellow}q${reset}"
         w="${yellow}w${reset}"
         z="${magenta}z${reset}"
-	echo "Legend: ${E}=Error, ${q}=queued, ${w}=waiting, ${z}=recently finished (\"zombie\")"
-	echo
-	echo "Suggestions:"
-	echo "wynton job <job-ID>   : details on a job"
-	echo "qdel <job-ID>         : delete a job"
-	echo "qdel -f <job-ID>      : try harder to delete a job"
-	echo
-    fi	
+        echo "Legend: ${E}=Error, ${q}=queued, ${w}=waiting, ${z}=recently finished (\"zombie\")"
+        echo
+        echo "Suggestions:"
+        echo "wynton job <job-ID>   : details on a job"
+        echo "qdel <job-ID>         : delete a job"
+        echo "qdel -f <job-ID>      : try harder to delete a job"
+        echo
+    fi        
     exit 0
 fi
 
@@ -247,8 +247,8 @@ if [[ $action == "list-finished" ]]; then
     bfr=$(accounting_list_finished "${user}" "${tail_size}")
     res=$?
     if [[ $res -eq 0 ]]; then
-	echo "$bfr"
-	exit 0
+        echo "$bfr"
+        exit 0
     fi
     error "Failed to locate past jobs from the last ${tail_size} records in the SGE accounting file"
 fi
@@ -261,10 +261,10 @@ if [[ $action == "job" ]]; then
     if [[ -n ${bfr} ]]; then
         ## Keep key: value lines
         vars=$(grep -E "^[^:]+:.*" <<< "$bfr")
-	
-#	## Skip 'env_list' because it's hard to parse
+        
+#        ## Skip 'env_list' because it's hard to parse
 #        vars=$(grep -v -E "^env_list:.*" <<< "$bfr")
-	
+        
         ## Fix keys
         vars=$(sed ':loop; s/^\([^:]*\) \+\([^:]*:\)/\1_\2/; t loop' <<< "$vars" | sed ':loop; s/^\([^:]*\)-\+\([^:]*:\)/\1_\2/; t loop' | sed -E 's/__+/_/g')
 
@@ -272,31 +272,31 @@ if [[ $action == "job" ]]; then
         vars=$(sed -E 's/^([^:]+):[[:space:]]*(.*)/_THIS_JOB_\1="\2"/' <<< "$vars")
 
         ## Parse as environment variables
-	tf=$(mktemp)
+        tf=$(mktemp)
         while IFS= read -r expr; do
-	    # Is it a valid Bash expression?
-	    if bash -n <<< "${expr}" 2> /dev/null; then
+            # Is it a valid Bash expression?
+            if bash -n <<< "${expr}" 2> /dev/null; then
                 if ! eval "export ${expr}" 2> "${tf}"; then
                     if $debug; then
                         mdebug "Invalid Bash expression: ${expr}"
-		    fi
-		fi
-	    else
+                    fi
+                fi
+            else
                 if $debug; then
-		    mdebug "Skipping incomplete or invalid Bash expression: ${expr}"
-		fi
-	    fi
+                    mdebug "Skipping incomplete or invalid Bash expression: ${expr}"
+                fi
+            fi
         done <<< "$vars"
-	rm "${tf}"
-	if $debug; then
+        rm "${tf}"
+        if $debug; then
             mapfile -t lines < <(env | grep -F "_THIS_JOB_" | sort)
-	    mdebug "${lines[@]}"
-	fi
+            mdebug "${lines[@]}"
+        fi
 
         ## Get additional info on the job
         # shellcheck disable=2154
         bfr2=$(qstat -s az -u "${_THIS_JOB_owner}" | grep -E "^[[:space:]]*\b${_THIS_JOB_job_number}\b[[:space:]]")
-	
+        
         ## Summarize
         echo "# Job Details"
         echo
@@ -311,19 +311,19 @@ if [[ $action == "job" ]]; then
 
         ## Current status
         mapfile -t values < <(awk '{ print $5 }' <<< "$bfr2")
-	ntasks=${#values[@]}
+        ntasks=${#values[@]}
         mapfile -t values < <(printf "%s\n" "${values[@]}" | uniq -c | sort -k 2 | sed -E 's/^ +//' | sed 's/ /*/')
         level=0
-	values1=()
+        values1=()
         values2=()
         for kk in "${!values[@]}"; do
             value=${values[$((kk - 1))]}
-	    
-	    ## Empty
-	    if [[ -z ${value} ]]; then
-		continue
-	    fi
-	
+            
+            ## Empty
+            if [[ -z ${value} ]]; then
+                continue
+            fi
+        
             values1+=("$value")
 
             value=${value/d/_00}
@@ -381,15 +381,15 @@ if [[ $action == "job" ]]; then
         elif [[ $level == 3 ]]; then
             status="[$fail]"
         fi
-	if [[ ${#values1[@]} -gt 0 ]]; then
-	    old_IFS=${IFS}
-	    IFS=", "
+        if [[ ${#values1[@]} -gt 0 ]]; then
+            old_IFS=${IFS}
+            IFS=", "
             echo "$status Job status: [ntasks=${ntasks}] ${values1[*]} => ${values2[*]}" | sed -E 's/,/, /g' | sed -E 's/ ,/,/g'
-	    IFS="${old_IFS}"
-	else
+            IFS="${old_IFS}"
+        else
             status="[ $na ]"
             echo "$status Job status: N/A"
-	fi
+        fi
 
         # shellcheck disable=2154
         value=${_THIS_JOB_owner}
@@ -409,8 +409,8 @@ if [[ $action == "job" ]]; then
         info=""
         epoch=$(date -d "${value}" '+%s' 2> /dev/null)
         timestamp=$(date -d "@${epoch}" '+%A %Y-%m-%dT%H:%M:%S%z' 2> /dev/null)
-	    epoch_now=$(date "+%s")
-	    delta=$(( epoch_now - epoch ))
+            epoch_now=$(date "+%s")
+            delta=$(( epoch_now - epoch ))
         info="$(seconds_to_dhms "${delta}") ago"
         if [[ $delta -gt $(( 24 * 60 * 60 )) ]]; then
             info="${red}${info}${reset}"
@@ -427,7 +427,7 @@ if [[ $action == "job" ]]; then
         status="[ $ok ]"
         info=""
         echo "$status Project: ${value}"
-	
+        
         # shellcheck disable=2154
         value=${_THIS_JOB_hard_queue_list}
         status="[ $ok ]"
@@ -438,56 +438,56 @@ if [[ $action == "job" ]]; then
         value=${_THIS_JOB_hard_resource_list}
 
         is_rocky8=true
-	key="rocky8"
+        key="rocky8"
         if grep -q -F "${key}" <<< "${value}"; then
             value2=$(sed -E "s/.*\b${key}=(true|false)($|,.*)/\1/" <<< "${value}")
-	    if [[ ${value2} != "true" ]]; then
-		is_rocky8=false
-	    fi
+            if [[ ${value2} != "true" ]]; then
+                is_rocky8=false
+            fi
         fi
-	
+        
         status="[ $ok ]"
         if ! ${is_rocky8}; then
             status="[$fail]"
-	fi
+        fi
 
         info=""
         echo "$status Requested resources: ${value}"
-	
-	key="h_rt"
+        
+        key="h_rt"
         value2=$(sed -E "s/.*\b${key}=([[:digit:]]+)\b.*/\1/" <<< "${value}")
-	s=${value2}
+        s=${value2}
 
         echo "       - ${key}=${value2} => $(seconds_to_dhms "${value2}")"
 
         pattern_size="[[:digit:]]+([.][[:digit:]]*)?[[:alpha:]]?"
-	key="mem_free"
-	mem_free=(-1 -1 -1 -1 -1 -1 -1)
+        key="mem_free"
+        mem_free=(-1 -1 -1 -1 -1 -1 -1)
         if grep -q -F "${key}" <<< "${value}"; then
             value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,.*)/\1/" <<< "${value}")
-	    mapfile -t mem_free < <(parse_size_spec "${value2}")
+            mapfile -t mem_free < <(parse_size_spec "${value2}")
             echo "       - ${key}=${value2} => $(printf "%'.1f" "${mem_free[SIZES_MiB]}") MiB = $(printf "%'.1f" "${mem_free[SIZES_GiB]}") GiB"
         fi
 
-	key="h_vmem"
+        key="h_vmem"
         if grep -q -F "${key}" <<< "${value}"; then
             value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,.*)/\1/" <<< "${value}")
-	    mapfile -t sizes < <(parse_size_spec "${value2}")
+            mapfile -t sizes < <(parse_size_spec "${value2}")
             echo "       - ${key}=${value2} => $(printf "%'.1f" "${sizes[SIZES_MiB]}") MiB = $(printf "%'.1f" "${sizes[SIZES_GiB]}") GiB"
         fi
 
-	
-	key="scratch"
+        
+        key="scratch"
         if grep -q -F "${key}" <<< "${value}"; then
             value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,.*)/\1/" <<< "${value}")
-	    mapfile -t sizes < <(parse_size_spec "${value2}")
+            mapfile -t sizes < <(parse_size_spec "${value2}")
             echo "       - ${key}=${value2} => $(printf "%'.1f" "${sizes[SIZES_MiB]}") MiB = $(printf "%'.1f" "${sizes[SIZES_GiB]}") GiB"
         fi
 
         key="gpu_mem"
         if grep -q -F "${key}" <<< "${value}"; then
             value2=$(sed -E "s/.*\b${key}=(${pattern_size})($|,.*)/\1/" <<< "${value}")
-	    mapfile -t sizes < <(parse_size_spec "${value2}")
+            mapfile -t sizes < <(parse_size_spec "${value2}")
             echo "       - ${key}=${value2} => $(printf "%'.1f" "${sizes[SIZES_MiB]}") MiB = $(printf "%'.1f" "${sizes[SIZES_GiB]}") GiB"
         fi
 
@@ -496,7 +496,7 @@ if [[ $action == "job" ]]; then
             value2=$(sed -E "s/.*\b${key}=([[:digit:]]+)($|,.*)/\1/" <<< "${value}")
             echo "       - ${key}=${value2}"
         fi
-	
+        
         key="compute_cap"
         if grep -q -F "${key}" <<< "${value}"; then
             value2=$(sed -E "s/.*\b${key}=([[:digit:]]+)($|,.*)/\1/" <<< "${value}")
@@ -517,19 +517,19 @@ if [[ $action == "job" ]]; then
         value=${_THIS_JOB_parallel_environment}
         echo "[ $ok ] Parallel environment: ${value:-<none>}"
 
-	## Number of parallel slots
-	pattern="smp range: ([[:digit:]]+)"
-	nslots=-1
+        ## Number of parallel slots
+        pattern="smp range: ([[:digit:]]+)"
+        nslots=-1
         if grep -q -E "${pattern}" <<< "${_THIS_JOB_parallel_environment}"; then
-	    nslots=$(sed -E "s/${pattern}/\1/" <<< "${_THIS_JOB_parallel_environment}")
-	fi
-	if [[ ${nslots} -gt 0 ]]; then
+            nslots=$(sed -E "s/${pattern}/\1/" <<< "${_THIS_JOB_parallel_environment}")
+        fi
+        if [[ ${nslots} -gt 0 ]]; then
             echo "[ $ok ] Number of parallel slots: ${nslots:-<none>}"
-	    mem_per_slot=$(printf "%.0f" "${mem_free[SIZES_MiB]}")
-	    mem_total=$(( nslots * mem_per_slot / 1024 ))
+            mem_per_slot=$(printf "%.0f" "${mem_free[SIZES_MiB]}")
+            mem_total=$(( nslots * mem_per_slot / 1024 ))
             echo "[ $ok ] Total memory requested: ${mem_total:-<none>} GiB (= ${nslots}*${mem_free[SIZES_GiB]} GiB)"
-	fi
-	
+        fi
+        
         # shellcheck disable=2154
         job_array_tasks=${_THIS_JOB_job_array_tasks}
         echo "[ $ok ] Job array tasks: ${job_array_tasks:-<none>}"
@@ -537,28 +537,28 @@ if [[ $action == "job" ]]; then
         # shellcheck disable=2154
         value=${_THIS_JOB_sge_o_shell}
         status="[ $ok ]"
-	if [[ ! -x "${value}" ]]; then
+        if [[ ! -x "${value}" ]]; then
             status="[$fail]"
-	elif [[ "$(basename "${value}")" != "bash" ]]; then
+        elif [[ "$(basename "${value}")" != "bash" ]]; then
             status="[$warn]"
         fi
         echo "${status} Job shell: ${value:-<none>}"
-	
+        
         # shellcheck disable=2154
         value=${_THIS_JOB_merge}
         status="[ $ok ]"
         echo "${status} Merge stdout and stderr: ${value:-<none>}"
-	
+        
         # shellcheck disable=2154
         value=${_THIS_JOB_notify}
         status="[ $ok ]"
         echo "${status} Signal job, if terminated: ${value:-<none>}"
-	
+        
         # shellcheck disable=2154
         value=${_THIS_JOB_cwd}
         status="[ $ok ]"
         info=""
-	if [[ -z "${value}" ]]; then
+        if [[ -z "${value}" ]]; then
             status="[$warn]"
             info="${yellow}WARNING: The job does not specify a working directory ('cwd')${reset}"
         elif ! ${is_owner}; then
@@ -568,7 +568,7 @@ if [[ $action == "job" ]]; then
             # shellcheck disable=2154
             info="${red}ERROR: User '${_THIS_JOB_sge_o_log_name}' lacks write permission to folder${reset}"
             status="[$warn]"
-	else
+        else
             info="$(dir_info "${value}" "${is_owner}")${info}"
         fi
         echo "${status} Working directory: ${info}"
@@ -591,46 +591,46 @@ if [[ $action == "job" ]]; then
 
         # shellcheck disable=2154
         job_script=${_THIS_JOB_script_file}
-	info=""
-	if [[ -z "${job_script}" ]]; then
+        info=""
+        if [[ -z "${job_script}" ]]; then
             status="[$fail]"
             info=" ${red}ERROR: Job does not specify 'script_file'${reset}"
-	else
+        else
             # shellcheck disable=2154
-	    ## Relative path?
-	    if [[ ${job_script} != /* ]]; then
+            ## Relative path?
+            if [[ ${job_script} != /* ]]; then
                 info=" (expanded from '${job_script}')"
                 job_script="${_THIS_JOB_sge_o_workdir}/${job_script}"
-	    fi
+            fi
             if ! ${is_owner}; then
                 status="[$warn]"
-	    else
+            else
                 status="[ $ok ]"
             fi
-	fi
+        fi
         echo "${status} Job script: $(file_info "${job_script}" "${is_owner}")${info}"
 
         # shellcheck disable=2154
         value=${_THIS_JOB_job_args}
         echo "[ $ok ] Job script arguments: ${value:-<none>}"
 
-	## Assert job arrays uses SGE_TASK_ID in the script
-	status="[ $ok ]"
-	if [[ -z "${job_array_tasks}" ]]; then
-	    okay "Not a job array - nothing to validate"
-	else
- 	    if [[ -r "${job_script}" ]]; then
-		if grep --quiet --max-count=1 --perl-regexp '^(?!\s*#).*SGE_TASK_ID' "${job_script}"; then
-	            okay "Job array script uses environment variable 'SGE_TASK_ID'"
-		else
-	            fail "Job array script does not use environment variable 'SGE_TASK_ID'"
+        ## Assert job arrays uses SGE_TASK_ID in the script
+        status="[ $ok ]"
+        if [[ -z "${job_array_tasks}" ]]; then
+            okay "Not a job array - nothing to validate"
+        else
+             if [[ -r "${job_script}" ]]; then
+                if grep --quiet --max-count=1 --perl-regexp '^(?!\s*#).*SGE_TASK_ID' "${job_script}"; then
+                    okay "Job array script uses environment variable 'SGE_TASK_ID'"
+                else
+                    fail "Job array script does not use environment variable 'SGE_TASK_ID'"
                     footnote "${yellow}WARNING: You job script does not make user of environment variable 'SGE_TASK_ID', despite running as an array script (uses SGE declaration '-t <tasks>'). All your job task are running with the exact same code and parameter settings, which is unlikely your intention${reset}"
-		fi
-	    else
-	        skip "A job array, but lacks permissions to check job script for SGE_TASK_ID"
-	    fi
-	fi
-	
+                fi
+            else
+                skip "A job array, but lacks permissions to check job script for SGE_TASK_ID"
+            fi
+        fi
+        
         ## Was there a launch error?
         if [[ -n $_THIS_JOB_error_reason_1 ]]; then
             # shellcheck disable=2154
@@ -640,19 +640,19 @@ if [[ $action == "job" ]]; then
 
 #        job_id=$(grep -E "^job_number:" <<< "${bfr}" | sed 's/^[^ ]*[ ]*//')
 #        submit_time=$(grep -E "^submission_time:" <<< "${bfr}" | sed 's/^[^ ]*[ ]*//')
-#	echo "$bfr"
+#        echo "$bfr"
 
-	list_footnotes
-	
-	exit 0
+        list_footnotes
+        
+        exit 0
     fi
 
     ## If not, then look it up in the archives
     bfr=$(tail -n "$tail_size" /opt/sge/wynton/common/accounting | qacct -f - -j "$jobid")
     res=$?
     if [[ $res -eq 0 ]]; then
-	echo "$bfr"
-	exit 0
+        echo "$bfr"
+        exit 0
     fi
 
     error "No such job ID among the last ${tail_size} records in the SGE accounting file: $jobid"

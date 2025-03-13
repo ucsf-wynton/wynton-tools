@@ -199,8 +199,8 @@ if [[ $action == "list" ]]; then
     
             ## SRAToolkit
             mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(prefetch)$/' | awk '{ split($7, a, " "); n=split(a[1], b, "/"); if (b[n] != "prefetch") print $0 }')
-	fi
-	
+        fi
+        
     ## --------------------------------------------------------------------
     ## Development hosts?
     ## --------------------------------------------------------------------
@@ -216,7 +216,7 @@ if [[ $action == "list" ]]; then
 
         ## Allowed Apptainer tools ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(squashfuse_ll)$/')
-	
+        
         ## Allowed Firefox tools ('comm') ## FIXME
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(firefox|Socket Process|Utility Process|WebExtensions|Isolated Web Co.*|Privileged Cont.*)$/')
     fi

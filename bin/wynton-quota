@@ -94,37 +94,37 @@ while [[ $# -gt 0 ]]; do
             error "Option '--${key}' must not be empty"
         fi
         if [[ "${key}" == "user" ]]; then
-	    if [[ ${value} == "*" ]]; then
+            if [[ ${value} == "*" ]]; then
                 user=${value}
-	    else
+            else
                 eval "user=\$(as_user '${value}')"
-	    fi
+            fi
             action=quota-user
         elif [[ "${key}" == "group" ]]; then
-	    if [[ ${value} == "*" ]]; then
+            if [[ ${value} == "*" ]]; then
                 gid=${value}
-	    else
+            else
                 eval "gid=\$(as_gid '${value}')"
-	    fi
+            fi
             action=quota-group
         elif [[ "${key}" == "assert-available" ]]; then
-	    amount=${value}
-	    mdebug "amount=${amount}"
-	    amount=$(echo "${amount}" | sed 's/TB$/000GB/' | sed 's/GB$/000MB/' | sed 's/MB$/000kB/' | sed 's/kB$/000/')
-	    mdebug "amount=${amount}"
-	    assert_integer "${amount}"
+            amount=${value}
+            mdebug "amount=${amount}"
+            amount=$(echo "${amount}" | sed 's/TB$/000GB/' | sed 's/GB$/000MB/' | sed 's/MB$/000kB/' | sed 's/kB$/000/')
+            mdebug "amount=${amount}"
+            assert_integer "${amount}"
         else
             error "Unknown option: $1"
         fi
     else
-	if [[ -n ${path} ]]; then
-	    error "A path has already been specified: $1"
-	fi
-	path=$1
-	if [[ -f "${path}" ]]; then
-	    path=$(dirname "${path}")
-	fi
-	action="quota-path"
+        if [[ -n ${path} ]]; then
+            error "A path has already been specified: $1"
+        fi
+        path=$1
+        if [[ -f "${path}" ]]; then
+            path=$(dirname "${path}")
+        fi
+        action="quota-path"
     fi
     shift
 done
@@ -154,97 +154,97 @@ if [[ ${action} == "quota-path" ]]; then
 
     ## Is it a BeeGFS path?
     if [[ ${root} == "/wynton" ]]; then
-	## PHI folder?
-	if [[ ${path} =~ ^/wynton/protected/ ]]; then
-	    depth=4
-	else
-	    depth=3
+        ## PHI folder?
+        if [[ ${path} =~ ^/wynton/protected/ ]]; then
+            depth=4
+        else
+            depth=3
         fi
 
-	## Identify user or group
+        ## Identify user or group
         path2=$(echo "${path}" | cut -d '/' -f 1-"${depth}")
-	mdebug "path2=${path2}"
-	type=$(basename "${path2}")
-	mdebug "type=${type}"
+        mdebug "path2=${path2}"
+        type=$(basename "${path2}")
+        mdebug "type=${type}"
 
-	if [[ ${type} == "home" ]]; then
+        if [[ ${type} == "home" ]]; then
             uid=$(id --user "${user}")
-	    if [[ -z ${amount} ]]; then
+            if [[ -z ${amount} ]]; then
                 echo "# Disk Usage and Quota"
                 echo
                 echo "## Home Disk Quota"
                 echo
                 beegfs-ctl --getquota --storagepoolid=11 --uid "${uid}"
-	    else
+            else
                 mapfile -t lines < <(beegfs-ctl --getquota --csv --storagepoolid=11 --uid "${uid}" | tail -n 1 | tr ',' $'\n')
-		max=${lines[3]}
-		if [[ ${max} != "unlimited" ]]; then
+                max=${lines[3]}
+                if [[ ${max} != "unlimited" ]]; then
                     used=${lines[2]}
-		    left=$(((max - used) / 2))
-		    if [[ ${left} -lt ${amount} ]]; then
-		        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
-		    fi
-		fi
-	    fi
-	elif [[ ${type} == "scratch" ]]; then
+                    left=$(((max - used) / 2))
+                    if [[ ${left} -lt ${amount} ]]; then
+                        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
+                    fi
+                fi
+            fi
+        elif [[ ${type} == "scratch" ]]; then
             uid=$(id --user "${user}")
-	    if [[ -z ${amount} ]]; then
+            if [[ -z ${amount} ]]; then
                 echo "# Disk Usage and Quota"
                 echo
                 echo "## Global Scratch Disk Quota"
                 echo
                 beegfs-ctl --getquota --storagepoolid=10 --uid "${uid}"
-	    else
+            else
                 mapfile -t lines < <(beegfs-ctl --getquota --csv --storagepoolid=10 --uid "${uid}" | tail -n 1 | tr ',' $'\n')
-		max=${lines[3]}
-		if [[ ${max} != "unlimited" ]]; then
+                max=${lines[3]}
+                if [[ ${max} != "unlimited" ]]; then
                     used=${lines[2]}
-		    left=$((max - used))
-		    if [[ ${left} -lt ${amount} ]]; then
-		        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
-		    fi
-		fi
-	    fi
-	elif [[ ${type} == "group" ]]; then
-	    if [[ -z ${gid} ]]; then
+                    left=$((max - used))
+                    if [[ ${left} -lt ${amount} ]]; then
+                        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
+                    fi
+                fi
+            fi
+        elif [[ ${type} == "group" ]]; then
+            if [[ -z ${gid} ]]; then
                 gid=$(id --group "${user}")
-	    fi
-	    if [[ -z ${amount} ]]; then
+            fi
+            if [[ -z ${amount} ]]; then
                 echo "# Disk Usage and Quota"
                 echo
                 echo "## Group Disk Quota"
                 echo
                 beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}"
-	    else
+            else
                 mapfile -t lines < <(beegfs-ctl --getquota --csv --storagepoolid=12 --gid "${gid}" | tail -n 1 | tr ',' $'\n')
-		max=${lines[3]}
-		if [[ ${max} != "unlimited" ]]; then
+                max=${lines[3]}
+                if [[ ${max} != "unlimited" ]]; then
                     used=${lines[2]}
-		    left=$((max - used))
-		    if [[ ${left} -lt ${amount} ]]; then
-		        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
-		    fi
-		fi
-	    fi
-	else
-	    error "Unknown type: ${path} -> ${path2} -> ${type}"
-	fi
+                    left=$((max - used))
+                    if [[ ${left} -lt ${amount} ]]; then
+                        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
+                    fi
+                fi
+            fi
+        else
+            error "Unknown type: ${path} -> ${path2} -> ${type}"
+        fi
     elif [[ ${root} == "/scratch" ]] || [[ ${root} == "/tmp" ]]; then
-	if [[ -z ${amount} ]]; then
+        if [[ -z ${amount} ]]; then
             echo "# Disk Usage and Quota"
             echo
             echo "## ${root} Disk Quota"
             echo
             
-	else
+        else
             mapfile -t lines < <(df --block-size=1 "${root}" | tail -n 1 | sed -E 's/[[:blank:]]+/,/g' | tr ',' $'\n')
-	    left=${lines[3]}
+            left=${lines[3]}
             if [[ ${left} -lt ${amount} ]]; then
                 error "Not enough space: ${root} has only ${left} bytes available, which is less than ${amount} bytes"
-	    fi
-	fi
+            fi
+        fi
     fi
-fi	
+fi        
 
 
 if [[ ${action} == "quota-user" ]]; then
@@ -263,7 +263,7 @@ if [[ ${action} == "quota-user" ]]; then
         for kk in $(seq "${#uids[@]}"); do
             uid="${uids[$((kk - 1))]}"
             bfr=$(beegfs-ctl --getquota --storagepoolid=11 --uid "${uid}" | sed -n '4p')
-	    printf "%4d/%4d. %s\n" "${kk}" "${#uids[@]}" "${bfr}"
+            printf "%4d/%4d. %s\n" "${kk}" "${#uids[@]}" "${bfr}"
         done
         
         echo "## Global Scratch Disk Quota"
@@ -271,7 +271,7 @@ if [[ ${action} == "quota-user" ]]; then
         for kk in $(seq "${#uids[@]}"); do
             uid="${uids[$((kk - 1))]}"
             bfr=$(beegfs-ctl --getquota --storagepoolid=10 --uid "${uid}" | sed -n '4p')
-	    printf "%4d/%4d. %s\n" "${kk}" "${#uids[@]}" "${bfr}"
+            printf "%4d/%4d. %s\n" "${kk}" "${#uids[@]}" "${bfr}"
         done
     else
         ## Assert that user exists
@@ -325,7 +325,7 @@ elif [[ ${action} == "quota-group" ]]; then
         for kk in $(seq "${#gids[@]}"); do
             gid="${gids[$((kk - 1))]}"
             bfr=$(beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}" | sed -n '4p')
-	    printf "%4d/%4d. %s\n" "${kk}" "${#gids[@]}" "${bfr}"
+            printf "%4d/%4d. %s\n" "${kk}" "${#gids[@]}" "${bfr}"
         done
     else
         group=$(ldap_search -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "gidNumber=${gid}" "cn" | grep -E "^cn:" | sed -E 's/^cn: *//' | head -n 1)

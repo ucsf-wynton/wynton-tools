@@ -59,10 +59,10 @@ while [[ $# -gt 0 ]]; do
     elif test "$1" == "--verbose"; then
         verbose=true
     else
-	if [[ -n "${hostname}" ]]; then
-	    error "The hostname has already been specified: ${hostname}"
-	fi
-	hostname=$1
+        if [[ -n "${hostname}" ]]; then
+            error "The hostname has already been specified: ${hostname}"
+        fi
+        hostname=$1
     fi
     shift
 done

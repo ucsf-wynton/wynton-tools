@@ -89,7 +89,7 @@ while [[ $# -gt 0 ]]; do
         debug=true
     elif test "$1" == "--verbose"; then
         verbose=true
-	
+        
     ## Options (--key=~value):
     elif [[ "$1" =~ ^--.*=~.*$ ]]; then
         key=${1//--}
@@ -101,18 +101,18 @@ while [[ $# -gt 0 ]]; do
             error "Option '--$key' must not be empty"
         fi
         if [[ ${key} =~ ^(exit|failed|group|host|name|priority|project|queue|task|user)$ ]]; then
-	    ## Make it possible to filter by UID too
-	    if [[ ${key} == "user" ]]; then
-	    	if is_integer "${value}"; then
+            ## Make it possible to filter by UID too
+            if [[ ${key} == "user" ]]; then
+                    if is_integer "${value}"; then
                     value=$(uid_to_user "${value}")
-		fi
-	    fi
+                fi
+            fi
             filter_patterns+=("${key}=${value}")
         else
             echo >&2 "ERROR: Unknown option: $1"
             exit 2
         fi
-	
+        
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
         key=${1//--}
@@ -124,22 +124,22 @@ while [[ $# -gt 0 ]]; do
             error "Option '--$key' must not be empty"
         fi
         ## Make it possible to filter by UID too
-	if [[ "${key}" == "tail" ]]; then
-	    assert_integer "${value}"
-	    [[ ${tail} -gt 0 ]] || error "--${key}=${value} must be greater than zero"
+        if [[ "${key}" == "tail" ]]; then
+            assert_integer "${value}"
+            [[ ${tail} -gt 0 ]] || error "--${key}=${value} must be greater than zero"
             tail=${value}
         elif [[ ${key} =~ ^(exit|failed|group|host|job|name|priority|project|queue|task|user)$ ]]; then
-	    ## Make it possible to filter by UID too
-	    if [[ ${key} == "user" ]]; then
-	    	if is_integer "${value}"; then
+            ## Make it possible to filter by UID too
+            if [[ ${key} == "user" ]]; then
+                    if is_integer "${value}"; then
                     value=$(uid_to_user "${value}")
-		fi
-	    fi
+                fi
+            fi
             filter_patterns+=("${key}=^${value}\$")
         else
             echo >&2 "ERROR: Unknown option: $1"
             exit 2
-	fi
+        fi
     else
         extras="$extras $1"
     fi
@@ -172,38 +172,38 @@ if [[ $action == "subset" ]]; then
 
     tf2=$(mktemp)
     for kk in $(seq "${#filter_patterns[@]}"); do
-	filter=${filter_patterns[kk - 1]}
+        filter=${filter_patterns[kk - 1]}
         mdebug "$kk/${#filter_patterns[@]}. ${filter}"
-	key=${filter//=*}
+        key=${filter//=*}
         mdebug "key=${key}"
-	pattern=${filter//*=}
+        pattern=${filter//*=}
         mdebug "pattern=${pattern}"
-	if [[ ${key} == "queue" ]]; then
-	    column=1
-	elif [[ ${key} == "host" ]]; then
-	    column=2
-	elif [[ ${key} == "group" ]]; then
-	    column=3
-	elif [[ ${key} == "user" ]]; then
-	    column=4
-	elif [[ ${key} == "name" ]]; then
-	    column=5
-	elif [[ ${key} == "job" ]]; then
-	    column=6
-	elif [[ ${key} == "priority" ]]; then
-	    column=8
-	elif [[ ${key} == "failed" ]]; then
-	    column=12
-	elif [[ ${key} == "exit" ]]; then
-	    column=13
-	elif [[ ${key} == "project" ]]; then
-	    column=32
-	elif [[ ${key} == "task" ]]; then
-	    column=36
-	else
-	    error "Unknown field: ${key}"
-	fi
-	filter="\$${column} ~ /${pattern}/"
+        if [[ ${key} == "queue" ]]; then
+            column=1
+        elif [[ ${key} == "host" ]]; then
+            column=2
+        elif [[ ${key} == "group" ]]; then
+            column=3
+        elif [[ ${key} == "user" ]]; then
+            column=4
+        elif [[ ${key} == "name" ]]; then
+            column=5
+        elif [[ ${key} == "job" ]]; then
+            column=6
+        elif [[ ${key} == "priority" ]]; then
+            column=8
+        elif [[ ${key} == "failed" ]]; then
+            column=12
+        elif [[ ${key} == "exit" ]]; then
+            column=13
+        elif [[ ${key} == "project" ]]; then
+            column=32
+        elif [[ ${key} == "task" ]]; then
+            column=36
+        else
+            error "Unknown field: ${key}"
+        fi
+        filter="\$${column} ~ /${pattern}/"
         awk --field-separator=":" "${filter}" "${tf}" > "${tf2}"
         mv "${tf2}" "${tf}"
     done

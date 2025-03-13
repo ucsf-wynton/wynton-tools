@@ -59,19 +59,19 @@ stray_rsession_pids() {
     fi
 
     for kk in $(seq "${#pids[@]}"); do
-	pid=${pids[kk - 1]}
+        pid=${pids[kk - 1]}
         if ${progress}; then
             t1=$(date "+%s")
             dt=$((t1 - t0))
             msg=$(printf "[%ds] %d/%d Finding stray 'rsession' processes" "${dt}" "${kk}" "${#pids[@]}")
             >&2 printf "%s" "${msg}"
-	fi
+        fi
         if ! pstree -s -p "${pid}" | grep -q -F "rserver("; then
             echo "${pid}"
         fi
         if ${progress}; then
             >&2 printf "\r%*s\r" "${#msg}" " "
-	fi
+        fi
     done
 }
 

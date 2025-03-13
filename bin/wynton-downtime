@@ -97,26 +97,26 @@ delta=$((when - now))
 
 if [[ $action == "when" ]]; then
     if [[ ${delta} -gt 0 ]]; then
-	if $full; then
+        if $full; then
             echo "Upcoming downtime: ${downtime_iso} [in $(seconds_to_dhms "${delta}")]"
-	else
+        else
             echo "${downtime_iso}"
-	fi
+        fi
     elif [[ ${delta} -le 0 ]]; then
-	if $full; then
+        if $full; then
             echo "Past downtime: ${downtime_iso} [$(seconds_to_dhms "-${delta}") ago]"
-	fi
+        fi
     fi
 elif [[ $action == "delta" ]]; then
     if [[ ${delta} -gt 0 ]]; then
-	if $full; then
+        if $full; then
             echo "in $(seconds_to_dhms "${delta}")"
-	else
+        else
             seconds_to_dhms "${delta}"
-	fi
+        fi
     elif [[ ${delta} -le 0 ]]; then
-	if $full; then
+        if $full; then
             echo "$(seconds_to_dhms "-${delta}") ago"
-	fi
+        fi
     fi
 fi

@@ -85,10 +85,10 @@ while [[ $# -gt 0 ]]; do
 
     ## Deprecated
     elif test "$1" == "--project"; then
-	shift
+        shift
         project=$1
-	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
-	
+        mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+        
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
         key=${1//--}
