@@ -8,9 +8,11 @@
 #'  wynton-account [options] <user>
 #'
 #' Flags:
-#'  --help           Display this help
-#'  --version        Display version
-#'  --check          Checks the account settings
+#'  --help        Display this help
+#'  --version     Display version
+#'  --as=<roles>  Targes hints to 'user' or 'admin', or both.
+#'                (default: inferred from $USER)
+#'  --check       Checks the account settings
 #'
 #' Arguments:
 #'  <user>           User to query (default: $USER)
@@ -21,6 +23,7 @@
 #'  wynton account 1000
 #'  wynton account alice@bobsonlab.org
 #'  wynton account alice --check
+#'  wynton account alice --check --as=user,admin
 #'
 #' License: See 'wynton --help'
 call="$0 $*"
@@ -130,13 +133,13 @@ function pretty_int {
 
 function account_enabled_or_not {
     if [[ -z ${1:?} ]]; then
-	echo "N/A"
+        echo "N/A"
     elif [[ $1 == "true" ]]; then
-	echo "enabled"
+        echo "enabled"
     elif [[ $1 == "false" ]]; then
-	echo "disabled"
+        echo "disabled"
     else
-	echo "<unknown='$1'>"
+        echo "<unknown='$1'>"
     fi
 }    
 
@@ -151,6 +154,8 @@ action=validate
 check=false
 debug=false
 user=
+run_as=()
+
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -174,17 +179,19 @@ while [[ $# -gt 0 ]]; do
         fi
         if [[ "${key}" == "user" ]]; then
             eval "user=\$(as_user '${value}')"
+        elif [[ "${key}" == "as" ]]; then
+            IFS=',' read -ra run_as <<< "${value}"
         else
             error "Unknown option: $1"
         fi
-	
+        
     elif [[ "$1" =~ ^--.*$ ]]; then
         error "Unknown option: $1"
-	
+        
     else
         if [[ -n "${user}" ]]; then
             error "Argument <user> is already specified: $1"
-	fi
+        fi
         eval "user=\$(as_user '$1')"
     fi
     
@@ -210,6 +217,33 @@ group=$(id --group --name "$user" 2> /dev/null)
 mapfile -t gids < <(id --groups "${user}" 2> /dev/null | tr ' ' $'\n')
 mapfile -t groups < <(id --groups --name "${user}" 2> /dev/null | tr ' ' $'\n')
 
+
+## If admin, add to 'run_as'
+if [[ $EUID -eq 0 ]]; then
+    run_as+=("admin")
+elif printf "%s\n" "${groups[@]}" | grep -q --line-regexp "wynton-admins"; then
+    run_as+=("admin")
+fi
+
+## If user itself, add to 'run_as'
+if [[ $user == "$USER" ]]; then
+    run_as+=("user")
+fi
+
+## Infer as_admin and as_user from run_as array
+as_admin=false
+as_user=false
+for value in "${run_as[@]}"; do
+    if [[ ${value} == "admin" ]]; then
+        as_admin=true
+    elif [[ ${value} == "user" ]]; then
+        as_user=true
+    else
+        error "Unknown value in --as=<roles>: '${value}'"
+    fi
+done
+
+
 if $debug; then
     mdebug "call: $call"
     mdebug "action: $action"
@@ -221,7 +255,11 @@ if $debug; then
     mdebug "uid: $uid"
     mdebug "gid: $gid"
     mdebug "home: $home"
+    mdebug "run_as: [n=${#run_as[@]}] ${run_as[*]}"
+    mdebug "as_admin: ${as_admin}"
+    mdebug "as_user: ${as_user}"
 fi
+
 
 if [[ $action == "version" ]]; then
     version
@@ -237,10 +275,11 @@ if [[ $action == "validate" ]]; then
     n_fail=0
     n_skip=0
 
-    same_user=true
-    if [[ "${user}" != "${USER}" ]]; then
-        same_user=false
+    if [[ $user == "$USER" ]]; then
+        same_user=true
         footnote "${yellow}WARNING: Running as user '${USER}' != '${user}'${reset}"
+    else
+        same_user=false
     fi
     
     mapfile -t ldap_info < <(ldap_search "uid=${user}" "+" "*" | sort)
@@ -288,12 +327,18 @@ if [[ $action == "validate" ]]; then
     if [[  $(ldap_get_field "wyntonAdmin" "${ldap_info[@]}") == "TRUE" ]]; then
         admin=true
     fi
-    
+
+    fullname=$(ldap_get_field "cn" "${ldap_info[@]}")
     email=$(ldap_get_field "mail" "${ldap_info[@]}")
     ucsf_id=$(ldap_get_field "ucsfIDNumber" "${ldap_info[@]}" | grep -i -v -E "^(none)$")
     shell=$(ldap_get_field "loginShell" "${ldap_info[@]}")
     faculty_sponsor=$(ldap_get_field "FacultySponsor" "${ldap_info[@]}")
-    wynton_project=$(ldap_get_field "wyntonProject" "${ldap_info[@]}")
+    mapfile -t values < <(ldap_get_field "wyntonProject" "${ldap_info[@]}")
+    if [[ ${#values[@]} -eq 1 ]]; then
+        wynton_project=${values[0]}
+    else
+	wynton_project=$(printf "'%s'\n" "${values[@]}" | tr $'\n' ',')
+    fi
     wynton_project_shares=$(qconf -sprj "${wynton_project}" 2> /dev/null | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
 
     ## Access to Information Commons, i.e. an "IC user"?
@@ -314,15 +359,15 @@ if [[ $action == "validate" ]]; then
         in_sge=true
         mapfile -t sge_info < <(qconf -suser "${user}" | sort)
         sge_project=$(printf "%s\n" "${sge_info[@]}" | grep -E "^default_project" | sed -E 's/^default_project[[:space:]]+//')
-	sge_project_shares=${wynton_project_shares}
-	if [[ "${sge_project}" != "${wynton_project}" ]]; then
+        sge_project_shares=${wynton_project_shares}
+        if [[ "${sge_project}" != "${wynton_project}" ]]; then
             sge_project_shares=$(qconf -sprj "${sge_project}" | grep -E "^fshare[[:blank:]]*" | sed 's/^fshare[[:blank:]]*//')
-	fi
+        fi
     else
         in_sge=false
         sge_info=()
         sge_project=
-	sge_project_shares=
+        sge_project_shares=
     fi
 
 
@@ -337,12 +382,12 @@ if [[ $action == "validate" ]]; then
     echo "* Groups: [n=${#groups[@]}]"
     deprecated_groups=()
     for kk in $(seq "${#groups[@]}"); do
-	group_kk="${groups[$((kk-1))]}"
+        group_kk="${groups[$((kk-1))]}"
         mapfile -t info < <(ldap_search -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "cn=${group_kk}")
         description=$(printf "%s\n" "${info[@]}" | grep -E "^description:" | sed 's/^description:[[:blank:]]*//')
-	if grep -q -i -E "deprecate" <<< "${description}"; then
-	    deprecated_groups+=("${group_kk}")
-	fi
+        if grep -q -i -E "deprecate" <<< "${description}"; then
+            deprecated_groups+=("${group_kk}")
+        fi
         n_members=$(printf "%s\n" "${info[@]}" | grep -c -E "^member:")
         if [[ ${kk} -eq 1 ]]; then
             type="primary"
@@ -351,7 +396,7 @@ if [[ $action == "validate" ]]; then
         fi
         echo "  - '${group_kk}' (${type}; ${gids[$((kk-1))]}; ${n_members} members; '${description}')"
     done
-    echo "* Full name: $(ldap_get_field "cn" "${ldap_info[@]}")"
+    echo "* Full name: ${fullname}"
     echo "* Email address: ${email:-N/A}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     if [[ -z "${faculty_sponsor}" ]]; then
@@ -403,15 +448,16 @@ if [[ $action == "validate" ]]; then
     echo "* SGE project: ${sge_project:-N/A} (${sge_project_shares:-N/A} fshares)"
     
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
-    ts=$(ldap_as_timestamp "${ts}")
+    created_on=$(ldap_as_timestamp "${ts}")
     age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account created on: ${ts} [${age} by '${by:-N/A}']"
+    echo "* Account created on: ${created_on} [${age} by '${by:-N/A}']"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
+    modified_on=$(ldap_as_timestamp "${ts}")
     ts=$(ldap_as_timestamp "${ts}")
     age=$(ldap_timestamp_age "${ts}")
     by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account last-modified on: ${ts} [${age} by '${by:-N/A}']"
+    echo "* Account last-modified on: ${modified_on} [${age} by '${by:-N/A}']"
 
     if ${check}; then
         echo
@@ -432,6 +478,7 @@ if [[ $action == "validate" ]]; then
         mapfile -t res < <(ldap_search "uidNumber=${uid}" "uid" | ldap_get_field "uid")
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User ID (UID) is not unique: [n=${#res[@]}] ${res[*]}"
+            hint_for_admin "Users with the same UID: [n=${#res[@]}] ${res[*]}"
         else
             okay "User ID (UID) is unique"
         fi
@@ -468,6 +515,7 @@ if [[ $action == "validate" ]]; then
             okay "All GIDs exist"
         else
             fail "All GIDs exist"
+            hint_for_admin "Unknown GIDs: [n=${#invalid[@]}] ${invalid[*]}"
         fi
 
         # IC access => PHI access
@@ -484,11 +532,11 @@ if [[ $action == "validate" ]]; then
         # Plato access => no PHI access
         if ${plato}; then
             if ${phi}; then
-		if ${admin}; then
+                if ${admin}; then
                     skip "Plato user has PHI access; ignoring because admin"
-		else
+                else
                     fail "Plato user has PHI access"
-		fi
+                fi
             else
                 okay "Plato user without PHI access"
             fi
@@ -529,7 +577,8 @@ if [[ $action == "validate" ]]; then
         # No duplicated home directories
         mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory")
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "HOME folder is not unique: [n=${#res[@]}] ${res[*]}"
+            fail "HOME folder is not unique"
+            hint_for_admin "Users with the same HOME folder: [n=${#res[@]}] ${res[*]}"
         else
             okay "HOME folder is unique"
         fi
@@ -544,11 +593,11 @@ if [[ $action == "validate" ]]; then
         if grep -q -E "^${pattern}" <<< "${home}"; then
             okay "HOME folder is under ${expected}"
         else
-	    if ${admin}; then
+            if ${admin}; then
                 skip "HOME folder is not under ${expected}; ignoring because admin"
-	    else
+            else
                 fail "HOME folder is not under ${expected}"
-	    fi
+            fi
         fi
     
         if [[ ${EUID} -ne 0 ]] && ${phi} && ! ${running_as_phi}; then
@@ -562,10 +611,12 @@ if [[ $action == "validate" ]]; then
         else
             if [[ -d "${home}" ]]; then
                 okay "HOME folder exists"
-                if [[ $(stat --format="%u" "${home}") == "${uid}" ]]; then
+                owner=$(stat --format="%u" "${home}")
+                if [[ "${owner}" == "${uid}" ]]; then
                     okay "HOME folder is owned by user"
                 else
                     fail "HOME folder is not owned by user"
+                    hint_for_admin "HOME folder is owned by '${owner}'"
                 fi
             else
                 fail "HOME folder does not exist"
@@ -585,10 +636,13 @@ if [[ $action == "validate" ]]; then
             else
                 fail "HOME disk quota is full (${overuse} bytes overuse)"
             fi
+            hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
         elif [[ ${avail} -lt $(( 10 * 1024**2 )) ]]; then
             fail "HOME disk quota has less than 10 MiB left ($(pretty_int "$(( avail / 1024 ))") KiB available)"
+            hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
         elif [[ ${avail} -lt $(( 1 * 1024 ** 3 )) ]]; then
             note "HOME disk quota has less than 1.0 GiB left ($(pretty_int "$(( avail / 1024**2 ))") MiB available)"
+            hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
         else
             okay "HOME disk quota has at least 1.0 GiB left"
         fi
@@ -601,6 +655,7 @@ if [[ $action == "validate" ]]; then
             okay "HOME is backed up - less than $(pretty_int "${max_chunks}") chunks"
         else
             note "HOME is not backed up - more than $(pretty_int "${max_chunks}") chunks"
+            hint_for_user "Locate directories of yours that have many files and remove unecessary files"
         fi
 
         for kk in $(seq "${#groups[@]}"); do
@@ -620,10 +675,13 @@ if [[ $action == "validate" ]]; then
             else
                 if [[ ${quota[2]} -le 0 ]]; then
                     fail "Group '${group_kk}' disk quota is full ($(pretty_int "${quota[2]}") bytes available)"
+                    hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
                 elif [[ ${quota[2]} -lt $(( 1 * 1024 ** 3 )) ]]; then
                     fail "Group '${group_kk}' disk quota has less than 1.0 GiB left ($(pretty_int "$(( quota[2] / 1024**2 ))") MiB available)"
+                    hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
                 elif [[ ${quota[2]} -lt $(( 100 * 1024 ** 3 )) ]]; then
                     note "Group '${group_kk}' disk quota has less than 100 GiB left ($(pretty_int "$(( quota[2] / 1024**3 ))") GiB available)"
+                    hint_for_user "See <https://wynton.ucsf.edu/hpc/howto/find-files.html> for locating large files"
                 else
                     okay "Group '${group_kk}' disk quota has at least 100 GiB left"
                 fi
@@ -632,9 +690,9 @@ if [[ $action == "validate" ]]; then
 
         if [[ ${#deprecated_groups[@]} -eq 0 ]]; then
             okay "No deprecated groups"
-	else
+        else
             note "Deprecated groups"
-	fi
+        fi
 
         # No duplicated email addresses
         mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
@@ -650,13 +708,20 @@ if [[ $action == "validate" ]]; then
         else
             fail "Email address does not have a valid format"
         fi
-    
+
         # Valid UCSF ID
         if [[ -n "${ucsf_id}" ]]; then
             if valid_ucsf_id "${ucsf_id}"; then
                 okay "UCSF Employee ID is valid"
             else
                 fail "UCSF Employee ID is invalid"
+                if [[ ${ucsf_id} =~ ^[Nn][Aa]$ ]]; then
+                    hint_for_admin "Use 'none' instead of '${ucsf_id}'"
+                elif [[ ! ${ucsf_id} =~ ^02[0-9]{7}$ ]]; then
+                    hint_for_admin "The ID should start with '02' and have exactly nine digits: '${ucsf_id}'"
+                elif [[ ! ${ucsf_id} =~ ^[0-9]{9}$ ]]; then
+                    hint_for_admin "The ID should have exactly nine digits: '${ucsf_id}'"
+                fi
             fi
     
             # No duplicated UCSF ID
@@ -669,6 +734,7 @@ if [[ $action == "validate" ]]; then
         else
             if is_ucsf_email "${email}"; then
                 fail "UCSF Employee ID is missing"
+                hint_for_admin "Search by email address in the USCF Enterprise Directory Service (EDS) system"
             else
                 okay "UCSF Employee ID is not required"
             fi
@@ -683,17 +749,26 @@ if [[ $action == "validate" ]]; then
                 okay "Locked account is disabled"
             fi
         else
-             okay "Account is not locked"
+            if ! ${access} && ! ${plato}; then
+                #  https://github.com/ucsf-wynton/support/issues/1927#issuecomment-2719225665
+                fail "Non-locked account is disabled on both Wynton and Plato"
+                hint_for_admin "This account should be locked"
+            else                                           
+                okay "Account is not locked"
+            fi
         fi
     
         # Login shell is valid
         if [[ -z ${shell} ]]; then
             fail "Login shell is not specified"
+            hint_for_admin "LDAP field 'loginShell' is empty"
         else
             if [[ ! -f "${shell}" ]]; then
                 fail "Login shell does not exist"
+                hint_for_admin "LDAP field 'loginShell' specifies a non-existing shell"
             elif [[ ! -x "${shell}" ]]; then
                 fail "Login shell is non-executable"
+                hint_for_admin "LDAP field 'loginShell' specifies a shell that is not executable"
             else
                 okay "Login shell is an executable"
             fi
@@ -702,6 +777,7 @@ if [[ $action == "validate" ]]; then
         # Faculty sponsor is valid
         if [[ -z ${faculty_sponsor} ]]; then
             fail "Faculty sponsor is missing"
+            hint_for_admin "LDAP field 'FacultySponsor' is not set"
         else
             pattern="^([[:alpha:] .'-]+)[[:blank:]]+<([^>]+)>$"
             if grep -q -i -E "${pattern}" <<< "${faculty_sponsor}"; then
@@ -718,41 +794,23 @@ if [[ $action == "validate" ]]; then
                 fi
             else
                 fail "Faculty sponsor does not have a full name and email address"
+                hint_for_admin "LDAP field 'FacultySponsor' should use format 'Full Name <email address>'"
             fi
         fi
         
-        # No mixed 'wyntonAccess'
-        field="wyntonAccess"
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
-        if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
-        elif [[ ${#res[@]} -eq 0 ]]; then
-            fail "User lacks LDAP '${field}' entry"
-        else
-            okay "User has unique LDAP '${field}' entry"
-        fi
-    
-        # No mixed 'protectedAccess'
-        field="protectedAccess"
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
-        if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
-        elif [[ ${#res[@]} -eq 0 ]]; then
-            fail "User lacks LDAP '${field}' entry"
-        else
-            okay "User has unique LDAP '${field}' entry"
-        fi
-
-        ## Has 'wyntonProject'
-        field="wyntonProject"
-        mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:")
-        if [[ ${#res[@]} -gt 1 ]]; then
-            fail "User has multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
-        elif [[ ${#res[@]} -eq 0 ]]; then
-            fail "User lacks LDAP '${field}' entry"
-        else
-            okay "User has unique LDAP '${field}' entry"
-        fi
+        # Assert 'wyntonAccess', 'protectedAccess', 'wyntonProject' only exist once
+        for field in "wyntonAccess" "protectedAccess" "wyntonProject"; do
+            mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:" | sed "s/^${field}: *//")
+            if [[ ${#res[@]} -gt 1 ]]; then
+                fail "User has multiple LDAP '${field}' entries"
+                hint_for_admin "There are multiple LDAP '${field}' entries: [n=${#res[@]}] ${res[*]}"
+            elif [[ ${#res[@]} -eq 0 ]]; then
+                fail "User lacks LDAP '${field}' entry"
+                hint_for_admin "There exist no LDAP '${field}' entry"
+            else
+                okay "User has unique LDAP '${field}' entry"
+            fi
+        done
 
         ## SGE
         if ${in_sge}; then
@@ -768,6 +826,11 @@ if [[ $action == "validate" ]]; then
                 okay "SGE 'default_project' and LDAP 'wyntonProject' agree"
             else
                 fail "SGE 'default_project' and LDAP 'wyntonProject' do not agree"
+                if [[ -z ${wynton_project} ]]; then
+                    hint_for_admin "LDAP field 'wyntonProject' is not set"
+                elif [[ -z ${sge_project} ]]; then
+                    hint_for_admin "There is no 'default_project' in the output of qconf -suser '${user}'"
+                fi
             fi
     
             pathname="/wynton/home${SGE_ROOT}/common/sgeCA/usercerts/${user}/cert.pem"
@@ -788,8 +851,43 @@ if [[ $action == "validate" ]]; then
         echo "Summary: ${n_okay} OK, ${n_note} NOTE, ${n_fail} FAIL, ${n_skip} SKIP"    
     fi
 
-    list_footnotes
+    ## Create a ServiceNow search URL
+    if ${as_admin}; then
+        ## Note, searching ServiceNow field 'Requested for' will work
+	## for UCSF users, but not for external guest accounts
+        search_params=(
+            "assignment_group=80835fcedb7b33c4d380540adc9619d5"  ## 'Wynton Admins'
+            "approval=approved"
+            "stateIN3,35"                                        ## 'Closed Complete' or 'Complete.Closed.System'
+	    "GOTO123TEXTQUERY321=${fullname}"
+        )
+        mdebug "ServiceNow search parameters: [n=${#search_params[@]}]"
+        for value in "${search_params[@]}"; do
+            mdebug " - ${value}"
+        done
+        query=$(
+            printf "%s^" "${search_params[@]}" |
+                sed 's/ /%20/g'  |   # Escape SPACEs
+                sed 's/</%3C/g'  |   # Escape <
+                sed 's/>/%3E/g'  |   # Escape >
+                sed 's/\^/%5E/g' |   # Escape ^
+                sed 's/%5E$//'
+        )
+        mdebug "ServiceNow search query: ${query}"
+        echo
+        echo "${magenta}Search for ServiceNow account request item (RITM):"
+        echo
+        echo "<https://ucsf.service-now.com/sc_req_item_list.do?sysparm_query=${query}>${reset}"
+	
+        since="2021-09-03"
+        if [[ $(date -d "${created_on}" +%s) -lt "$(date -d "${since}" +%s)" ]]; then
+	    echo
+	    warn "This account was created before account requests where made via ServiceNow (since ${since})"
+	fi
+    fi
 
+    list_footnotes
+    
     if ${check}; then
         if [[ ${n_fail} -gt 0 ]]; then
             echo >&2

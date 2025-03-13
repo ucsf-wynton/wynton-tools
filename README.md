@@ -17,7 +17,7 @@ Installed tools:
  job             Wynton HPC Job Details
  node            Wynton HPC Status
  queues          Wynton HPC Queues
- quota           Wynton HPC Disk Quota and Usage
+ quota           Wynton Disk Quota and Usage
  sessioninfo     Wynton HPC Session Information
  shares          Wynton HPC Shares on the Job Scheduler
  status          Wynton HPC Status
@@ -31,7 +31,7 @@ Installed tools:
 Example:
  wynton --help
 
-Version: 0.20.1
+Version: 0.21.0
 Copyright: Henrik Bengtsson (2019-2025)
 License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 Source: https://github.com/ucsf-wynton/wynton-tools

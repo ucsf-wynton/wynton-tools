@@ -66,13 +66,13 @@ while [[ $# -gt 0 ]]; do
         debug=true
     elif test "$1" == "--verbose"; then
         verbose=true
-	
+        
     ## Deprecated
     elif test "$1" == "--user"; then
-	shift
+        shift
         user=$1
-	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
-	
+        mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+        
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
         key=${1//--}
@@ -84,9 +84,9 @@ while [[ $# -gt 0 ]]; do
         fi
         if [[ "${key}" == "user" ]]; then
             user=${value}
-	    if is_integer "${value}"; then
+            if is_integer "${value}"; then
                 user=$(uid_to_user "${value}")
-	    fi
+            fi
         else
             error "Unknown option: $1"
         fi
@@ -161,9 +161,9 @@ if [[ $action == "why" ]]; then
             mapfile -t bfr < <(qstat -j "${job}")
             h_rt=$(printf "%s\n" "${bfr[@]}" | grep -E "^hard resource_list:.*\bh_rt=([[:digit:]]+).*" | sed -E 's/.*\bh_rt=([[:digit:]]+).*/\1/')
             if [[ -n "${h_rt}" ]] && [[ ${h_rt} -gt ${delta} ]]; then
-		name=$(printf "%s\n" "${bfr[@]}" | grep -E "^job_name:[[:blank:]]+" | sed -E 's/^job_name:[[:blank:]]+//')
-		when_str=$(printf "%s\n" "${bfr[@]}" | grep -E "^submission_time:[[:blank:]]+" | sed -E 's/^submission_time:[[:blank:]]+//')
-		when=$(date_iso "${when_str}")
+                name=$(printf "%s\n" "${bfr[@]}" | grep -E "^job_name:[[:blank:]]+" | sed -E 's/^job_name:[[:blank:]]+//')
+                when_str=$(printf "%s\n" "${bfr[@]}" | grep -E "^submission_time:[[:blank:]]+" | sed -E 's/^submission_time:[[:blank:]]+//')
+                when=$(date_iso "${when_str}")
                 info+=("Job ${job} [${when}; -l h_rt=${h_rt}; name='${name}']")
             fi
         done

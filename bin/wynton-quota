@@ -1,19 +1,37 @@
 #! /usr/bin/env bash
-#' Wynton HPC Disk Quota and Usage
+#' Wynton Disk Quota and Usage
 #'
 #' Usage:
-#'  wynton-quota [options]
+#'  wynton-quota [options] [path]
 #'
 #' Flags:
 #'  --help           Display this help
 #'  --version        Display version
 #'
 #' Options:
-#'  --user=<user>    User to query (default: $USER)
+#'  --user=<user>    List HOME, global scratch, and group quotas
+#'                   for a user (default: ${USER}).
+#'                   If `"*"`, then all users are considered
+#'  --group=<group>  List quota for a group.
+#'                   If `"*"`, then all groups are considered
+#'  --assert-available=<size>
+#'                   Assert that at least this amount is available
+#'                   in the quota for the specific 'path'
+#'
+#' Arguments:
+#'  path             An optional path
+#'
 #'
 #' Examples:
 #'  wynton quota
 #'  wynton quota --user=alice
+#'  wynton quota --group=boblab
+#'
+#'  wynton quota "$HOME"
+#'  wynton quota /scratch
+#'
+#'  wynton quota --user="*"
+#'  wynton quota --group="*"
 #'
 #' License: See 'wynton --help'
 call="$0 $*"
@@ -36,6 +54,8 @@ source "${incl}/files.sh"
 source "${incl}/output.sh"
 # shellcheck source=incl/system.sh
 source "${incl}/system.sh"
+# shellcheck source=incl/ldap.sh
+source "${incl}/ldap.sh"
 
 
 # -------------------------------------------------------------------------
@@ -47,12 +67,13 @@ source "${incl}/system.sh"
 # MAIN
 # -------------------------------------------------------------------------
 ## Actions
-action=quota
+action=quota-user
 
 ## Options
 debug=false
-verbose=false
 user=${USER}
+gid=
+path=
 
 # Parse command-line options
 while [[ $# -gt 0 ]]; do
@@ -62,14 +83,6 @@ while [[ $# -gt 0 ]]; do
         action=version
     elif test "$1" == "--debug"; then
         debug=true
-    elif test "$1" == "--verbose"; then
-        verbose=true
-
-    ## Deprecated
-    elif test "$1" == "--user"; then
-	shift
-        user=$1
-	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
 
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
@@ -81,82 +94,248 @@ while [[ $# -gt 0 ]]; do
             error "Option '--${key}' must not be empty"
         fi
         if [[ "${key}" == "user" ]]; then
-            user=${value}
+            if [[ ${value} == "*" ]]; then
+                user=${value}
+            else
+                eval "user=\$(as_user '${value}')"
+            fi
+            action=quota-user
+        elif [[ "${key}" == "group" ]]; then
+            if [[ ${value} == "*" ]]; then
+                gid=${value}
+            else
+                eval "gid=\$(as_gid '${value}')"
+            fi
+            action=quota-group
+        elif [[ "${key}" == "assert-available" ]]; then
+            amount=${value}
+            mdebug "amount=${amount}"
+            amount=$(echo "${amount}" | sed 's/TB$/000GB/' | sed 's/GB$/000MB/' | sed 's/MB$/000kB/' | sed 's/kB$/000/')
+            mdebug "amount=${amount}"
+            assert_integer "${amount}"
         else
             error "Unknown option: $1"
         fi
     else
-        extras="$extras $1"
+        if [[ -n ${path} ]]; then
+            error "A path has already been specified: $1"
+        fi
+        path=$1
+        if [[ -f "${path}" ]]; then
+            path=$(dirname "${path}")
+        fi
+        action="quota-path"
     fi
     shift
 done
 
-## Assert that user exists
-id --user "$user" &> /dev/null || error "No such user: $user"
 
-
-if [[ $user == "$USER" ]]; then
-    home=$HOME
-else
-    home=$(getent passwd "$user" | cut -d: -f6)
+if ${debug}; then
+    mdebug "call: ${call}"
+    mdebug "action: ${action}"
+    mdebug "user: '${user}'"
+    mdebug "gid: '${gid}'"
+    mdebug "path: '${path}'"
+    mdebug "amount: '${amount}'"
 fi
 
-uid=$(id --user "$user")
-gid=$(id --group "$user")
-group=$(id --group --name "$user")
-
-if $debug; then
-    mdebug "call: $call"
-    mdebug "action: $action"
-    mdebug "verbose: $verbose"
-    mdebug "user: $user"
-    mdebug "group: $group"
-    mdebug "uid: $uid"
-    mdebug "gid: $gid"
-    mdebug "home: $home"
-fi
-
-if [[ $action == "version" ]]; then
+if [[ ${action} == "version" ]]; then
     version
     exit 0
-elif [[ $action == "help" ]]; then
+elif [[ ${action} == "help" ]]; then
     help ""
     exit 0
 fi
 
-if [[ $action == "quota" ]]; then
-    echo "# Disk Usage and Quota"
-    echo
-    echo "* User : $user (uid=$uid)"
-    echo "* Group: $group (gid=$gid)"
-    echo "* HOME : $home"
-    echo
-    echo "## User Disk Quota"
-    
-    ## LEGACY: Does the user have home on /netapp?
-    if [[ $home == */netapp/* ]]; then
-        echo
-	echo "On NetApp (QB3 legacy):"
-	quota --human-readable --no-wrap -f /netapp/home --user "$user"
+if [[ ${action} == "quota-path" ]]; then
+    mdebug "path: '${path}'"
+    root="/$(echo "${path}" | cut -d '/' -f 2)"
+    assert_dir_exists "${root}"
+
+    ## Is it a BeeGFS path?
+    if [[ ${root} == "/wynton" ]]; then
+        ## PHI folder?
+        if [[ ${path} =~ ^/wynton/protected/ ]]; then
+            depth=4
+        else
+            depth=3
+        fi
+
+        ## Identify user or group
+        path2=$(echo "${path}" | cut -d '/' -f 1-"${depth}")
+        mdebug "path2=${path2}"
+        type=$(basename "${path2}")
+        mdebug "type=${type}"
+
+        if [[ ${type} == "home" ]]; then
+            uid=$(id --user "${user}")
+            if [[ -z ${amount} ]]; then
+                echo "# Disk Usage and Quota"
+                echo
+                echo "## Home Disk Quota"
+                echo
+                beegfs-ctl --getquota --storagepoolid=11 --uid "${uid}"
+            else
+                mapfile -t lines < <(beegfs-ctl --getquota --csv --storagepoolid=11 --uid "${uid}" | tail -n 1 | tr ',' $'\n')
+                max=${lines[3]}
+                if [[ ${max} != "unlimited" ]]; then
+                    used=${lines[2]}
+                    left=$(((max - used) / 2))
+                    if [[ ${left} -lt ${amount} ]]; then
+                        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
+                    fi
+                fi
+            fi
+        elif [[ ${type} == "scratch" ]]; then
+            uid=$(id --user "${user}")
+            if [[ -z ${amount} ]]; then
+                echo "# Disk Usage and Quota"
+                echo
+                echo "## Global Scratch Disk Quota"
+                echo
+                beegfs-ctl --getquota --storagepoolid=10 --uid "${uid}"
+            else
+                mapfile -t lines < <(beegfs-ctl --getquota --csv --storagepoolid=10 --uid "${uid}" | tail -n 1 | tr ',' $'\n')
+                max=${lines[3]}
+                if [[ ${max} != "unlimited" ]]; then
+                    used=${lines[2]}
+                    left=$((max - used))
+                    if [[ ${left} -lt ${amount} ]]; then
+                        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
+                    fi
+                fi
+            fi
+        elif [[ ${type} == "group" ]]; then
+            if [[ -z ${gid} ]]; then
+                gid=$(id --group "${user}")
+            fi
+            if [[ -z ${amount} ]]; then
+                echo "# Disk Usage and Quota"
+                echo
+                echo "## Group Disk Quota"
+                echo
+                beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}"
+            else
+                mapfile -t lines < <(beegfs-ctl --getquota --csv --storagepoolid=12 --gid "${gid}" | tail -n 1 | tr ',' $'\n')
+                max=${lines[3]}
+                if [[ ${max} != "unlimited" ]]; then
+                    used=${lines[2]}
+                    left=$((max - used))
+                    if [[ ${left} -lt ${amount} ]]; then
+                        error "Not enough space: ${path2} has only ${left} bytes available, which is less than ${amount} bytes"
+                    fi
+                fi
+            fi
+        else
+            error "Unknown type: ${path} -> ${path2} -> ${type}"
+        fi
+    elif [[ ${root} == "/scratch" ]] || [[ ${root} == "/tmp" ]]; then
+        if [[ -z ${amount} ]]; then
+            echo "# Disk Usage and Quota"
+            echo
+            echo "## ${root} Disk Quota"
+            echo
+            
+        else
+            mapfile -t lines < <(df --block-size=1 "${root}" | tail -n 1 | sed -E 's/[[:blank:]]+/,/g' | tr ',' $'\n')
+            left=${lines[3]}
+            if [[ ${left} -lt ${amount} ]]; then
+                error "Not enough space: ${root} has only ${left} bytes available, which is less than ${amount} bytes"
+            fi
+        fi
     fi
+fi        
 
-    echo
-    echo "On /wynton/home (mirrored and compressed BeeGFS):"
-    beegfs-ctl --getquota --storagepoolid=11 --uid "$user"
-    echo
-    echo "NOTE: Because /wynton/home storage is mirrored, the disk usage ('used') and the available quota ('hard') are reported at twice of what you would expect for a non-mirrored storage. That is, 'hard' quota of 1000 GiB should be interpreted as 500 GiB worth of storage space. Moreover, the BeeGFS storage is also compressed, meaning a 1.0 GiB file is likely to consume less that 1.0 GiB of storage space - how much a file is compressed varies greatly with file format."
 
-    echo
-    echo "On /wynton/scratch (non-mirrored and compressed BeeGFS):"
-    beegfs-ctl --getquota --storagepoolid=10 --uid "$user"
-    echo
-    echo "NOTE: Files on /wynton/scratch are automatically deleted after 14 days."
-    echo
+if [[ ${action} == "quota-user" ]]; then
+    # Report on all users?
+    if [[ ${user} == "*" ]]; then
+        echo "# Disk Usage and Quota"
+        echo
+
+        # Find all activate or interactive Wynton users in LDAP
+        mapfile -t uids < <(ldap_search -LLL -x "(| (wyntonAccess=TRUE) (wyntonAccess=FALSE) )" "uidNumber" | grep -E "^uidNumber:" | sed -E 's/^uidNumber: *//' | sort -n -u)
+        echo "Number of users: ${#uids[@]}"
+        echo
+        
+        echo "## Home Disk Quota"
+        echo
+        for kk in $(seq "${#uids[@]}"); do
+            uid="${uids[$((kk - 1))]}"
+            bfr=$(beegfs-ctl --getquota --storagepoolid=11 --uid "${uid}" | sed -n '4p')
+            printf "%4d/%4d. %s\n" "${kk}" "${#uids[@]}" "${bfr}"
+        done
+        
+        echo "## Global Scratch Disk Quota"
+        echo
+        for kk in $(seq "${#uids[@]}"); do
+            uid="${uids[$((kk - 1))]}"
+            bfr=$(beegfs-ctl --getquota --storagepoolid=10 --uid "${uid}" | sed -n '4p')
+            printf "%4d/%4d. %s\n" "${kk}" "${#uids[@]}" "${bfr}"
+        done
+    else
+        ## Assert that user exists
+        id --user "${user}" &> /dev/null || error "No such user: ${user}"
+        
+        uid=$(id --user "${user}")
+        gid=$(id --group "${user}")
+        group=$(id --group --name "${user}")
+        if [[ ${user} == "${USER}" ]]; then
+            home=${HOME}
+        else
+            home=$(getent passwd "${user}" | cut -d: -f6)
+        fi
+
+        echo "# Disk Usage and Quota"
+        echo
+
+        echo "* User : ${user} (uid=${uid})"
+        echo "* Group: ${group} (gid=${gid})"
+        echo "* HOME : ${home}"
+        echo
+        echo "## Home Disk Quota"
+        echo
+        beegfs-ctl --getquota --storagepoolid=11 --uid "${user}"
+        echo
+        echo "NOTE: Because /wynton/home storage is mirrored, the disk usage ('used') and the available quota ('hard') are reported at twice of what you would expect for a non-mirrored storage. That is, 'hard' quota of 1000 GiB should be interpreted as 500 GiB worth of storage space. Moreover, the BeeGFS storage is also compressed, meaning a 1.0 GiB file is likely to consume less that 1.0 GiB of storage space - how much a file is compressed varies greatly with file format."
     
-    echo "## Group Disk Quota"
-    echo
-    echo "On /wynton/group (non-mirrored and compressed BeeGFS):"
-    beegfs-ctl --getquota --storagepoolid=12 --gid "$gid"
-    echo
-fi
+        echo
+        echo "## Global Scratch Disk Quota"
+        echo
+        beegfs-ctl --getquota --storagepoolid=10 --uid "${user}"
+        echo
+        echo "NOTE: Files on /wynton/scratch are automatically deleted after 14 days."
+        echo
+        
+        echo "## Group Disk Quota"
+        echo
+        beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}"
+        echo
+    fi
+elif [[ ${action} == "quota-group" ]]; then
+    # Report on all groups?
+    if [[ ${gid} == "*" ]]; then
+        echo "## Group Disk Quotas"
+        echo
+        
+        # Find all groups in LDAP
+        mapfile -t gids < <(ldap_search -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "gidNumber" | grep -E "^gidNumber:" | sed -E 's/^gidNumber: *//' | sort -n -u)
+        echo "Number of groups: ${#gids[@]}"
+        echo
+        for kk in $(seq "${#gids[@]}"); do
+            gid="${gids[$((kk - 1))]}"
+            bfr=$(beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}" | sed -n '4p')
+            printf "%4d/%4d. %s\n" "${kk}" "${#gids[@]}" "${bfr}"
+        done
+    else
+        group=$(ldap_search -LLL -x -b "ou=Groups,dc=cgl,dc=ucsf,dc=edu" "gidNumber=${gid}" "cn" | grep -E "^cn:" | sed -E 's/^cn: *//' | head -n 1)
 
+        echo "# Disk Usage and Quota"
+        echo
+        echo "* Group: ${group} (gid=${gid})"
+        echo
+        echo "## Group Disk Quota"
+        echo
+        beegfs-ctl --getquota --storagepoolid=12 --gid "${gid}"
+    fi
+fi

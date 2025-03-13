@@ -70,7 +70,7 @@ while [[ $# -gt 0 ]]; do
         debug=true
     elif test "$1" == "--verbose"; then
         verbose=true
-	
+        
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
         key=${1//--}

@@ -85,29 +85,29 @@ while [[ $# -gt 0 ]]; do
         verbose=true
     elif test "$1" == "--reverse"; then
         reverse=true
-	
+        
     ## Deprecated
     elif test "$1" == "--drive"; then
-	shift
+        shift
         drive=$1
-#	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+#        mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--format"; then
-	shift
+        shift
         format=$1
-#	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+#        mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--data-root"; then
-	shift
+        shift
         data_root=$1
-#	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+#        mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--hostname"; then
-	shift
+        shift
         hostname=$1
-#	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+#        mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
     elif test "$1" == "--user"; then
-	shift
+        shift
         user=$1
-#	mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
-	
+#        mdeprecated "Command-line option format '$1 <value>' is deprecated. Please use '$1=<value>' instead"
+        
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
         key=${1//--}
@@ -127,9 +127,9 @@ while [[ $# -gt 0 ]]; do
             hostname=${value}
         elif [[ "${key}" == "user" ]]; then
             user=${value}
-	    if is_integer "${value}"; then
+            if is_integer "${value}"; then
                 user=$(uid_to_user "${value}")
-	    fi
+            fi
         else
             error "Unknown option: $1"
         fi

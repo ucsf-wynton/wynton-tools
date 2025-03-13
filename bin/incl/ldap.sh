@@ -40,6 +40,21 @@ list_footnotes() {
     done
 }    
 
+hint_for_admin() {
+    local hint=${1:?}
+
+    if ${as_admin:-true}; then
+        echo "       ${magenta}Hint for admins: ${hint}${reset}"
+    fi
+}
+
+hint_for_user() {
+    local hint=${1:?}
+    if ${as_user:-true}; then
+        echo "       ${magenta}Hint for user: ${hint}${reset}"
+    fi
+}
+
 
 # -------------------------------------------------------
 # Regular expressions
@@ -104,6 +119,12 @@ email_to_user() {
     ldap_search "mail=${email}" "uid" | grep -E "^uid:" | sed -E "s/^( *uid: *| *$)//g"
 }
 
+ucsf_id_to_user() {
+    local id
+    id=${1:?}
+    ldap_search "ucsfIDNumber=${id}" "uid" | grep -E "^uid:" | sed -E "s/^( *uid: *| *$)//g"
+}
+
 reserved_usernames() {
     local -a reserved
     
@@ -123,7 +144,12 @@ as_user() {
 
     user=${1:?}
     if is_integer "${user}"; then
-        user="$(uid_to_user "${user}")"
+	## A UCSF Employment ID (9 digits) or a UID?
+        if [[ "${user}" =~ ^[0-9]{9}$ ]]; then
+            user="$(ucsf_id_to_user "${user}")"
+	else
+            user="$(uid_to_user "${user}")"
+	fi
     elif is_email "${user}"; then
         mapfile -t users < <(email_to_user "${user}")
         if [[ ${#users[@]} -eq 0 ]]; then

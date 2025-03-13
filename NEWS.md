@@ -1,3 +1,46 @@
+# Version 0.21.0 (2025-03-13)
+
+## New Features
+
+ * `wynton quota`:
+ 
+   - `wynton account` can locate user also by UCSF Employment ID.
+
+   - `wynton account --as=admin` displays a URL with a search query
+     for the user's original ServiceNow request item (RITM).
+
+   - `wynton account --as=<roles>` overrides the defaults for to whom
+     hints are directed.
+
+   - `wynton account --check` gives hints to the user, to the admin,
+     or to both.
+
+   - `wynton account --check` checks that a non-locked account has
+     access to either Wynton or Plato If not, it should be locked.
+
+ * `wynton quota`:
+ 
+   - Add support for `wynton quota <path>`.
+ 
+   - `wynton quota` can now also list disk quotas for a specific
+     group, in addition to the HOME, global scratch, and group quota
+     for a specific user.
+
+   - Add support for listing HOME and global scratch quotas for all
+     users by calling `wynton quota --user="*"`.
+
+   - Add support for listing quotas for all groups by calling `wynton
+     quota --group="*"`.
+
+   - Add support for `wynton quota --assert-available=<size> <path>`.
+
+## Bug Fixes
+
+ * `wynton account` gave cluttered output for fields that were
+   expected to be single values, but that incorrectly have multiple
+   values.
+   
+
 # Version 0.20.1 (2025-03-01)
 
 ## Bug Fixes

@@ -72,29 +72,29 @@ fi
 
 if [[ $action == "trash" ]]; then
     if [[ ${#files[@]} -eq 0 ]]; then
-	warn "Nothing to trash; no files or folders specified"
-	exit 0
+        warn "Nothing to trash; no files or folders specified"
+        exit 0
     fi
 
     ## Protect against trashing the critical folders by mistake
     for file in "${files[@]}"; do
-	file2=$(realpath "${file}")
-	if [[ ${file2} == "$HOME" ]]; then
-	    error "You must not trash your HOME folder: ${file} => ${file2}"
-	elif [[ ${file} == "." ]] || [[ ${file2} == "${PWD}" ]]; then
-	    error "You must not trash the current directory: ${file} => ${file2}"
-	elif [[ ${file} == ".." ]]; then
-	    error "You must not trash the parent directory: ${file} => ${file2}"
-	elif [[ ${file} == ../* ]]; then
-	    error "You must not trash any parent directory: ${file} => ${file2}"
-	fi
+        file2=$(realpath "${file}")
+        if [[ ${file2} == "$HOME" ]]; then
+            error "You must not trash your HOME folder: ${file} => ${file2}"
+        elif [[ ${file} == "." ]] || [[ ${file2} == "${PWD}" ]]; then
+            error "You must not trash the current directory: ${file} => ${file2}"
+        elif [[ ${file} == ".." ]]; then
+            error "You must not trash the parent directory: ${file} => ${file2}"
+        elif [[ ${file} == ../* ]]; then
+            error "You must not trash any parent directory: ${file} => ${file2}"
+        fi
     done
     
     ## Assert that all files exist
     for file in "${files[@]}"; do
-	if [[ ! -e "${file}" ]]; then
-	    error "No such file or folder: ${file}"
-	fi
+        if [[ ! -e "${file}" ]]; then
+            error "No such file or folder: ${file}"
+        fi
     done
 
     trash_root=/wynton/scratch/${USER}/_TRASH/$(date --iso-8601)

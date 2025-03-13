@@ -41,9 +41,9 @@ warn_crlf() {
     local file=${1:?}
     
     if [[ -f "${file}" ]]; then
-	if grep -q "CRLF" <<< "$(file "${file}")"; then
+        if grep -q "CRLF" <<< "$(file "${file}")"; then
             warn "File uses CRLF line endings. Run 'dos2unix ${file}' to fix this"
-	fi
+        fi
     fi
 }
 
@@ -52,13 +52,13 @@ warn_non_private() {
     local what
     
     if [[ -e "${file}" ]]; then
-	if grep -v -q "^.00$" <<< "$(stat -c "%a" "${file}")"; then
-	    what="File"
-	    if [[ -d "${file}" ]]; then
+        if grep -v -q "^.00$" <<< "$(stat -c "%a" "${file}")"; then
+            what="File"
+            if [[ -d "${file}" ]]; then
                 what="Directory"
-	    fi
+            fi
             warn "${what} '${file}' can be accessed by other users. Fix by calling 'chmod go-rwx \"${file}\"'"
-	fi
+        fi
     fi
 }
 
@@ -124,7 +124,7 @@ while [[ $# -gt 0 ]]; do
         debug=true
     elif test "$1" == "--verbose"; then
         verbose=true
-	
+        
     ## Options (--key=value):
     elif [[ "$1" =~ ^--.*=.*$ ]]; then
         key=${1//--}
@@ -199,9 +199,9 @@ if [[ $action == "check" ]]; then
     echo "* $(dir_info "$dir")"
     warn_non_private "${dir}"
     for file in "$home/.ssh/authorized_keys" "$home/known_hosts"; do
-	echo "* $(file_info "$file")"
+        echo "* $(file_info "$file")"
         warn_crlf "${file}"
-    done	 
+    done         
     echo
     
     echo "## Netrc"
@@ -223,9 +223,9 @@ if [[ $action == "check" ]]; then
 
     echo "## Perl"
     if [[ -n ${PERL5LIB} ]]; then
-	echo "* PERL5LIB=${PERL5LIB} [$(dir_info "${PERL5LIB:-<not set>}")]"
-    else	
-	echo "* PERL5LIB=<not set>"
+        echo "* PERL5LIB=${PERL5LIB} [$(dir_info "${PERL5LIB:-<not set>}")]"
+    else        
+        echo "* PERL5LIB=<not set>"
     fi
     echo
 
@@ -241,7 +241,7 @@ if [[ $action == "check" ]]; then
         echo "* MODULEPATH=${MODULEPATH:-<not set>}"
         warn_envpath_missing "MODULEPATH"
         module list 2> /dev/null || { echo "Currently Loaded Modules: <none>"; }
-	echo
+        echo
     fi
 
     echo "## X11 Forwarding"
