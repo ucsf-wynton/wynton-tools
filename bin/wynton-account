@@ -875,7 +875,7 @@ if [[ $action == "validate" ]]; then
         echo
         echo "${magenta}Search for ServiceNow account request item (RITM):"
         echo
-        echo "<https://ucsf.service-now.com/sc_req_item_list.do?sysparm_query=${query}${reset}>"
+        echo "<https://ucsf.service-now.com/sc_req_item_list.do?sysparm_query=${query}>${reset}"
 	
         since="2021-09-03"
         if [[ $(date -d "${created_on}" +%s) -lt "$(date -d "${since}" +%s)" ]]; then
