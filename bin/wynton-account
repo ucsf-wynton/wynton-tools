@@ -202,10 +202,17 @@ if [[ -z "${user}" ]]; then
     user=${USER}
 fi
 
+
 ## Assert that user exists
 id --user "$user" &> /dev/null || error "No such user: $user"
 
 if [[ $user == "$USER" ]]; then
+    same_user=true
+else
+    same_user=false
+fi
+
+if $same_user; then
     home=$HOME
 else
     home=$(getent passwd "$user" | cut -d: -f6)
@@ -226,9 +233,10 @@ elif printf "%s\n" "${groups[@]}" | grep -q --line-regexp "wynton-admins"; then
 fi
 
 ## If user itself, add to 'run_as'
-if [[ $user == "$USER" ]]; then
+if $same_user; then
     run_as+=("user")
 fi
+
 
 ## Infer as_admin and as_user from run_as array
 as_admin=false
@@ -249,12 +257,14 @@ if $debug; then
     mdebug "action: $action"
     mdebug "check: $check"
     mdebug "user: $user"
+    mdebug "USER: $USER"
     mdebug "group: $group"
     mdebug "groups: [n=${#groups[@]}] ${groups[*]}"
     mdebug "gids: [n=${#gids[@]}] ${gids[*]}"
     mdebug "uid: $uid"
     mdebug "gid: $gid"
     mdebug "home: $home"
+    mdebug "HOME: $HOME"
     mdebug "run_as: [n=${#run_as[@]}] ${run_as[*]}"
     mdebug "as_admin: ${as_admin}"
     mdebug "as_user: ${as_user}"
@@ -275,11 +285,8 @@ if [[ $action == "validate" ]]; then
     n_fail=0
     n_skip=0
 
-    if [[ $user == "$USER" ]]; then
-        same_user=true
+    if ! $same_user; then
         footnote "${yellow}WARNING: Running as user '${USER}' != '${user}'${reset}"
-    else
-        same_user=false
     fi
     
     mapfile -t ldap_info < <(ldap_search "uid=${user}" "+" "*" | sort)

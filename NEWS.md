@@ -1,3 +1,11 @@
+# Version 0.21.0-9000 (2025-03-13)
+
+## Bug Fixes
+
+ * `wynton account` would produce a footnote warning on running as a
+   different user even when not doing so.
+ 
+
 # Version 0.21.0 (2025-03-13)
 
 ## New Features
