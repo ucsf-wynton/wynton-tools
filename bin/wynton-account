@@ -852,6 +852,7 @@ if [[ $action == "validate" ]]; then
             fi
         else
             fail "User is not in SGE"
+            hint_for_admin "To add this user to SGE, call: qconf -suser ${user}"
         fi
     
         echo

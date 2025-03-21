@@ -1,5 +1,11 @@
 # Version 0.21.0-9000 (2025-03-13)
 
+## New Features
+
+ * `wynton account`:
+ 
+   - `wynton account` gives more hints to admins.
+
 ## Bug Fixes
 
  * `wynton account` would produce a footnote warning on running as a
@@ -10,7 +16,7 @@
 
 ## New Features
 
- * `wynton quota`:
+ * `wynton account`:
  
    - `wynton account` can locate user also by UCSF Employment ID.
 
