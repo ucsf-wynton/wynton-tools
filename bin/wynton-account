@@ -456,15 +456,15 @@ if [[ $action == "validate" ]]; then
     
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
     created_on=$(ldap_as_timestamp "${ts}")
-    age=$(ldap_timestamp_age "${ts}")
-    by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account created on: ${created_on} [${age} by '${by:-N/A}']"
+    created_on_age=$(ldap_timestamp_age "${ts}")
+    created_by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
+    echo "* Account created on: ${created_on} [${created_on_age} by '${created_by:-N/A}']"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
     modified_on=$(ldap_as_timestamp "${ts}")
     ts=$(ldap_as_timestamp "${ts}")
-    age=$(ldap_timestamp_age "${ts}")
-    by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account last-modified on: ${modified_on} [${age} by '${by:-N/A}']"
+    modified_on_age=$(ldap_timestamp_age "${ts}")
+    modified_by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
+    echo "* Account last-modified on: ${modified_on} [${modified_on_age} by '${modified_by:-N/A}']"
 
     if ${check}; then
         echo
@@ -751,6 +751,25 @@ if [[ $action == "validate" ]]; then
         if ${locked}; then
             if ${access}; then
                 note "Locked account is still enabled"
+		## Accounts with expired passwords are automatically locked by a cronjob that runs
+		## each night at 03:00. Here we will inspect the last modified information to
+		## *guess* if that was the reason for the current lock state. /HB 2025-03-22
+		if [[ ${modified_by} == "ldapbot" ]]; then
+		    hhmm=$(date -d "${modified_on}" +%H:%M)
+                    if [[ ${hhmm} =~ ^03:0[0-2]$ ]]; then
+			## Locked accounts are disabled 30 days after password expired
+			disables_on_ts=$(( $(date -d "${modified_on}" +%s) + 30 * 24 * 60 * 60 ))
+			disables_on=$(date -d "@${disables_on_ts}" +"%F %H:%M")
+			disables_on_ts=$(date -d "${disables_on}" +%s)
+			disables_on_age=$(timediff_duration "$(( "${disables_on_ts}" - $(date +%s) ))" | sed -E 's/[[:digit:]]+s$//')
+		        msg="Account locked because password expired on ${modified_on} [guess]"
+		        hint_for_admin "${msg}"
+		        hint_for_user "${msg}"
+			msg="Account to be disabled on ${disables_on} (${disables_on_age}) [guess]"
+		        hint_for_admin "${msg}"
+		        hint_for_user "${msg}"
+		    fi
+		fi
                 footnote "When a password expires, the account is locked, but remains enabled for 30 days"
             else
                 okay "Locked account is disabled"

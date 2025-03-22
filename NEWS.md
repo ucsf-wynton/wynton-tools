@@ -4,6 +4,9 @@
 
  * `wynton account`:
  
+   - `wynton account` uses LDAP modification timestamp to guess
+     whether locked account was locked due to password expires.
+   
    - `wynton account` gives more hints to admins.
 
 ## Bug Fixes
