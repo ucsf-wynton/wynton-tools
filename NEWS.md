@@ -5,9 +5,11 @@
  * `wynton account`:
  
    - `wynton account` uses LDAP modification timestamp to guess
-     whether locked account was locked due to password expires.
+     whether locked account was locked due to password expires, or a
+     locked account was disabled due to password having expired more
+     than 30 days ago. Hints are given accordingly.
    
-   - `wynton account` gives more hints to admins.
+   - `wynton account` gives more hints to admins and users.
 
 ## Bug Fixes
 

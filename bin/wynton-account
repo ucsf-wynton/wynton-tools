@@ -749,30 +749,52 @@ if [[ $action == "validate" ]]; then
     
         # No locked account has access
         if ${locked}; then
+	    ## Accounts are audited for expired passwords by a cronjob that runs nightly
+	    ## at 03:00. Here we will inspect the last modified date and origin to
+	    ## *guess* if that was the reason for the current lock state. /HB 2025-03-22
+            account_audit=false
+	    if [[ ${modified_by} == "ldapbot" ]]; then
+	        hhmm=$(date -d "${modified_on}" +%H:%M)
+                if [[ ${hhmm} =~ ^03:0[0-2]$ ]]; then
+		    account_audit=true
+		fi
+	    fi
+
             if ${access}; then
                 note "Locked account is still enabled"
-		## Accounts with expired passwords are automatically locked by a cronjob that runs
-		## each night at 03:00. Here we will inspect the last modified information to
-		## *guess* if that was the reason for the current lock state. /HB 2025-03-22
-		if [[ ${modified_by} == "ldapbot" ]]; then
-		    hhmm=$(date -d "${modified_on}" +%H:%M)
-                    if [[ ${hhmm} =~ ^03:0[0-2]$ ]]; then
-			## Locked accounts are disabled 30 days after password expired
-			disables_on_ts=$(( $(date -d "${modified_on}" +%s) + 30 * 24 * 60 * 60 ))
-			disables_on=$(date -d "@${disables_on_ts}" +"%F %H:%M")
-			disables_on_ts=$(date -d "${disables_on}" +%s)
-			disables_on_age=$(timediff_duration "$(( "${disables_on_ts}" - $(date +%s) ))" | sed -E 's/[[:digit:]]+s$//')
-		        msg="Account locked because password expired on ${modified_on} [guess]"
-		        hint_for_admin "${msg}"
-		        hint_for_user "${msg}"
-			msg="Account to be disabled on ${disables_on} (${disables_on_age}) [guess]"
-		        hint_for_admin "${msg}"
-		        hint_for_user "${msg}"
-		    fi
+		## The automated account audit checks if the password has expired, and if so,
+		## it locks the account, which keeping the access enabled for 30 days.
+		if ${account_audit}; then
+		    ## Locked accounts are disabled 30 days after password expired
+		    disables_on_ts=$(( $(date -d "${modified_on}" +%s) + 30 * 24 * 60 * 60 ))
+		    disables_on=$(date -d "@${disables_on_ts}" +"%F %H:%M")
+		    disables_on_ts=$(date -d "${disables_on}" +%s)
+		    disables_on_age=$(timediff_duration "$(( "${disables_on_ts}" - $(date +%s) ))" | sed -E 's/[[:digit:]]+s$//')
+		    msg="Account locked because password expired on ${modified_on} [guess]"
+		    hint_for_admin "${msg}"
+		    hint_for_user "${msg}"
+		    msg="Account to be disabled on ${disables_on} (in ${disables_on_age}) [guess]"
+		    hint_for_admin "${msg}"
+		    hint_for_user "${msg}"
 		fi
                 footnote "When a password expires, the account is locked, but remains enabled for 30 days"
             else
                 okay "Locked account is disabled"
+		## The automated account audit checks if an account with an expired password
+		## has been locked for more than 30 days. If so, it disables access to
+		## the account after 30 days.
+		if ${account_audit}; then
+		    disabled_on_ts=$(date -d "${modified_on}" +%s)
+		    disabled_on=$(date -d "@${disabled_on_ts}" +"%F %H:%M")
+		    disabled_on_ts=$(date -d "${disabled_on}" +%s)
+		    disabled_on_age=$(timediff_duration "$(( $(date +%s) - "${disabled_on_ts}" ))" | sed -E 's/[[:digit:]]+s$//')
+		    msg="Account was disabled on ${disabled_on} (${disabled_on_age} ago) because password expired more than 30 days ago [guess]"
+		    hint_for_admin "${msg}"
+		    hint_for_user "${msg}"
+		    msg="User needs request re-enabling of account via ServiceNow. See <https://wynton.ucsf.edu/hpc/myaccount/unlock-account.html> for instructions"
+		    hint_for_admin "${msg}"
+		    hint_for_user "${msg}"
+		fi
             fi
         else
             if ! ${access} && ! ${plato}; then
