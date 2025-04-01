@@ -791,7 +791,7 @@ if [[ $action == "validate" ]]; then
 		    msg="Account was disabled on ${disabled_on} (${disabled_on_age} ago) because password expired more than 30 days ago [guess]"
 		    hint_for_admin "${msg}"
 		    hint_for_user "${msg}"
-		    msg="User needs request re-enabling of account via ServiceNow. See <https://wynton.ucsf.edu/hpc/myaccount/unlock-account.html> for instructions"
+		    msg="User needs to request re-enabling of account via ServiceNow, per <https://wynton.ucsf.edu/hpc/myaccount/unlock-account.html>"
 		    hint_for_admin "${msg}"
 		    hint_for_user "${msg}"
 		fi
