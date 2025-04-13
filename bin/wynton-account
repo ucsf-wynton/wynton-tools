@@ -655,7 +655,7 @@ if [[ $action == "validate" ]]; then
             okay "HOME is backed up - less than $(pretty_int "${max_chunks}") chunks"
         else
             note "HOME is not backed up - more than $(pretty_int "${max_chunks}") chunks"
-            hint_for_user "Locate directories of yours that have many files and remove unecessary files"
+            hint_for_user "Locate directories of yours that have many files and remove unnecessary files"
         fi
 
         for kk in $(seq "${#groups[@]}"); do
