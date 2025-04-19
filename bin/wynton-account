@@ -202,10 +202,17 @@ if [[ -z "${user}" ]]; then
     user=${USER}
 fi
 
+
 ## Assert that user exists
 id --user "$user" &> /dev/null || error "No such user: $user"
 
 if [[ $user == "$USER" ]]; then
+    same_user=true
+else
+    same_user=false
+fi
+
+if $same_user; then
     home=$HOME
 else
     home=$(getent passwd "$user" | cut -d: -f6)
@@ -226,9 +233,10 @@ elif printf "%s\n" "${groups[@]}" | grep -q --line-regexp "wynton-admins"; then
 fi
 
 ## If user itself, add to 'run_as'
-if [[ $user == "$USER" ]]; then
+if $same_user; then
     run_as+=("user")
 fi
+
 
 ## Infer as_admin and as_user from run_as array
 as_admin=false
@@ -249,12 +257,14 @@ if $debug; then
     mdebug "action: $action"
     mdebug "check: $check"
     mdebug "user: $user"
+    mdebug "USER: $USER"
     mdebug "group: $group"
     mdebug "groups: [n=${#groups[@]}] ${groups[*]}"
     mdebug "gids: [n=${#gids[@]}] ${gids[*]}"
     mdebug "uid: $uid"
     mdebug "gid: $gid"
     mdebug "home: $home"
+    mdebug "HOME: $HOME"
     mdebug "run_as: [n=${#run_as[@]}] ${run_as[*]}"
     mdebug "as_admin: ${as_admin}"
     mdebug "as_user: ${as_user}"
@@ -275,11 +285,8 @@ if [[ $action == "validate" ]]; then
     n_fail=0
     n_skip=0
 
-    if [[ $user == "$USER" ]]; then
-        same_user=true
+    if ! $same_user; then
         footnote "${yellow}WARNING: Running as user '${USER}' != '${user}'${reset}"
-    else
-        same_user=false
     fi
     
     mapfile -t ldap_info < <(ldap_search "uid=${user}" "+" "*" | sort)
@@ -449,15 +456,15 @@ if [[ $action == "validate" ]]; then
     
     ts=$(ldap_get_field "createTimestamp" "${ldap_info[@]}")
     created_on=$(ldap_as_timestamp "${ts}")
-    age=$(ldap_timestamp_age "${ts}")
-    by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account created on: ${created_on} [${age} by '${by:-N/A}']"
+    created_on_age=$(ldap_timestamp_age "${ts}")
+    created_by=$(ldap_get_field "creatorsName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
+    echo "* Account created on: ${created_on} [${created_on_age} by '${created_by:-N/A}']"
     ts=$(ldap_get_field "modifyTimestamp" "${ldap_info[@]}")
     modified_on=$(ldap_as_timestamp "${ts}")
     ts=$(ldap_as_timestamp "${ts}")
-    age=$(ldap_timestamp_age "${ts}")
-    by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
-    echo "* Account last-modified on: ${modified_on} [${age} by '${by:-N/A}']"
+    modified_on_age=$(ldap_timestamp_age "${ts}")
+    modified_by=$(ldap_get_field "modifiersName" "${ldap_info[@]}" | sed -E 's/(^uid=|,.*)//g')
+    echo "* Account last-modified on: ${modified_on} [${modified_on_age} by '${modified_by:-N/A}']"
 
     if ${check}; then
         echo
@@ -491,13 +498,6 @@ if [[ $action == "validate" ]]; then
         fi
     
         # GIDs within [455,65535]
-        if [[ ${gid} -lt 455 ]] || [[ ${gid} -gt 65535 ]]; then
-            fail "Group ID (GID) is out of range [455,65535]"
-        else
-            okay "Group ID (GID) is within [415,65535]"
-        fi
-
-        # GIDs exist
         if [[ ${gid} -lt 455 ]] || [[ ${gid} -gt 65535 ]]; then
             fail "Group ID (GID) is out of range [455,65535]"
         else
@@ -585,21 +585,22 @@ if [[ $action == "validate" ]]; then
         
         # Users has a HOME directories under expected /wynton/ location
         if ${phi}; then
-            expected="/wynton/protected/home/{group}/"
+            expected="/wynton/protected/home/{group}/{user}"
         else
-            expected="/wynton/home/{group}/"
+            expected="/wynton/home/{group}/{user}"
         fi
         pattern="${expected/\{group\}/[[:alnum:]_.-]+}"
+        pattern="${pattern/\{user\}/[[:alnum:]_.-]+}$"
         if grep -q -E "^${pattern}" <<< "${home}"; then
-            okay "HOME folder is under ${expected}"
+            okay "HOME folder is ${expected}"
         else
             if ${admin}; then
-                skip "HOME folder is not under ${expected}; ignoring because admin"
+                skip "HOME folder is not ${expected}; ignoring because admin"
             else
-                fail "HOME folder is not under ${expected}"
+                fail "HOME folder is not ${expected}"
             fi
         fi
-    
+
         if [[ ${EUID} -ne 0 ]] && ${phi} && ! ${running_as_phi}; then
             skip=true
         else
@@ -655,7 +656,7 @@ if [[ $action == "validate" ]]; then
             okay "HOME is backed up - less than $(pretty_int "${max_chunks}") chunks"
         else
             note "HOME is not backed up - more than $(pretty_int "${max_chunks}") chunks"
-            hint_for_user "Locate directories of yours that have many files and remove unecessary files"
+            hint_for_user "Locate directories of yours that have many files and remove unnecessary files"
         fi
 
         for kk in $(seq "${#groups[@]}"); do
@@ -742,11 +743,52 @@ if [[ $action == "validate" ]]; then
     
         # No locked account has access
         if ${locked}; then
+	    ## Accounts are audited for expired passwords by a cronjob that runs nightly
+	    ## at 03:00. Here we will inspect the last modified date and origin to
+	    ## *guess* if that was the reason for the current lock state. /HB 2025-03-22
+            account_audit=false
+	    if [[ ${modified_by} == "ldapbot" ]]; then
+	        hhmm=$(date -d "${modified_on}" +%H:%M)
+                if [[ ${hhmm} =~ ^03:0[0-2]$ ]]; then
+		    account_audit=true
+		fi
+	    fi
+
             if ${access}; then
                 note "Locked account is still enabled"
+		## The automated account audit checks if the password has expired, and if so,
+		## it locks the account, which keeping the access enabled for 30 days.
+		if ${account_audit}; then
+		    ## Locked accounts are disabled 30 days after password expired
+		    disables_on_ts=$(( $(date -d "${modified_on}" +%s) + 30 * 24 * 60 * 60 ))
+		    disables_on=$(date -d "@${disables_on_ts}" +"%F %H:%M")
+		    disables_on_ts=$(date -d "${disables_on}" +%s)
+		    disables_on_age=$(timediff_duration "$(( "${disables_on_ts}" - $(date +%s) ))" | sed -E 's/[[:digit:]]+s$//')
+		    msg="Account locked because password expired on ${modified_on} [guess]"
+		    hint_for_admin "${msg}"
+		    hint_for_user "${msg}"
+		    msg="Account to be disabled on ${disables_on} (in ${disables_on_age}) [guess]"
+		    hint_for_admin "${msg}"
+		    hint_for_user "${msg}"
+		fi
                 footnote "When a password expires, the account is locked, but remains enabled for 30 days"
             else
                 okay "Locked account is disabled"
+		## The automated account audit checks if an account with an expired password
+		## has been locked for more than 30 days. If so, it disables access to
+		## the account after 30 days.
+		if ${account_audit}; then
+		    disabled_on_ts=$(date -d "${modified_on}" +%s)
+		    disabled_on=$(date -d "@${disabled_on_ts}" +"%F %H:%M")
+		    disabled_on_ts=$(date -d "${disabled_on}" +%s)
+		    disabled_on_age=$(timediff_duration "$(( $(date +%s) - "${disabled_on_ts}" ))" | sed -E 's/[[:digit:]]+s$//')
+		    msg="Account was disabled on ${disabled_on} (${disabled_on_age} ago) because password expired more than 30 days ago [guess]"
+		    hint_for_admin "${msg}"
+		    hint_for_user "${msg}"
+		    msg="User needs to request re-enabling of account via ServiceNow, per <https://wynton.ucsf.edu/hpc/myaccount/unlock-account.html>"
+		    hint_for_admin "${msg}"
+		    hint_for_user "${msg}"
+		fi
             fi
         else
             if ! ${access} && ! ${plato}; then
@@ -845,6 +887,7 @@ if [[ $action == "validate" ]]; then
             fi
         else
             fail "User is not in SGE"
+            hint_for_admin "To add this user to SGE, call: qconf -suser ${user}"
         fi
     
         echo

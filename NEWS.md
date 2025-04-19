@@ -1,8 +1,30 @@
+# Version 0.22.0 (2025-04-19)
+
+## New Features
+
+ * `wynton account`:
+ 
+   - `wynton account` uses LDAP modification timestamp to guess
+     whether locked account was locked due to password expires, or a
+     locked account was disabled due to password having expired more
+     than 30 days ago. Hints are given accordingly.
+   
+   - `wynton account` gives more hints to admins and users.
+
+## Bug Fixes
+
+ * `wynton account --check` failed to detect HOME folders that were
+    nested too deeply.
+
+ * `wynton account` would produce a footnote warning on running as a
+   different user even when not doing so.
+ 
+
 # Version 0.21.0 (2025-03-13)
 
 ## New Features
 
- * `wynton quota`:
+ * `wynton account`:
  
    - `wynton account` can locate user also by UCSF Employment ID.
 

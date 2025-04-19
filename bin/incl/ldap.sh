@@ -248,6 +248,22 @@ ldap_as_timestamp() {
     date --date="${ts}" --rfc-3339=seconds
 }
 
+timediff_duration() {
+    local -i dd mm ss hh
+    
+    ss=${1:?}
+    
+    ## Convert seconds to (days, hours, minutes, seconds)
+    mm=$((ss / 60))
+    ss=$((ss - 60*mm))
+    hh=$((mm / 60))
+    mm=$((mm - 60*hh))
+    dd=$((hh / 24))
+    hh=$((hh - 24*dd))
+
+    printf "%dd%02dh%02dm%02ds" "${dd}" "${hh}" "${mm}" "${ss}"
+}
+
 ldap_timestamp_age() {
     local ts=${1}
     local now
@@ -267,14 +283,7 @@ ldap_timestamp_age() {
     ss=$((now - ts))
 
     ## Convert seconds to (days, hours, minutes, seconds)
-    mm=$((ss / 60))
-    ss=$((ss - 60*mm))
-    hh=$((mm / 60))
-    mm=$((mm - 60*hh))
-    dd=$((hh / 24))
-    hh=$((hh - 24*dd))
-
-    printf "%dd%02dh%02dm%02ds ago" "${dd}" "${hh}" "${mm}" "${ss}"
+    printf "%s ago" "$(timediff_duration "${ss}")"
 }
 
 ldap_as_date() {
