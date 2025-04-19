@@ -13,6 +13,9 @@
 
 ## Bug Fixes
 
+ * `wynton account --check` failed to detect HOME folders that were
+    nested too deeply.
+
  * `wynton account` would produce a footnote warning on running as a
    different user even when not doing so.
  

@@ -585,21 +585,22 @@ if [[ $action == "validate" ]]; then
         
         # Users has a HOME directories under expected /wynton/ location
         if ${phi}; then
-            expected="/wynton/protected/home/{group}/"
+            expected="/wynton/protected/home/{group}/{user}"
         else
-            expected="/wynton/home/{group}/"
+            expected="/wynton/home/{group}/{user}"
         fi
         pattern="${expected/\{group\}/[[:alnum:]_.-]+}"
+        pattern="${pattern/\{user\}/[[:alnum:]_.-]+}$"
         if grep -q -E "^${pattern}" <<< "${home}"; then
-            okay "HOME folder is under ${expected}"
+            okay "HOME folder is ${expected}"
         else
             if ${admin}; then
-                skip "HOME folder is not under ${expected}; ignoring because admin"
+                skip "HOME folder is not ${expected}; ignoring because admin"
             else
-                fail "HOME folder is not under ${expected}"
+                fail "HOME folder is not ${expected}"
             fi
         fi
-    
+
         if [[ ${EUID} -ne 0 ]] && ${phi} && ! ${running_as_phi}; then
             skip=true
         else
