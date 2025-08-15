@@ -883,7 +883,7 @@ if [[ $action == "validate" ]]; then
                     fail "Has an SGE certificate that is either invalid or expired"
                 fi
             else
-		hint_for_admin "To generate SGE certificate, call: /usr/local/sbin/add-account-wyn.sh -M '${user}'"
+		hint_for_admin "To generate SGE certificate, call: /usr/local/sbin/add-account-wyn.sh -M ${user}"
                 fail "SGE certificate is missing"
             fi
         else
