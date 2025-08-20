@@ -2,6 +2,8 @@
 
 ## New Features
 
+ * Update terminology from 'PHI' to 'Protected'.
+
  * `wynton account`:
 
    - `wynton account` gives more hints to admins.
