@@ -298,7 +298,7 @@ if [[ $action == "validate" ]]; then
         error "There are ${count} users in LDAP with username '${user}'"
     fi
 
-    ## Access to PHI?
+    ## Access to Protected?
     phi=false
     if [[  $(ldap_get_field "protectedAccess" "${ldap_info[@]}") == "TRUE" ]]; then
         phi=true
@@ -314,7 +314,7 @@ if [[ $action == "validate" ]]; then
         fi
     fi
     if [[ ${running_as_phi} != "${phi}" ]]; then
-        footnote "${yellow}WARNING: Cannot run all checks on PHI user, because running as a non-PHI user${reset}"
+        footnote "${yellow}WARNING: Cannot run all checks on Protected user, because running as a non-Protected user${reset}"
     fi
     
     ## Access to Wynton?
@@ -441,7 +441,7 @@ if [[ $action == "validate" ]]; then
     echo "* Wynton account: $(account_enabled_or_not "${access}")"
     echo "* IC account: $(account_enabled_or_not "${ic}")"
     echo "* Plato account: $(account_enabled_or_not "${plato}")"
-    echo "* PHI access: ${phi:-N/A}"
+    echo "* Protected access: ${phi:-N/A}"
     echo "* Wynton admin: ${admin:-N/A}"
     echo "* Locked account: ${locked:-N/A}"
     echo "* Login shell: ${shell:-N/A}"
@@ -518,44 +518,44 @@ if [[ $action == "validate" ]]; then
             hint_for_admin "Unknown GIDs: [n=${#invalid[@]}] ${invalid[*]}"
         fi
 
-        # IC access => PHI access
+        # IC access => Protected access
         if ${ic}; then
             if ${phi}; then
-                okay "IC user has PHI access"
+                okay "IC user has Protected access"
             else
-                fail "IC user without PHI access"
+                fail "IC user without Protected access"
             fi
         else
             okay "Not an IC user"
         fi
 
-        # Plato access => no PHI access
+        # Plato access => no Protected access
         if ${plato}; then
             if ${phi}; then
                 if ${admin}; then
-                    skip "Plato user has PHI access; ignoring because admin"
+                    skip "Plato user has Protected access; ignoring because admin"
                 else
-                    fail "Plato user has PHI access"
+                    fail "Plato user has Protected access"
                 fi
             else
-                okay "Plato user without PHI access"
+                okay "Plato user without Protected access"
             fi
         else
             okay "Not a Plato user"
         fi
         
-        # PHI user is in 'wynton-phi', otherwise not
+        # Protected user is in 'wynton-phi', otherwise not
         if ${phi}; then
             if id "${user}" | grep -q -F "(wynton-phi)"; then
-                okay "PHI user is in 'wynton-phi' group"
+                okay "Protected user is in 'wynton-phi' group"
             else
-                fail "PHI user is not in 'wynton-phi' group"
+                fail "Protected user is not in 'wynton-phi' group"
             fi
         else
             if id "${user}" | grep -q -F "(wynton-phi)"; then
-                fail "Non-PHI user is in 'wynton-phi' group"
+                fail "Non-Protected user is in 'wynton-phi' group"
             else
-                okay "Non-PHI user is not in 'wynton-phi' group"
+                okay "Non-Protected user is not in 'wynton-phi' group"
             fi
         fi
         
@@ -883,6 +883,7 @@ if [[ $action == "validate" ]]; then
                     fail "Has an SGE certificate that is either invalid or expired"
                 fi
             else
+		hint_for_admin "To generate SGE certificate, call: /usr/local/sbin/add-account-wyn.sh -M ${user}"
                 fail "SGE certificate is missing"
             fi
         else

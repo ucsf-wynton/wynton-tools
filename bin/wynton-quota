@@ -154,7 +154,7 @@ if [[ ${action} == "quota-path" ]]; then
 
     ## Is it a BeeGFS path?
     if [[ ${root} == "/wynton" ]]; then
-        ## PHI folder?
+        ## Protected folder?
         if [[ ${path} =~ ^/wynton/protected/ ]]; then
             depth=4
         else

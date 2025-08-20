@@ -1,3 +1,14 @@
+# Version 0.23.0 (2025-08-20)
+
+## New Features
+
+ * Update terminology from 'PHI' to 'Protected'.
+
+ * `wynton account`:
+
+   - `wynton account` gives more hints to admins.
+
+
 # Version 0.22.0 (2025-04-19)
 
 ## New Features
