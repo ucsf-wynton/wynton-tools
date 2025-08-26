@@ -307,7 +307,7 @@ if [[ $action == "validate" ]]; then
     if ${same_user}; then
         running_as_phi=${phi}
     else
-        if [[ "$(ldap_search "uid=${USER}" "protectedAccess" | ldap_get_field "protectedAccess")" == "TRUE" ]]; then
+        if [[ "$(ldap_search "uid=${USER}" "protectedAccess" | ldap_get_field "protectedAccess" --)" == "TRUE" ]]; then
             running_as_phi=true
         else
             running_as_phi=false
@@ -482,7 +482,7 @@ if [[ $action == "validate" ]]; then
         fi
     
         # No duplicated UID
-        mapfile -t res < <(ldap_search "uidNumber=${uid}" "uid" | ldap_get_field "uid")
+        mapfile -t res < <(ldap_search "uidNumber=${uid}" "uid" | ldap_get_field "uid" --)
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User ID (UID) is not unique: [n=${#res[@]}] ${res[*]}"
             hint_for_admin "Users with the same UID: [n=${#res[@]}] ${res[*]}"
@@ -575,7 +575,7 @@ if [[ $action == "validate" ]]; then
         fi
         
         # No duplicated home directories
-        mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory")
+        mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory" --)
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "HOME folder is not unique"
             hint_for_admin "Users with the same HOME folder: [n=${#res[@]}] ${res[*]}"
@@ -696,7 +696,7 @@ if [[ $action == "validate" ]]; then
         fi
 
         # No duplicated email addresses
-        mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail")
+        mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail" --)
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "Email address is not unique: [n=${#res[@]}] ${res[*]}"
         else
@@ -726,7 +726,7 @@ if [[ $action == "validate" ]]; then
             fi
     
             # No duplicated UCSF ID
-            mapfile -t res < <(ldap_search "ucsfIDNumber=${ucsf_id}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber")
+            mapfile -t res < <(ldap_search "ucsfIDNumber=${ucsf_id}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber" --)
             if [[ ${#res[@]} -gt 1 ]]; then
                 fail "UCSF Employee ID is not unique: [n=${#res[@]}] ${res[*]}"
             else

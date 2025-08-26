@@ -230,7 +230,11 @@ ldap_search() {
 ldap_get_field() {
     local field=${1:?}
     shift
-    printf "%s\n" "$@" | grep -E "^ *${field}:" | sed -E "s/^( *${field}: *| *$)//g"
+    if [[ $# -eq 1 ]] && [[ $1 == "--" ]]; then
+        grep --color=none -E "^ *${field}:" | sed -E "s/^( *${field}: *| *$)//g"
+    else
+        printf "%s\n" "$@" | grep --color=none -E "^ *${field}:" | sed -E "s/^( *${field}: *| *$)//g"
+    fi
 }
 
 ldap_as_timestamp() {

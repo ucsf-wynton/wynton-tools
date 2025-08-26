@@ -1,3 +1,14 @@
+# Version 0.23.0 (2025-08-26)
+
+## Bug Fixes
+
+ * `wynton account --check` failed to detect duplicated UIDs, HOME
+   folders, UCSF employee IDs, and email addresses.
+
+ * `wynton account --check` failed to detect Protected access for
+   Protected users other than the user checked.
+
+
 # Version 0.23.0 (2025-08-20)
 
 ## New Features
