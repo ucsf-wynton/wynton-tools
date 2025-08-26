@@ -1,6 +1,9 @@
 # Version (development version)
 
- * ...
+## Bug Fixes
+
+ * `wynton account --check` failed to detect Protected access for
+   Protected users other than the user checked.
 
 
 # Version 0.23.0 (2025-08-20)

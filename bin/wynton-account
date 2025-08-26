@@ -307,7 +307,8 @@ if [[ $action == "validate" ]]; then
     if ${same_user}; then
         running_as_phi=${phi}
     else
-        if [[ "$(ldap_search "uid=${USER}" "protectedAccess" | ldap_get_field "protectedAccess")" == "TRUE" ]]; then
+        mapfile -t bfr < <(ldap_search "uid=${USER}" "protectedAccess")
+        if [[ "$(ldap_get_field "protectedAccess" "${bfr[@]}")" == "TRUE" ]]; then
             running_as_phi=true
         else
             running_as_phi=false
