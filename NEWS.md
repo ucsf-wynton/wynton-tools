@@ -2,6 +2,9 @@
 
 ## Bug Fixes
 
+ * `wynton account --check` failed to detect duplicated UIDs, HOME
+   folders, UCSF employee IDs, and email addresses.
+
  * `wynton account --check` failed to detect Protected access for
    Protected users other than the user checked.
 
