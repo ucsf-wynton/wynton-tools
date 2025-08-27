@@ -227,7 +227,7 @@ mapfile -t groups < <(id --groups --name "${user}" 2> /dev/null | tr ' ' $'\n')
 
 ## If admin, add to 'run_as'
 if [[ $EUID -eq 0 ]]; then
-    run_as+=("admin")
+    run_as+=("admin" "root")
 elif printf "%s\n" "${groups[@]}" | grep -q --line-regexp "wynton-admins"; then
     run_as+=("admin")
 fi
@@ -238,7 +238,8 @@ if $same_user; then
 fi
 
 
-## Infer as_admin and as_user from run_as array
+## Infer as_root, as_admin, and as_user from 'run_as' array
+as_root=false
 as_admin=false
 as_user=false
 for value in "${run_as[@]}"; do
@@ -246,6 +247,8 @@ for value in "${run_as[@]}"; do
         as_admin=true
     elif [[ ${value} == "user" ]]; then
         as_user=true
+    elif [[ ${value} == "root" ]]; then
+        as_root=true
     else
         error "Unknown value in --as=<roles>: '${value}'"
     fi
@@ -312,9 +315,6 @@ if [[ $action == "validate" ]]; then
         else
             running_as_phi=false
         fi
-    fi
-    if [[ ${running_as_phi} != "${phi}" ]]; then
-        footnote "${yellow}WARNING: Cannot run all checks on Protected user, because running as a non-Protected user${reset}"
     fi
     
     ## Access to Wynton?
@@ -482,10 +482,9 @@ if [[ $action == "validate" ]]; then
         fi
     
         # No duplicated UID
-        mapfile -t res < <(ldap_search "uidNumber=${uid}" "uid" | ldap_get_field "uid" --)
+        mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "uidNumber=${uid}" "uid" | ldap_get_field "uid" --)
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User ID (UID) is not unique: [n=${#res[@]}] ${res[*]}"
-            hint_for_admin "Users with the same UID: [n=${#res[@]}] ${res[*]}"
         else
             okay "User ID (UID) is unique"
         fi
@@ -575,10 +574,10 @@ if [[ $action == "validate" ]]; then
         fi
         
         # No duplicated home directories
-        mapfile -t res < <(ldap_search "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory" --)
+        mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory" --)
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "HOME folder is not unique"
-            hint_for_admin "Users with the same HOME folder: [n=${#res[@]}] ${res[*]}"
+            mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "homeDirectory=${home}" "uid" | ldap_get_field "uid" --)
+            fail "HOME folder is shared with other users: [n=${#res[@]}] ${res[*]}"
         else
             okay "HOME folder is unique"
         fi
@@ -601,14 +600,19 @@ if [[ $action == "validate" ]]; then
             fi
         fi
 
-        if [[ ${EUID} -ne 0 ]] && ${phi} && ! ${running_as_phi}; then
+	## Protected HOME folders can only be checked by user, root, and
+	## members of the same group (which we don't support here)
+        if ${phi} && ! ${same_user} && ! ${as_root}; then
             skip=true
         else
             skip=false
         fi
         if ${skip}; then
             skip "HOME folder exists"
+            hint_for_admin "Rerun with 'sudo' to enable this test"
             skip "HOME folder is owned by user"
+            hint_for_admin "Rerun with 'sudo' to enable this test"
+            footnote "${yellow}WARNING: Cannot check Protected HOME folder; only the user themselves can do that${reset}"
         else
             if [[ -d "${home}" ]]; then
                 okay "HOME folder exists"
@@ -696,9 +700,10 @@ if [[ $action == "validate" ]]; then
         fi
 
         # No duplicated email addresses
-        mapfile -t res < <(ldap_search "mail=${email}" "mail" | ldap_get_field "mail" --)
+        mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "mail=${email}" "mail" | ldap_get_field "mail" --)
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "Email address is not unique: [n=${#res[@]}] ${res[*]}"
+            mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "mail=${email}" "uid" | ldap_get_field "uid" --)
+            fail "Email address is shared with other users: [n=${#res[@]}] ${res[*]}"
         else
             okay "Email address is unique"
         fi
@@ -726,9 +731,10 @@ if [[ $action == "validate" ]]; then
             fi
     
             # No duplicated UCSF ID
-            mapfile -t res < <(ldap_search "ucsfIDNumber=${ucsf_id}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber" --)
+            mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "ucsfIDNumber=${ucsf_id}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber" --)
             if [[ ${#res[@]} -gt 1 ]]; then
-                fail "UCSF Employee ID is not unique: [n=${#res[@]}] ${res[*]}"
+                mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "ucsfIDNumber=${ucsf_id}" "uid" | ldap_get_field "uid" --)
+                fail "UCSF Employee ID is shared with other users: [n=${#res[@]}] ${res[*]}"
             else
                 okay "UCSF Employee ID is unique"
             fi
