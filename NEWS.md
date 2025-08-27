@@ -8,7 +8,10 @@
  * `wynton account --check` gives hints to admins on affected accounts
    when it detects duplicated HOME folders, email addresses, or UCSF
    employee IDs.
- 
+
+ * `wynton account --check` could incorrectly report on duplicated
+   email addresses or UCSF employee IDs.
+
 
 # Version 0.23.0 (2025-08-26)
 
