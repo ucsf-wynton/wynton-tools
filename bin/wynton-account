@@ -306,16 +306,6 @@ if [[ $action == "validate" ]]; then
     if [[  $(ldap_get_field "protectedAccess" "${ldap_info[@]}") == "TRUE" ]]; then
         phi=true
     fi
-
-    if ${same_user}; then
-        running_as_phi=${phi}
-    else
-        if [[ "$(ldap_search "uid=${USER}" "protectedAccess" | ldap_get_field "protectedAccess" --)" == "TRUE" ]]; then
-            running_as_phi=true
-        else
-            running_as_phi=false
-        fi
-    fi
     
     ## Access to Wynton?
     access=false
