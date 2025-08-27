@@ -227,7 +227,7 @@ mapfile -t groups < <(id --groups --name "${user}" 2> /dev/null | tr ' ' $'\n')
 
 ## If admin, add to 'run_as'
 if [[ $EUID -eq 0 ]]; then
-    run_as+=("admin")
+    run_as+=("admin" "root")
 elif printf "%s\n" "${groups[@]}" | grep -q --line-regexp "wynton-admins"; then
     run_as+=("admin")
 fi
@@ -238,7 +238,8 @@ if $same_user; then
 fi
 
 
-## Infer as_admin and as_user from run_as array
+## Infer as_root, as_admin, and as_user from 'run_as' array
+as_root=false
 as_admin=false
 as_user=false
 for value in "${run_as[@]}"; do
@@ -246,6 +247,8 @@ for value in "${run_as[@]}"; do
         as_admin=true
     elif [[ ${value} == "user" ]]; then
         as_user=true
+    elif [[ ${value} == "root" ]]; then
+        as_root=true
     else
         error "Unknown value in --as=<roles>: '${value}'"
     fi
@@ -312,9 +315,6 @@ if [[ $action == "validate" ]]; then
         else
             running_as_phi=false
         fi
-    fi
-    if [[ ${running_as_phi} != "${phi}" ]]; then
-        footnote "${yellow}WARNING: Cannot run all checks on Protected user, because running as a non-Protected user${reset}"
     fi
     
     ## Access to Wynton?
@@ -601,14 +601,19 @@ if [[ $action == "validate" ]]; then
             fi
         fi
 
-        if [[ ${EUID} -ne 0 ]] && ${phi} && ! ${running_as_phi}; then
+	## Protected HOME folders can only be checked by user, root, and
+	## members of the same group (which we don't support here)
+        if ${phi} && ! ${same_user} && ! ${as_root}; then
             skip=true
         else
             skip=false
         fi
         if ${skip}; then
             skip "HOME folder exists"
+            hint_for_admin "Rerun with 'sudo' to enable this test"
             skip "HOME folder is owned by user"
+            hint_for_admin "Rerun with 'sudo' to enable this test"
+            footnote "${yellow}WARNING: Cannot check Protected HOME folder; only the user themselves can do that${reset}"
         else
             if [[ -d "${home}" ]]; then
                 okay "HOME folder exists"

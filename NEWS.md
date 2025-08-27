@@ -1,6 +1,9 @@
 # Version (development version)
 
- * ...
+## Bug Fixes
+
+ * `wynton account --check` requires 'sudo' to check Protected HOME
+   folders. Add hints to admins for this.
 
 
 # Version 0.23.0 (2025-08-26)
