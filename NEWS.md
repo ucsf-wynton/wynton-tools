@@ -5,6 +5,10 @@
  * `wynton account --check` requires 'sudo' to check Protected HOME
    folders. Add hints to admins for this.
 
+ * `wynton account --check` gives hints to admins on affected accounts
+   when it detects duplicated HOME folders, email addresses, or UCSF
+   employee IDs.
+ 
 
 # Version 0.23.0 (2025-08-26)
 
