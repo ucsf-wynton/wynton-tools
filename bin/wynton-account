@@ -485,7 +485,6 @@ if [[ $action == "validate" ]]; then
         mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "uidNumber=${uid}" "uid" | ldap_get_field "uid" --)
         if [[ ${#res[@]} -gt 1 ]]; then
             fail "User ID (UID) is not unique: [n=${#res[@]}] ${res[*]}"
-            hint_for_admin "Users with the same UID: [n=${#res[@]}] ${res[*]}"
         else
             okay "User ID (UID) is unique"
         fi
@@ -577,9 +576,8 @@ if [[ $action == "validate" ]]; then
         # No duplicated home directories
         mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "homeDirectory=${home}" "homeDirectory" | ldap_get_field "homeDirectory" --)
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "HOME folder is not unique"
             mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "homeDirectory=${home}" "uid" | ldap_get_field "uid" --)
-            hint_for_admin "Users with the same HOME folder: [n=${#res[@]}] ${res[*]}"
+            fail "HOME folder is shared with other users: [n=${#res[@]}] ${res[*]}"
         else
             okay "HOME folder is unique"
         fi
@@ -704,9 +702,8 @@ if [[ $action == "validate" ]]; then
         # No duplicated email addresses
         mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "mail=${email}" "mail" | ldap_get_field "mail" --)
         if [[ ${#res[@]} -gt 1 ]]; then
-            fail "Email address is not unique: [n=${#res[@]}] ${res[*]}"
             mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "mail=${email}" "uid" | ldap_get_field "uid" --)
-            hint_for_admin "Users with the same email address: [n=${#res[@]}] ${res[*]}"
+            fail "Email address is shared with other users: [n=${#res[@]}] ${res[*]}"
         else
             okay "Email address is unique"
         fi
@@ -736,9 +733,8 @@ if [[ $action == "validate" ]]; then
             # No duplicated UCSF ID
             mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "ucsfIDNumber=${ucsf_id}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber" --)
             if [[ ${#res[@]} -gt 1 ]]; then
-                fail "UCSF Employee ID is not unique: [n=${#res[@]}] ${res[*]}"
                 mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "ucsfIDNumber=${ucsf_id}" "uid" | ldap_get_field "uid" --)
-                hint_for_admin "Users with the same UCSF Employee ID: [n=${#res[@]}] ${res[*]}"
+                fail "UCSF Employee ID is shared with other users: [n=${#res[@]}] ${res[*]}"
             else
                 okay "UCSF Employee ID is unique"
             fi
