@@ -1,4 +1,4 @@
-# Version (development version)
+# Version 0.23.2 (2025-08-27)
 
 ## Bug Fixes
 
@@ -13,7 +13,7 @@
    email addresses or UCSF employee IDs.
 
 
-# Version 0.23.0 (2025-08-26)
+# Version 0.23.1 (2025-08-26)
 
 ## Bug Fixes
 
