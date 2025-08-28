@@ -1,6 +1,9 @@
 # Version (development version)
 
- * ...
+## Bug Fixes
+
+ * `sudo wynton account` failed to query SGE, because SGE is not
+   configured for root by default.
 
 
 # Version 0.23.2 (2025-08-27)

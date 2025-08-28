@@ -224,10 +224,17 @@ group=$(id --group --name "$user" 2> /dev/null)
 mapfile -t gids < <(id --groups "${user}" 2> /dev/null | tr ' ' $'\n')
 mapfile -t groups < <(id --groups --name "${user}" 2> /dev/null | tr ' ' $'\n')
 
-
 ## If admin, add to 'run_as'
 if [[ $EUID -eq 0 ]]; then
     run_as+=("admin" "root")
+    ## WORKAROUND: SGE is not configures for 'root'
+    if [[ -f /etc/profile.d/sge.sh ]]; then
+	source /etc/profile.d/sge.sh
+    fi
+    ## Assert that 'qconf' can be found
+    if ! command -v qconf > /dev/null; then
+	error "Running as 'root' and failing to locate 'qconf'"
+    fi
 elif printf "%s\n" "${groups[@]}" | grep -q --line-regexp "wynton-admins"; then
     run_as+=("admin")
 fi
