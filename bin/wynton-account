@@ -532,7 +532,7 @@ if [[ $action == "validate" ]]; then
                     skip "Plato user has Protected access; ignoring because admin"
                 else
                     fail "Plato user has Protected access"
-		    hint_for_admin "User require Plato and Wynton Protected access, should have two separate accounts"
+		    hint_for_admin "Users requiring Plato and Wynton Protected access should have two separate accounts"
                 fi
             else
                 okay "Plato user without Protected access"
