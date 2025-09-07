@@ -1,6 +1,8 @@
 # Version (development version)
 
- * ...
+ * `wynton account --check --as=admin` gives hint for how to handle
+   accounts mistakenly having access to both Plato and Wynton
+   Protected.
 
 
 # Version 0.23.3 (2025-08-27)
