@@ -729,9 +729,10 @@ if [[ $action == "validate" ]]; then
             fi
     
             # No duplicated UCSF ID
-            mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "ucsfIDNumber=${ucsf_id}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber" --)
+	    search="(& (wyntonAccess=TRUE) (ucsfIDNumber=${ucsf_id}) )"
+            mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "${search}" "ucsfIDNumber" | ldap_get_field "ucsfIDNumber" --)
             if [[ ${#res[@]} -gt 1 ]]; then
-                mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "ucsfIDNumber=${ucsf_id}" "uid" | ldap_get_field "uid" --)
+                mapfile -t res < <(ldap_search -b "ou=Accounts,dc=cgl,dc=ucsf,dc=edu" "${search}" "uid" | ldap_get_field "uid" --)
                 fail "UCSF Employee ID is shared with other users: [n=${#res[@]}] ${res[*]}"
             else
                 okay "UCSF Employee ID is unique"

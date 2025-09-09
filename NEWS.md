@@ -4,6 +4,9 @@
    accounts mistakenly having access to both Plato and Wynton
    Protected.
 
+ * `wynton account --check --as=admin` will only consider an UCSF
+   Employee ID duplicated across Wynton accounts that are enabled.
+
 
 # Version 0.23.3 (2025-08-27)
 
