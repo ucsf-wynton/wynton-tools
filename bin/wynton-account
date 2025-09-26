@@ -739,10 +739,10 @@ if [[ $action == "validate" ]]; then
             fi
         else
             if is_ucsf_email "${email}"; then
-                fail "UCSF Employee ID is missing"
+                fail "UCSF Employee ID is missing (required if ucsf.edu email address)"
                 hint_for_admin "Search by email address in the USCF Enterprise Directory Service (EDS) system"
             else
-                okay "UCSF Employee ID is not required"
+                okay "UCSF Employee ID is not required (no ucsf.edu email address)"
             fi
         fi
     

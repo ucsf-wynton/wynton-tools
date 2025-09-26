@@ -1,6 +1,9 @@
 # Version (development version)
 
- * ...
+## New Features
+
+ * `wynton account --check` clarifies that UCSF employee ID is
+   required if user has a ucsf.edu email address.
 
 
 # Version 0.24.0 (2025-09-09)
