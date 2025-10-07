@@ -4,6 +4,8 @@
 
  * `wynton account --check` clarifies that UCSF employee ID is
    required if user has a ucsf.edu email address.
+   
+ * `wynton watchdog-ps` allows for AGE processes.
 
 
 # Version 0.24.0 (2025-09-09)
