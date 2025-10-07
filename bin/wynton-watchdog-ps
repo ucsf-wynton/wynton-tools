@@ -124,11 +124,8 @@ if [[ $action == "list" ]]; then
     ## Allow BeeGFS tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(beegfs-ctl\/Main)$/')
 
-    ## Allow AGE tools
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(sge_execd)$/')
-
     ## Allow SGE tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(qacct|qalter|qconf|qhold|qhost|qmod|qrls|qstat|qsub)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(qacct|qalter|qconf|qhold|qhost|qmod|qrls|qstat|qsub|sge_execd)$/')
 
     ## Allow shells ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bash|csh|sh|tcsh|zsh)$/')
