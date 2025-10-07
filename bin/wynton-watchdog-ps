@@ -144,6 +144,9 @@ if [[ $action == "list" ]]; then
         
     ## Allowed file-related tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|mv|rm|rsync|stat|tar|touch|wget|zip|unzip)$/')
+
+    ## Allow MATLAB service processes
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$7 !~ /([/]MathWorksServiceHost(-Monitor)*)/')
     
     ## Allow VS Code ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(code-insiders-.+)$/')
