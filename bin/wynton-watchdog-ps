@@ -137,13 +137,13 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim|view)$/')
     
     ## Allowed file processing tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|cut|file|grep|head|less|lesspipe.sh|more|sed|sort|tail|uniq|wc)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|cut|file|grep|head|less|lesspipe.sh|more|sed|sort|tail|tee|tr|uniq|wc)$/')
     
     ## Allowed misc. tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc|man|time|timeout)$/')
         
     ## Allowed file-related tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|mv|rm|rsync|stat|tar|touch|wget|zip|unzip)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|md5sum|mv|rm|rsync|stat|tar|touch|wget|zip|unzip)$/')
 
     ## Allow MATLAB service processes
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$7 !~ /([/]MathWorksServiceHost(-Monitor)*)/')
@@ -156,7 +156,9 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
         
-
+    ## Allowed admin tools)
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(kadmin)$/')
+    
     ## Allowed CBI stack tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bat|htop)$/')
 
