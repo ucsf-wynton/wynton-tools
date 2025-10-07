@@ -217,8 +217,8 @@ if [[ $action == "list" ]]; then
         ## Allowed GVFSD(?) tools ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(gvfsd|gvfsd-dnssd|gvfsd-network|gvfs-udisks2-vo.*|gvfsd-computer|gvfsd-http|gvfsd-trash|gvfsd-metadata)$/')
 
-        ## Allowed Apptainer tools ('comm')
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(squashfuse_ll)$/')
+        ## Allowed Apptainer/Singularity tools ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(squashfuse_ll|faked)$/')
         
         ## Allowed Firefox tools ('comm') ## FIXME
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(firefox|Socket Process|Utility Process|WebExtensions|Isolated Web Co.*|Privileged Cont.*)$/')
