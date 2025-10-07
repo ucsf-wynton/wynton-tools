@@ -209,7 +209,7 @@ if [[ $action == "list" ]]; then
     ## --------------------------------------------------------------------
     elif [[ ${HOSTNAME} == *dev* ]]; then
         ## Allowed X11- and X2Go-related tools ('comm')
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(x2goagent|x2goruncommand|x2goresume-sess.*|mate-panel|mate-session|mate-settings-d.*|mate-terminal)$/')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(x2goagent|x2gogetagentsta|x2goruncommand|x2goresume-sess.*|mate-panel|mate-session|mate-settings-d.*|mate-terminal)$/')	
 
         ## Allowed misc. ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(marco|polkit-mate-aut.*|gnome-keyring-d.*|dconf-service|dbus-kill-proce.*|dbus-run-sessio.*|at-spi-bus-laun.*|at-spi2-registr.*|gio|caja|agent|starter-suid)$/')
@@ -220,8 +220,11 @@ if [[ $action == "list" ]]; then
         ## Allowed Apptainer/Singularity tools ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(squashfuse_ll|faked)$/')
         
-        ## Allowed Firefox tools ('comm') ## FIXME
+        ## Allowed Firefox tools ('comm')
+	## The following doesn't work, because there are SPACEs in 'comm' column
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(firefox|Socket Process|Utility Process|WebExtensions|Isolated Web Co.*|Privileged Cont.*)$/')
+	## ... so we have to go barebone like:
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | grep -v -E ' (firefox|Socket Process|Utility Process|Web Content|WebExtensions|Isolated Web Co.*|Privileged Cont.*) ')
 
         ## Allowed Python tools ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(pip)$/')
