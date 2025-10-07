@@ -134,7 +134,7 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(byobu|byobu-status|screen|tmux|tmux:)$/')
 
     ## Allowed editors ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim|view)$/')
     
     ## Allowed file processing tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|cut|file|grep|head|less|lesspipe.sh|more|sed|sort|tail|uniq|wc)$/')
@@ -222,6 +222,9 @@ if [[ $action == "list" ]]; then
         
         ## Allowed Firefox tools ('comm') ## FIXME
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(firefox|Socket Process|Utility Process|WebExtensions|Isolated Web Co.*|Privileged Cont.*)$/')
+
+        ## Allowed Python tools ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(pip)$/')
     fi
 
     

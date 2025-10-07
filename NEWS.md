@@ -5,7 +5,8 @@
  * `wynton account --check` clarifies that UCSF employee ID is
    required if user has a ucsf.edu email address.
    
- * `wynton watchdog-ps` allows for AGE and MATLAB service processes.
+ * `wynton watchdog-ps` allows for more processes, e.g. AGE and MATLAB
+   service processes, `pip` and `view'.
 
 
 # Version 0.24.0 (2025-09-09)
