@@ -140,7 +140,7 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|cut|file|grep|head|less|lesspipe.sh|more|sed|sort|tail|tee|tr|uniq|wc)$/')
     
     ## Allowed misc. tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc|man|time|timeout)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc|man|time|timeout|host|ping|dig|nslookup|nc)$/')
         
     ## Allowed file-related tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|md5sum|mv|rm|rsync|stat|tar|touch|wget|zip|unzip)$/')
@@ -156,7 +156,7 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
         
-    ## Allowed admin tools)
+    ## Allowed admin tools
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(kadmin)$/')
     
     ## Allowed CBI stack tools ('comm')
