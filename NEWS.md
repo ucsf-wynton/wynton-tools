@@ -2,6 +2,8 @@
 
 ## New Features
 
+ * Add `wynton watchdog-jobs`.
+ 
  * `wynton account --check` clarifies that UCSF employee ID is
    required if user has a ucsf.edu email address.
    
