@@ -5,8 +5,12 @@
 #'  wynton-job [options] <job_id>
 #'
 #' Flags:
-#'  --help     Display this help
-#'  --version  Display version
+#'  --help           Display this help
+#'  --version        Display version
+#'
+#'  --user=<user>    User to filter by (default: ${USER}).
+#'  --tail=<size>    Number of recent job entries to scan
+#'                   (default: 1,000,000)
 #'
 #' Examples:
 #'  wynton job --list
