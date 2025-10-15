@@ -25,13 +25,14 @@ Installed tools:
  trash           Wynton Trash Tool
  utils           Wynton Utilities
  watchdog-gpus   Watchdog for Processes Running on Non-Allocated GPUs
+ watchdog-jobs   Watchdog for Jobs on the Queue
  watchdog-ps     Watchdog for Processes Running on Hosts
  why             Wynton Troubleshooting
 
 Example:
  wynton --help
 
-Version: 0.24.0
+Version: 0.24.0-9001
 Copyright: Henrik Bengtsson (2019-2025)
 License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 Source: https://github.com/ucsf-wynton/wynton-tools

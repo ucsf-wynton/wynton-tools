@@ -20,6 +20,7 @@
 #' Examples:
 #'  wynton account
 #'  wynton account alice
+#'  wynton account alic*
 #'  wynton account 1000
 #'  wynton account alice@bobsonlab.org
 #'  wynton account alice --check

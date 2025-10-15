@@ -158,6 +158,15 @@ as_user() {
             error "There are more than one user with email address ${user}: [n=${#users[@]}] ${users[*]}"
         fi
         user="${users[0]}"
+    elif [[ ${user} == *[*+] ]]; then
+	user="${user/%+/\*}"
+        mapfile -t users < <(ldap_search "uid=${user}" "uid" | grep -E "^uid:" | sed -E "s/^( *uid: *| *$)//g")
+        if [[ ${#users[@]} -eq 0 ]]; then
+            error "There is no user with username matching ${user}"
+        elif [[ ${#users[@]} -gt 1 ]]; then
+            error "There are more than one user with username matching ${user}: [n=${#users[@]}] ${users[*]}"
+        fi
+        user="${users[0]}"
     fi
 
     echo "${user}"

@@ -3,7 +3,10 @@
 ## New Features
 
  * Add `wynton watchdog-jobs`.
- 
+
+ * Now `wynton account` supports truncated usernames, e.g. `wynton
+   account alice.bo*`.
+
  * `wynton account --check` clarifies that UCSF employee ID is
    required if user has a ucsf.edu email address.
    

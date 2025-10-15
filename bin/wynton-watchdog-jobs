@@ -145,9 +145,6 @@ while [[ $# -gt 0 ]]; do
 	    value=$(bc <<< "${value}")
             assert_integer "${value}"
             max_age=${value}
-        elif [[ "${key}" == "user-width" ]]; then
-            assert_integer "${value}"
-            user_width=${value}
         else
             error "Unknown option: $1"
         fi
