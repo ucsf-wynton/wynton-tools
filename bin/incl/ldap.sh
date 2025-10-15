@@ -336,7 +336,7 @@ ldap_user_locked() {
 }
 
 ldap_user_legend() {
-    echo "W=Wynton access, L=locked, P=PHI"
+    echo "W=Wynton access, L=locked, P=Protected"
 }
 
 #' @returns
