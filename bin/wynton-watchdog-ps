@@ -119,13 +119,13 @@ if [[ $action == "list" ]]; then
     ## Any host type
     ## --------------------------------------------------------------------
     ## Ignore allowed commands ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|btop|dbus-daemon|dshbak|flock|htop|pdsh|ps|sleep|ssh|ssh-agent|sshd|systemd|top|watch|xargs)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|btop|dbus-daemon|dshbak|flock|htop|pdsh|ps|sleep|ssh|ssh-agent|sshd|systemd|mpstat|top|watch|xargs)$/')
 
     ## Allow BeeGFS tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(beegfs-ctl\/Main)$/')
 
     ## Allow SGE tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(qacct|qalter|qconf|qhold|qhost|qmod|qrls|qstat|qsub)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(qacct|qalter|qconf|qhold|qhost|qmod|qrls|qstat|qsub|sge_execd)$/')
 
     ## Allow shells ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bash|csh|sh|tcsh|zsh)$/')
@@ -134,16 +134,19 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(byobu|byobu-status|screen|tmux|tmux:)$/')
 
     ## Allowed editors ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(emacs|nano|vi|vim|view)$/')
     
     ## Allowed file processing tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|cut|file|grep|head|less|lesspipe.sh|more|sed|sort|tail|uniq|wc)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|cut|file|grep|head|less|lesspipe.sh|more|sed|sort|tail|tee|tr|uniq|wc)$/')
     
     ## Allowed misc. tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc|man|time|timeout)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc|man|time|timeout|host|ping|dig|nslookup|nc)$/')
         
     ## Allowed file-related tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|mv|rm|rsync|stat|tar|touch|wget|zip|unzip)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|md5sum|mv|rm|rsync|stat|tar|touch|wget|zip|unzip|7z)$/')
+
+    ## Allow MATLAB service processes
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$7 !~ /([/]MathWorksServiceHost(-Monitor)*)/')
     
     ## Allow VS Code ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(code-insiders-.+)$/')
@@ -153,9 +156,11 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /-m mypy[.]dmypy/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 != "python" || ! /lsp_server.py/')
         
-
+    ## Allowed admin tools
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(kadmin)$/')
+    
     ## Allowed CBI stack tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bat|htop)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bat|htop|mc|ncdu|fzf|shellcheck|pandoc|port4me|gping|gh|qtop)$/')
 
     ## --------------------------------------------------------------------
     ## Login or data-transfer hosts?
@@ -206,7 +211,7 @@ if [[ $action == "list" ]]; then
     ## --------------------------------------------------------------------
     elif [[ ${HOSTNAME} == *dev* ]]; then
         ## Allowed X11- and X2Go-related tools ('comm')
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(x2goagent|x2goruncommand|x2goresume-sess.*|mate-panel|mate-session|mate-settings-d.*|mate-terminal)$/')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(x2goagent|x2gogetagentsta|x2goruncommand|x2goresume-sess.*|mate-panel|mate-session|mate-settings-d.*|mate-terminal)$/')	
 
         ## Allowed misc. ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(marco|polkit-mate-aut.*|gnome-keyring-d.*|dconf-service|dbus-kill-proce.*|dbus-run-sessio.*|at-spi-bus-laun.*|at-spi2-registr.*|gio|caja|agent|starter-suid)$/')
@@ -214,11 +219,17 @@ if [[ $action == "list" ]]; then
         ## Allowed GVFSD(?) tools ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(gvfsd|gvfsd-dnssd|gvfsd-network|gvfs-udisks2-vo.*|gvfsd-computer|gvfsd-http|gvfsd-trash|gvfsd-metadata)$/')
 
-        ## Allowed Apptainer tools ('comm')
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(squashfuse_ll)$/')
+        ## Allowed Apptainer/Singularity tools ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(squashfuse_ll|faked)$/')
         
-        ## Allowed Firefox tools ('comm') ## FIXME
+        ## Allowed Firefox tools ('comm')
+	## The following doesn't work, because there are SPACEs in 'comm' column
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(firefox|Socket Process|Utility Process|WebExtensions|Isolated Web Co.*|Privileged Cont.*)$/')
+	## ... so we have to go barebone like:
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | grep -v -E ' (firefox|Socket Process|Utility Process|Web Content|WebExtensions|Isolated Web Co.*|Privileged Cont.*) ')
+
+        ## Allowed Python tools ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(pip)$/')
     fi
 
     

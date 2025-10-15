@@ -20,6 +20,7 @@
 #' Examples:
 #'  wynton account
 #'  wynton account alice
+#'  wynton account alic*
 #'  wynton account 1000
 #'  wynton account alice@bobsonlab.org
 #'  wynton account alice --check
@@ -309,9 +310,9 @@ if [[ $action == "validate" ]]; then
     fi
 
     ## Access to Protected?
-    phi=false
+    protected=false
     if [[  $(ldap_get_field "protectedAccess" "${ldap_info[@]}") == "TRUE" ]]; then
-        phi=true
+        protected=true
     fi
     
     ## Access to Wynton?
@@ -438,7 +439,7 @@ if [[ $action == "validate" ]]; then
     echo "* Wynton account: $(account_enabled_or_not "${access}")"
     echo "* IC account: $(account_enabled_or_not "${ic}")"
     echo "* Plato account: $(account_enabled_or_not "${plato}")"
-    echo "* Protected access: ${phi:-N/A}"
+    echo "* Protected access: ${protected:-N/A}"
     echo "* Wynton admin: ${admin:-N/A}"
     echo "* Locked account: ${locked:-N/A}"
     echo "* Login shell: ${shell:-N/A}"
@@ -516,7 +517,7 @@ if [[ $action == "validate" ]]; then
 
         # IC access => Protected access
         if ${ic}; then
-            if ${phi}; then
+            if ${protected}; then
                 okay "IC user has Protected access"
             else
                 fail "IC user without Protected access"
@@ -527,7 +528,7 @@ if [[ $action == "validate" ]]; then
 
         # Plato access => no Protected access
         if ${plato}; then
-            if ${phi}; then
+            if ${protected}; then
                 if ${admin}; then
                     skip "Plato user has Protected access; ignoring because admin"
                 else
@@ -542,7 +543,7 @@ if [[ $action == "validate" ]]; then
         fi
         
         # Protected user is in 'wynton-phi', otherwise not
-        if ${phi}; then
+        if ${protected}; then
             if id "${user}" | grep -q -F "(wynton-phi)"; then
                 okay "Protected user is in 'wynton-phi' group"
             else
@@ -581,7 +582,7 @@ if [[ $action == "validate" ]]; then
         fi
         
         # Users has a HOME directories under expected /wynton/ location
-        if ${phi}; then
+        if ${protected}; then
             expected="/wynton/protected/home/{group}/{user}"
         else
             expected="/wynton/home/{group}/{user}"
@@ -600,7 +601,7 @@ if [[ $action == "validate" ]]; then
 
 	## Protected HOME folders can only be checked by user, root, and
 	## members of the same group (which we don't support here)
-        if ${phi} && ! ${same_user} && ! ${as_root}; then
+        if ${protected} && ! ${same_user} && ! ${as_root}; then
             skip=true
         else
             skip=false
@@ -739,10 +740,10 @@ if [[ $action == "validate" ]]; then
             fi
         else
             if is_ucsf_email "${email}"; then
-                fail "UCSF Employee ID is missing"
+                fail "UCSF Employee ID is missing (required if ucsf.edu email address)"
                 hint_for_admin "Search by email address in the USCF Enterprise Directory Service (EDS) system"
             else
-                okay "UCSF Employee ID is not required"
+                okay "UCSF Employee ID is not required (no ucsf.edu email address)"
             fi
         fi
     

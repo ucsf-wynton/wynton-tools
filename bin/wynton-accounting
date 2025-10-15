@@ -10,6 +10,7 @@
 #'
 #' Options:
 #'  --tail=<int>      How many history entries to search
+#'                    (default: 1,000,000)
 #'  --<name>=<value>  SGE accounting result keys to filter by;
 #'                    exit, failed, group, host, name, priority,
 #'                    project, queue, task, user
@@ -76,7 +77,7 @@ action=subset
 ## Options
 debug=false
 verbose=false
-tail=10000
+tail=1000000
 filter_patterns=()
 
 # Parse command-line options

@@ -1,3 +1,19 @@
+# Version (development version)
+
+## New Features
+
+ * Add `wynton watchdog-jobs`.
+
+ * Now `wynton account` supports truncated usernames, e.g. `wynton
+   account alice.bo*`.
+
+ * `wynton account --check` clarifies that UCSF employee ID is
+   required if user has a ucsf.edu email address.
+   
+ * `wynton watchdog-ps` allows for more processes, e.g. AGE and MATLAB
+   service processes, `pip` and `view'.
+
+
 # Version 0.24.0 (2025-09-09)
 
 ## New Features
