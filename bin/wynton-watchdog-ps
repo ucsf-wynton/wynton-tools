@@ -119,7 +119,7 @@ if [[ $action == "list" ]]; then
     ## Any host type
     ## --------------------------------------------------------------------
     ## Ignore allowed commands ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|btop|dbus-daemon|dshbak|flock|htop|pdsh|ps|sleep|ssh|ssh-agent|sshd|systemd|mpstat|top|watch|xargs)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(\(sd-pam\)|COMMAND|btop|dbus-daemon|dshbak|flock|htop|pdsh|ps|sleep|ssh|ssh-agent|gpg-agent|sshd|systemd|mpstat|top|watch|xargs)$/')
 
     ## Allow BeeGFS tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(beegfs-ctl\/Main)$/')
