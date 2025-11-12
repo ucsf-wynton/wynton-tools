@@ -2,6 +2,9 @@
 
 ## New Features
 
+ * `wynton job` reports on SGE maintenance schedule and warn when
+   requested job run-time goes into the downtime window.
+ 
  * Add `wynton watchdog-jobs`.
 
  * Now `wynton account` supports truncated usernames, e.g. `wynton

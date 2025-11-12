@@ -145,6 +145,91 @@ parse_size_spec() {
     echo "${GiB}"
 }
 
+
+parse_sge_calendar() {
+    local calendar_name="$1"
+    local year_field
+    local current_start
+    local current_end
+    local prev_end_epoch
+    local next_start
+    local next_start_epoch
+    local -a dates start_times end_times
+    local -A seen
+    local key
+    
+    # Get the calendar configuration and extract the year field
+    year_field=$(qconf -scal "$calendar_name" | awk '
+        /^year/ {
+            capture = 1
+            sub(/^year[[:space:]]+/, "")
+            line = $0
+        }
+        capture && /\\$/ {
+            sub(/[[:space:]]*\\[[:space:]]*$/, "")
+            if (NF > 0 && !/^year/) line = line " " $0
+            next
+        }
+        capture && !/\\$/ {
+            if (NF > 0 && !/^year/) line = line " " $0
+            print line
+            exit
+        }
+    ')
+    
+    # Remove duplicate entries and store unique ones
+    dates=()
+    start_times=()
+    end_times=()
+    
+    while IFS='=' read -r date time_range state; do
+        if [[ "$state" == "off" ]]; then
+            # Create unique key to avoid duplicates
+            key="${date}=${time_range}"
+            if [[ -z "${seen[$key]}" ]]; then
+                seen[$key]=1
+                
+                IFS='.' read -r day month year <<< "$date"
+                IFS='-' read -r start_time end_time <<< "$time_range"
+                
+                dates+=("${year}-${month}-${day}")
+                start_times+=("$start_time")
+                end_times+=("$end_time")
+            fi
+        fi
+    done < <(echo "$year_field" | tr ' ' '\n' | grep -E '^[0-9]{2}\.')
+    
+    # Merge consecutive entries
+    if [[ ${#dates[@]} -eq 0 ]]; then
+        return
+    fi
+    
+    current_start="${dates[0]}T${start_times[0]}"
+    current_end="${dates[0]}T${end_times[0]}"
+    
+    for ((i=1; i<${#dates[@]}; i++)); do
+        prev_end_epoch=$(date -d "$current_end" +%s 2>/dev/null)
+        next_start="${dates[$i]}T${start_times[$i]}"
+        next_start_epoch=$(date -d "$next_start" +%s 2>/dev/null)
+        
+        # Check if next entry starts 1 second after previous ends
+        if [[ $((next_start_epoch - prev_end_epoch)) -eq 1 ]]; then
+            # Merge: extend current_end
+            current_end="${dates[$i]}T${end_times[$i]}"
+        else
+            # Output the current range and start a new one
+            echo "($current_start, $current_end)"
+            current_start="$next_start"
+            current_end="${dates[$i]}T${end_times[$i]}"
+        fi
+    done
+    
+    # Output the last range
+    echo "$current_start"
+    echo "$current_end"
+}
+
+
 # -------------------------------------------------------------------------
 # MAIN
 # -------------------------------------------------------------------------
@@ -227,6 +312,9 @@ elif [[ $action == "help" ]]; then
 fi
 
 
+epoch_now=$(date "+%s")
+
+
 if [[ $action == "list" ]]; then
     mapfile -t lines < <(qstat -s az -u "${user}")
     printf "%s\n" "${lines[@]}" | annotate_qstat | reformat_date
@@ -263,6 +351,19 @@ if [[ $action == "job" ]]; then
     ## An active job?
     bfr=$(qstat -j "$jobid" 2> /dev/null)
     if [[ -n ${bfr} ]]; then
+	## Check if there is a scheduled maintainenance
+	calendar_delta=-1
+        mapfile -t calendar < <(parse_sge_calendar "maint_downtime")
+	start=${calendar[0]}
+	if [[ -n ${start} ]]; then
+	    epoch_start=$(date --date="$start" "+%s")
+            delta=$(( epoch_start - epoch_now ))
+            if [[ $delta -le $(( 14 * 24 * 60 * 60 )) ]]; then
+		calendar_delta=${delta}
+                footnote "${yellow}WARNING: cluster downtime is scheduled for ${start} [in $(seconds_to_dhms "${delta}")]"
+            fi
+	fi
+	
         ## Keep key: value lines
         vars=$(grep -E "^[^:]+:.*" <<< "$bfr")
         
@@ -320,6 +421,8 @@ if [[ $action == "job" ]]; then
         level=0
         values1=()
         values2=()
+
+	is_queued=false
         for kk in "${!values[@]}"; do
             value=${values[$((kk - 1))]}
             
@@ -370,12 +473,14 @@ if [[ $action == "job" ]]; then
                     level=2
                 elif [[ $value == *queued* ]]; then
                     level=2
+		    is_queued=true
                 elif [[ $value == *threshold* ]]; then
                     level=2
                 fi
             fi
             values2+=("${value/[*]/ * }")
         done
+        mdebug "is_queued: ${is_queued}"
 
         status="[ $ok ]"
         if [[ $level == 1 ]]; then
@@ -413,8 +518,7 @@ if [[ $action == "job" ]]; then
         info=""
         epoch=$(date -d "${value}" '+%s' 2> /dev/null)
         timestamp=$(date -d "@${epoch}" '+%A %Y-%m-%dT%H:%M:%S%z' 2> /dev/null)
-            epoch_now=$(date "+%s")
-            delta=$(( epoch_now - epoch ))
+        delta=$(( epoch_now - epoch ))
         info="$(seconds_to_dhms "${delta}") ago"
         if [[ $delta -gt $(( 24 * 60 * 60 )) ]]; then
             info="${red}${info}${reset}"
@@ -456,14 +560,19 @@ if [[ $action == "job" ]]; then
         fi
 
         info=""
-        echo "$status Requested resources: ${value}"
         
         key="h_rt"
         value2=$(sed -E "s/.*\b${key}=([[:digit:]]+)\b.*/\1/" <<< "${value}")
         s=${value2}
+        info="       - ${key}=${value2} => $(seconds_to_dhms "${value2}")"
+        if [[ $is_queued ]] && [[ $value2 -gt $calendar_delta ]]; then
+            status="[$warn]"
+            info="${info} ${yellow}WARNING: Job cannot start until *after* the scheduled downtime${reset}"
+        fi
 
-        echo "       - ${key}=${value2} => $(seconds_to_dhms "${value2}")"
-
+        echo "$status Requested resources: ${value}"
+        echo "$info"
+	
         pattern_size="[[:digit:]]+([.][[:digit:]]*)?[[:alpha:]]?"
         key="mem_free"
         mem_free=(-1 -1 -1 -1 -1 -1 -1)
@@ -514,7 +623,7 @@ if [[ $action == "job" ]]; then
         fi
 
         if ! ${is_rocky8}; then
-            echo "       - rocky8=${red}false${reset} <= ERROR: Not supported value"
+            echo "       - rocky8=${red}false${reset} ERROR: Non-supported value"
         fi
 
         # shellcheck disable=2154
@@ -564,7 +673,7 @@ if [[ $action == "job" ]]; then
         info=""
         if [[ -z "${value}" ]]; then
             status="[$warn]"
-            info="${yellow}WARNING: The job does not specify a working directory ('cwd')${reset}"
+            info="${yellow}WARNING: Job does not specify a working directory ('cwd')${reset}"
         elif ! ${is_owner}; then
             status="[$warn]"
             info="$(dir_info "${value}" "${is_owner}")${info}"
@@ -628,7 +737,7 @@ if [[ $action == "job" ]]; then
                     okay "Job array script uses environment variable 'SGE_TASK_ID'"
                 else
                     fail "Job array script does not use environment variable 'SGE_TASK_ID'"
-                    footnote "${yellow}WARNING: You job script does not make user of environment variable 'SGE_TASK_ID', despite running as an array script (uses SGE declaration '-t <tasks>'). All your job task are running with the exact same code and parameter settings, which is unlikely your intention${reset}"
+                    footnote "${yellow}WARNING: Job script does not make use of environment variable 'SGE_TASK_ID', despite running as an array script (uses SGE declaration '-t <tasks>'). All your job tasks are running with the exact same code and parameter settings, which is unlikely your intention${reset}"
                 fi
             else
                 skip "A job array, but lacks permissions to check job script for SGE_TASK_ID"
