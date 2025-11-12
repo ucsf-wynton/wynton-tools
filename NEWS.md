@@ -1,4 +1,12 @@
-# Version (development version)
+# Version 0.26.0 (2025-11-12)
+
+## New Features
+
+ * `wynton job` reports on SGE maintenance schedule and warn when
+   requested job run-time goes into the downtime window.
+
+
+# Version 0.25.0 (2025-10-14)
 
 ## New Features
 
