@@ -358,7 +358,7 @@ if [[ $action == "job" ]]; then
 	if [[ -n ${start} ]]; then
 	    epoch_start=$(date --date="$start" "+%s")
             delta=$(( epoch_start - epoch_now ))
-            if [[ $delta -le $(( 14 * 24 * 60 * 60 )) ]]; then
+            if [[ $delta -gt 0 ]] && [[ $delta -le $(( 14 * 24 * 60 * 60 )) ]]; then
 		calendar_delta=${delta}
                 footnote "${yellow}WARNING: cluster downtime is scheduled for ${start} [in $(seconds_to_dhms "${delta}")]"
             fi
@@ -565,7 +565,7 @@ if [[ $action == "job" ]]; then
         value2=$(sed -E "s/.*\b${key}=([[:digit:]]+)\b.*/\1/" <<< "${value}")
         s=${value2}
         info="       - ${key}=${value2} => $(seconds_to_dhms "${value2}")"
-        if [[ $is_queued ]] && [[ $value2 -gt $calendar_delta ]]; then
+        if [[ $is_queued ]] && [[ $calendar_delta -gt 0 ]] && [[ $value2 -gt $calendar_delta ]]; then
             status="[$warn]"
             info="${info} ${yellow}WARNING: Job cannot start until *after* the scheduled downtime${reset}"
         fi
