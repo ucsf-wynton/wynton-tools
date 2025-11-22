@@ -1,6 +1,9 @@
 # Version (development version)
 
- * ...
+## New Features
+
+ * `wynton watchdog-ps` allows for more processes, e.g. `lmod`,
+   Jupyter Lab and Notebook, and RStudio Server.
 
 
 # Version 0.26.0 (2025-11-14)

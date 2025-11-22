@@ -140,7 +140,7 @@ if [[ $action == "list" ]]; then
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(awk|cat|cut|file|grep|head|less|lesspipe.sh|more|sed|sort|tail|tee|tr|uniq|wc)$/')
     
     ## Allowed misc. tools ('comm')
-    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc|man|time|timeout|host|ping|dig|nslookup|nc)$/')
+    mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(bc|lmod|man|time|timeout|host|ping|dig|nslookup|nc)$/')
         
     ## Allowed file-related tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|md5sum|mv|rm|rsync|stat|tar|touch|wget|zip|unzip|7z)$/')
@@ -230,6 +230,12 @@ if [[ $action == "list" ]]; then
 
         ## Allowed Python tools ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(pip)$/')
+
+        ## Allowed RStudio Server (assuming it's run via 'rsc')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(rserver|rsession)$/')
+	
+        ## Allowed Jupyter Lab and Jupyter Notebook
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^jupyter-(lab|noteboo.*)$/')
     fi
 
     
