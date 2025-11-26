@@ -2,6 +2,9 @@
 
 ## New Features
 
+ * `wynton account --check` validates that the LDAP `wyntonProject`
+   specifies an existing SGE project.
+ 
  * `wynton watchdog-ps` allows for more processes, e.g. `lmod`,
    Jupyter Lab and Notebook, and RStudio Server.
 

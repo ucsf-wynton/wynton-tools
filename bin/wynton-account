@@ -869,7 +869,14 @@ if [[ $action == "validate" ]]; then
             else
                 fail "User is not member of SGE project"
             fi        
-    
+
+            if qconf -sprj "${wynton_project}" &> /dev/null; then
+                okay "LDAP 'wyntonProject' exists in SGE"
+	    else
+                fail "LDAP 'wyntonProject' does not exist in SGE"
+                hint_for_admin "Verify that LDAP 'wyntonProject' value '${wynton_project}' is correct"
+	    fi
+		
             if [[ ${wynton_project} == "${sge_project}" ]]; then
                 okay "SGE 'default_project' and LDAP 'wyntonProject' agree"
             else
