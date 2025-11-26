@@ -145,10 +145,10 @@ if [[ $action == "list" ]]; then
     ## Allowed file-related tools ('comm')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cp|curl|df|du|find|git|gzip|ls|ln|md5sum|mv|rm|rsync|stat|tar|touch|wget|zip|unzip|7z)$/')
 
-    ## Allow MATLAB service processes
+    ## Allow MATLAB service processes ('cmd')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$7 !~ /([/]MathWorksServiceHost(-Monitor)*)/')
     
-    ## Allow VS Code ('comm')
+    ## Allow VS Code ('comm' and 'cmd')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(code-insiders-.+)$/')
     mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$7 !~ /([/][.]vscode-server[/])/')
 
@@ -211,7 +211,7 @@ if [[ $action == "list" ]]; then
     ## --------------------------------------------------------------------
     elif [[ ${HOSTNAME} == *dev* ]]; then
         ## Allowed X11- and X2Go-related tools ('comm')
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(x2goagent|x2gogetagentsta|x2goruncommand|x2goresume-sess.*|mate-panel|mate-session|mate-settings-d.*|mate-terminal)$/')	
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(Xvfb|x2goagent|x2gogetagentsta|x2goruncommand|x2goresume-sess.*|mate-panel|mate-session|mate-settings-d.*|mate-terminal)$/')
 
         ## Allowed misc. ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(marco|polkit-mate-aut.*|gnome-keyring-d.*|dconf-service|dbus-kill-proce.*|dbus-run-sessio.*|at-spi-bus-laun.*|at-spi2-registr.*|gio|caja|agent|starter-suid)$/')
@@ -220,7 +220,10 @@ if [[ $action == "list" ]]; then
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(gvfsd|gvfsd-dnssd|gvfsd-network|gvfs-udisks2-vo.*|gvfsd-computer|gvfsd-http|gvfsd-trash|gvfsd-metadata)$/')
 
         ## Allowed Apptainer/Singularity tools ('comm')
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(squashfuse_ll|faked)$/')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(apptainer|singularity|faked|fakeroot|squashfuse_ll|starter)$/')
+        
+        ## Allowed development tools ('comm')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(cc1plus|cmake|configure|g[+][+]|gcc|gfortran|make)$/')
         
         ## Allowed Firefox tools ('comm')
 	## The following doesn't work, because there are SPACEs in 'comm' column
@@ -231,11 +234,35 @@ if [[ $action == "list" ]]; then
         ## Allowed Python tools ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(pip)$/')
 
-        ## Allowed RStudio Server (assuming it's run via 'rsc')
+        ## Allowed RStudio Server (assuming it's run via 'rsc') ('comm')
         mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^(rserver|rsession)$/')
 	
-        ## Allowed Jupyter Lab and Jupyter Notebook
-        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^jupyter-(lab|noteboo.*)$/')
+        ## Allowed Jupyter Lab and Jupyter Notebook ('comm' and 'cmd')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '$6 !~ /^jupyter-(lab|noteboo.*|server)$/')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '!($6 ~ /^R$/ && $8 ~ /^--slave$/ && $9 ~ /^-e$/ && $10 ~ /^IRkernel::main[(][)]$/)')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '!(\
+          ($6 ~ /^(python|pt_main_thread$)/ && (\
+             ($8 ~ /^-m$/ &&  $9 ~ /^ipykernel_launcher$/) || \
+             ($9 ~ /^-m$/ && $10 ~ /^ipykernel_launcher$/) \
+          )) \
+        )')
+
+        ## Allowed VSCode, Cursor ('comm' and 'cmd')
+        mapfile -t ps_info < <(printf "%s\n" "${ps_info[@]}" | awk '!(\
+          ($8 ~ /[/][.](cursor|vscode)-server(|-insiders)[/]/ || $9 ~ /[/][.](cursor|vscode)-server(|-insiders)[/]/ || $10 ~ /[/][.](cursor|vscode)-server(|-insiders)[/]/) && (\
+          ($6 ~ /^node$/ && (\
+             ($8 ~ /[/][.]vscode-server[/]/ && $8 ~ /[/]server-main.js$/) || \
+             ($8 ~ /[/]jsonServerMain$/     && $9 ~ /^--node-ipc$/) \
+             ($8 ~ /[/]bootstrap-fork$/ && $9 ~ /^--type=/) \
+             ($9 ~ /[/]bootstrap-fork$/ && $10 ~ /^--type=/) \
+          )) ||\
+          ($6 ~ /^python/ && \
+             ($8 ~ /[/]lsp_server.py$/ && $9 ~ /^--stdio$/) || \
+             ($8 ~ /[/]run-jedi-language-server.py$/) ||
+             ($8 ~ /[/]debugpy[/]launcher/ || $9 ~ /[/]debugpy[/]launcher/ || $10 ~ /[/]debugpy[/]launcher/) \
+             ($8 ~ /[/]debugpy[/]adapter/ || $9 ~ /[/]debugpy[/]adapter/ || $10 ~ /[/]debugpy[/]adapter/) \
+          )\
+        ))')
     fi
 
     
