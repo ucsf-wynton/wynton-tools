@@ -1,4 +1,4 @@
-# Version (development version)
+# Version 0.27.0 (2025-11-26)
 
 ## New Features
 
@@ -9,7 +9,7 @@
    and Notebook, RStudio Server, and VSCode.
 
 
-# Version 0.26.0 (2025-11-14)
+# Version 0.26.1 (2025-11-14)
 
 ## Bug Fixes
 
