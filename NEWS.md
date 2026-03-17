@@ -1,7 +1,11 @@
 # Version (developers version)
 
- * ...
+## Bug Fixes
 
+ * `wynton account` would complain about new UCSF system-wide UIDs
+   being outside of the expected [1000,65535] range. The new UIDs can
+   be up to 2^32-1.
+   
 
 # Version 0.27.0 (2025-11-26)
 
