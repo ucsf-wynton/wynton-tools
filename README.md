@@ -32,8 +32,8 @@ Installed tools:
 Example:
  wynton --help
 
-Version: 0.27.0
-Copyright: Henrik Bengtsson (2019-2025)
+Version: 0.27.0-9002
+Copyright: Henrik Bengtsson (2019-2026)
 License: GPL (>= 2.1) [https://www.gnu.org/licenses/gpl.html]
 Source: https://github.com/ucsf-wynton/wynton-tools
 ```
