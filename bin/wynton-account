@@ -885,6 +885,9 @@ if [[ $action == "validate" ]]; then
                     hint_for_admin "LDAP field 'wyntonProject' is not set"
                 elif [[ -z ${sge_project} ]]; then
                     hint_for_admin "There is no 'default_project' in the output of qconf -suser '${user}'"
+		else
+                    hint_for_admin "To update the SGE 'default_project', use qconf -au '${user}' '${wynton_project}'"
+                    hint_for_admin "To update the LDAP 'wyntonProject', use ldapmodify ... update.ldif"
                 fi
             fi
     

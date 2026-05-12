@@ -1,7 +1,11 @@
 # Version (development version)
 
- * ...
- 
+## New Features
+
+ * `wynton account --check --as=admin` gives instructions on how to
+   update the SGE 'default_project' or the LDAP 'wyntonProject' when
+   they disagree.
+
 
 # Version 0.28.0 (2026-04-29)
 
