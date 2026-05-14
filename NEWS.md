@@ -6,6 +6,11 @@
    update the SGE 'default_project' or the LDAP 'wyntonProject' when
    they disagree.
 
+## Bug Fixes
+
+ * `wynton job` did not handle when `gpu_mem=<size>` was specified
+   without a unit - the default is `M` (MiB).
+
 
 # Version 0.28.0 (2026-04-29)
 
