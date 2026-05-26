@@ -2,6 +2,9 @@
 
 ## New Features
 
+ * `wynton account` highlight essential account fields using a bold
+   font and color annotates fields affecting access to Wynton.
+ 
  * `wynton account --check --as=admin` gives instructions on how to
    update the SGE 'default_project' or the LDAP 'wyntonProject' when
    they disagree.
