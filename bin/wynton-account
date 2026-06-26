@@ -319,14 +319,14 @@ if [[ $action == "validate" ]]; then
     access=false
     if [[  $(ldap_get_field "wyntonAccess" "${ldap_info[@]}") == "TRUE" ]]; then
         access=true
-    fi
+    fi    
 
     ## Is account locked?
     locked=false
     if [[  $(ldap_get_field "isLocked" "${ldap_info[@]}") == "TRUE" ]]; then
         locked=true
     fi
-    
+
     ## Wynton admin account?
     admin=false
     if [[  $(ldap_get_field "wyntonAdmin" "${ldap_info[@]}") == "TRUE" ]]; then
@@ -383,7 +383,7 @@ if [[ $action == "validate" ]]; then
     echo
     echo "## Overview"
     echo
-    echo "* User: ${user} (${uid:-N/A})"
+    echo "* User: ${bold}${user}${reset} (${uid:-N/A})"
     echo "* Groups: [n=${#groups[@]}]"
     deprecated_groups=()
     for kk in $(seq "${#groups[@]}"); do
@@ -401,8 +401,8 @@ if [[ $action == "validate" ]]; then
         fi
         echo "  - '${group_kk}' (${type}; ${gids[$((kk-1))]}; ${n_members} members; '${description}')"
     done
-    echo "* Full name: ${fullname}"
-    echo "* Email address: ${email:-N/A}"
+    echo "* Full name: ${bold}${fullname}${reset}"
+    echo "* Email address: ${bold}${email:-N/A}${reset}"
     echo "* UCSF Employee ID: ${ucsf_id:-N/A}"
     if [[ -z "${faculty_sponsor}" ]]; then
         echo "* Faculty sponsor: N/A"
@@ -436,12 +436,13 @@ if [[ $action == "validate" ]]; then
             fi
        fi
     done
-    echo "* Wynton account: $(account_enabled_or_not "${access}")"
+
+    echo "* Wynton account: $(${access} && echo "${green}" || echo "${red}")${bold}$(account_enabled_or_not "${access}")${reset}"
     echo "* IC account: $(account_enabled_or_not "${ic}")"
     echo "* Plato account: $(account_enabled_or_not "${plato}")"
     echo "* Protected access: ${protected:-N/A}"
     echo "* Wynton admin: ${admin:-N/A}"
-    echo "* Locked account: ${locked:-N/A}"
+    echo "* Locked account: $(${locked} && echo "${yellow}" || echo "${green}")${bold}${locked:-N/A}${reset}"
     echo "* Login shell: ${shell:-N/A}"
     if [[ -z "${wynton_project}" ]]; then
         echo "* Wynton project: N/A"
@@ -846,8 +847,8 @@ if [[ $action == "validate" ]]; then
             fi
         fi
         
-        # Assert 'wyntonAccess', 'protectedAccess', 'wyntonProject' only exist once
-        for field in "wyntonAccess" "protectedAccess" "wyntonProject"; do
+        # Assert 'wyntonAccess', ~~'protectedAccess'~~, 'wyntonProject' only exist once
+        for field in "wyntonAccess" "wyntonProject"; do
             mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:" | sed "s/^${field}: *//")
             if [[ ${#res[@]} -gt 1 ]]; then
                 fail "User has multiple LDAP '${field}' entries"
@@ -885,6 +886,9 @@ if [[ $action == "validate" ]]; then
                     hint_for_admin "LDAP field 'wyntonProject' is not set"
                 elif [[ -z ${sge_project} ]]; then
                     hint_for_admin "There is no 'default_project' in the output of qconf -suser '${user}'"
+		else
+                    hint_for_admin "To update the SGE 'default_project', use qconf -au '${user}' '${wynton_project}'"
+                    hint_for_admin "To update the LDAP 'wyntonProject', use ldapmodify ... update.ldif"
                 fi
             fi
     

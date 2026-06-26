@@ -1,3 +1,25 @@
+# Version 0.29.0 (2026-06-26)
+
+## Significant Changes
+
+ * `wynton account --check` no longer checks whether LDAP field
+   `protectedAccess` is explicitly set.
+
+## New Features
+
+ * `wynton account` highlight essential account fields using a bold
+   font and color annotates fields affecting access to Wynton.
+ 
+ * `wynton account --check --as=admin` gives instructions on how to
+   update the SGE 'default_project' or the LDAP 'wyntonProject' when
+   they disagree.
+
+## Bug Fixes
+
+ * `wynton job` did not handle when `gpu_mem=<size>` was specified
+   without a unit - the default is `M` (MiB).
+
+
 # Version 0.28.0 (2026-04-29)
 
 ## New Features
