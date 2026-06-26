@@ -847,8 +847,8 @@ if [[ $action == "validate" ]]; then
             fi
         fi
         
-        # Assert 'wyntonAccess', 'protectedAccess', 'wyntonProject' only exist once
-        for field in "wyntonAccess" "protectedAccess" "wyntonProject"; do
+        # Assert 'wyntonAccess', ~~'protectedAccess'~~, 'wyntonProject' only exist once
+        for field in "wyntonAccess" "wyntonProject"; do
             mapfile -t res < <(printf "%s\n" "${ldap_info[@]}" | grep -E "^${field}:" | sed "s/^${field}: *//")
             if [[ ${#res[@]} -gt 1 ]]; then
                 fail "User has multiple LDAP '${field}' entries"

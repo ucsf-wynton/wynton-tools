@@ -1,5 +1,10 @@
 # Version (development version)
 
+## Significant Changes
+
+ * `wynton account --check` no longer checks whether LDAP field
+   `protectedAccess` is explicitly set.
+
 ## New Features
 
  * `wynton account` highlight essential account fields using a bold
